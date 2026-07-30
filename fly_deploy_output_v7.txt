@@ -1,0 +1,362 @@
+==> Verifying app config
+Validating /Users/mac/Desktop/prudenceapp/fly.toml
+[32m✓[0m Configuration is valid
+--> Verified app config
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.58kB 1.4s done
+#1 DONE 1.4s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.58kB 1.4s done
+#1 DONE 1.4s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#4 [internal] load build definition from Dockerfile
+#4 Deduplicating step ID [internal] load build definition from Dockerfile, another build is calculating it done
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:20.11.0-slim
+#5 DONE 0.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 226B 1.3s done
+#6 DONE 1.3s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [base 1/2] FROM docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#8 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#8 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98 done
+#8 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 130.78kB 2.5s done
+#7 DONE 2.5s
+
+#9 [build 3/9] RUN npm ci --include=dev
+#9 CACHED
+
+#10 [build 4/9] COPY prisma ./prisma/
+#10 CACHED
+
+#11 [base 2/2] WORKDIR /app
+#11 CACHED
+
+#12 [build 5/9] RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/g' prisma/schema.prisma
+#12 CACHED
+
+#13 [build 1/9] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y build-essential node-gyp openssl pkg-config python-is-python3
+#13 CACHED
+
+#14 [build 2/9] COPY package-lock.json package.json ./
+#14 CACHED
+
+#15 [build 6/9] RUN npx prisma generate
+#15 CACHED
+
+#16 [build 7/9] COPY . .
+#16 DONE 0.2s
+
+#17 [build 8/9] RUN npm run build
+#17 0.372 
+#17 0.372 > expense-system@0.1.0 build
+#17 0.372 > next build
+#17 0.372 
+#17 1.046 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#17 1.047 This information is used to shape Next.js' roadmap and prioritize features.
+#17 1.047 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#17 1.047 https://nextjs.org/telemetry
+#17 1.047 
+#17 1.059 ▲ Next.js 16.1.5 (Turbopack)
+#17 1.059 
+#17 1.115 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+#17 1.204   Creating an optimized production build ...
+#17 14.81 ✓ Compiled successfully in 13.2s
+#17 14.82   Running TypeScript ...
+#17 34.06   Collecting page data using 7 workers ...
+#17 35.22   Generating static pages using 7 workers (0/105) ...
+#17 35.27   Generating static pages using 7 workers (26/105) 
+#17 35.40   Generating static pages using 7 workers (52/105) 
+#17 35.62   Generating static pages using 7 workers (78/105) 
+#17 35.78 prisma:error 
+#17 35.78 Invalid `prisma.user.findMany()` invocation:
+#17 35.78 
+#17 35.78 
+#17 35.78 error: Environment variable not found: DATABASE_URL.
+#17 35.78   -->  schema.prisma:7
+#17 35.78    | 
+#17 35.78  6 |   provider = "postgresql"
+#17 35.78  7 |   url      = env("DATABASE_URL")
+#17 35.78    | 
+#17 35.78 
+#17 35.78 Validation Error Count: 1
+#17 35.79 Error fetching users: Error [PrismaClientInitializationError]: 
+#17 35.79 Invalid `prisma.user.findMany()` invocation:
+#17 35.79 
+#17 35.79 
+#17 35.79 error: Environment variable not found: DATABASE_URL.
+#17 35.79   -->  schema.prisma:7
+#17 35.79    | 
+#17 35.79  6 |   provider = "postgresql"
+#17 35.79  7 |   url      = env("DATABASE_URL")
+#17 35.79    | 
+#17 35.79 
+#17 35.79 Validation Error Count: 1
+#17 35.79     at <unknown> (-->  schema.prisma:7)
+#17 35.79     at async g (.next/server/chunks/ssr/_89bfa4d4._.js:1:144)
+#17 35.79     at async e (.next/server/chunks/ssr/[root-of-the-server]__a0c253d4._.js:1:1435) {
+#17 35.79   clientVersion: '5.22.0',
+#17 35.79   errorCode: undefined
+#17 35.79 }
+#17 36.13 ✓ Generating static pages using 7 workers (105/105) in 913.2ms
+#17 36.14   Finalizing page optimization ...
+#17 36.15 
+#17 36.16 Route (app)
+#17 36.16 ┌ ○ /
+#17 36.16 ├ ○ /_not-found
+#17 36.16 ├ ƒ /api/accounting/accounts
+#17 36.16 ├ ƒ /api/accounting/credit-notes
+#17 36.16 ├ ƒ /api/accounting/customers
+#17 36.16 ├ ƒ /api/accounting/journal
+#17 36.16 ├ ƒ /api/accounting/payments
+#17 36.16 ├ ƒ /api/accounting/reports/balance-sheet
+#17 36.16 ├ ƒ /api/accounting/sales
+#17 36.16 ├ ƒ /api/accounting/sales/[id]
+#17 36.16 ├ ƒ /api/approvals
+#17 36.16 ├ ƒ /api/approvals/[id]
+#17 36.16 ├ ƒ /api/approvals/[id]/delegate
+#17 36.16 ├ ƒ /api/auth/[...nextauth]
+#17 36.16 ├ ƒ /api/auth/forgot-password
+#17 36.16 ├ ƒ /api/auth/mobile-login
+#17 36.16 ├ ƒ /api/auth/reset-password
+#17 36.16 ├ ƒ /api/auth/signup
+#17 36.16 ├ ƒ /api/branch-approvals
+#17 36.16 ├ ƒ /api/branches
+#17 36.16 ├ ƒ /api/branches/[id]
+#17 36.16 ├ ƒ /api/branches/[id]/wallet
+#17 36.16 ├ ƒ /api/branches/bulk
+#17 36.16 ├ ƒ /api/budgets
+#17 36.16 ├ ƒ /api/categories
+#17 36.16 ├ ƒ /api/dashboard
+#17 36.16 ├ ƒ /api/expenses
+#17 36.16 ├ ƒ /api/expenses/validate
+#17 36.16 ├ ƒ /api/finance/bulk-pay
+#17 36.16 ├ ƒ /api/finance/pay
+#17 36.16 ├ ƒ /api/invoices
+#17 36.16 ├ ƒ /api/invoices/[id]
+#17 36.16 ├ ƒ /api/invoices/[id]/pay
+#17 36.16 ├ ƒ /api/mobile/approvals
+#17 36.16 ├ ƒ /api/mobile/categories
+#17 36.16 ├ ƒ /api/mobile/payments
+#17 36.16 ├ ƒ /api/mobile/requisitions
+#17 36.16 ├ ƒ /api/mobile/requisitions/[id]/approve
+#17 36.16 ├ ƒ /api/mobile/setup
+#17 36.16 ├ ƒ /api/mobile/user-info
+#17 36.16 ├ ƒ /api/mobile/vendors
+#17 36.16 ├ ƒ /api/mobile/wallet
+#17 36.16 ├ ƒ /api/notifications
+#17 36.16 ├ ƒ /api/payments
+#17 36.16 ├ ƒ /api/payments/action
+#17 36.16 ├ ƒ /api/permissions
+#17 36.16 ├ ƒ /api/regions
+#17 36.16 ├ ƒ /api/reports/ledger
+#17 36.16 ├ ƒ /api/roles
+#17 36.16 ├ ƒ /api/salaries
+#17 36.16 ├ ƒ /api/salaries/[id]
+#17 36.16 ├ ƒ /api/schedules
+#17 36.16 ├ ƒ /api/schedules/[id]
+#17 36.16 ├ ƒ /api/schedules/[id]/execute
+#17 36.16 ├ ƒ /api/schedules/process
+#17 36.16 ├ ƒ /api/settings
+#17 36.16 ├ ƒ /api/stripe/connect
+#17 36.16 ├ ƒ /api/system/auto-setup
+#17 36.16 ├ ƒ /api/system/setup-status
+#17 36.16 ├ ƒ /api/upload
+#17 36.16 ├ ƒ /api/users
+#17 36.16 ├ ƒ /api/wallet/allocate
+#17 36.16 ├ ƒ /api/workflow/analytics
+#17 36.16 ├ ƒ /api/workflow/escalate
+#17 36.16 ├ ƒ /dashboard
+#17 36.16 ├ ƒ /dashboard/accounting/chart-of-accounts
+#17 36.16 ├ ƒ /dashboard/accounting/customers
+#17 36.16 ├ ƒ /dashboard/accounting/customers/[id]
+#17 36.16 ├ ƒ /dashboard/accounting/customers/[id]/statement
+#17 36.16 ├ ƒ /dashboard/accounting/customers/new
+#17 36.16 ├ ƒ /dashboard/accounting/ledger
+#17 36.16 ├ ƒ /dashboard/accounting/payables
+#17 36.16 ├ ƒ /dashboard/accounting/periods
+#17 36.16 ├ ƒ /dashboard/accounting/reconciliation
+#17 36.16 ├ ƒ /dashboard/accounting/reports/balance-sheet
+#17 36.16 ├ ƒ /dashboard/accounting/reports/cash-flow
+#17 36.16 ├ ƒ /dashboard/accounting/reports/income-statement
+#17 36.16 ├ ƒ /dashboard/accounting/reports/trial-balance
+#17 36.16 ├ ƒ /dashboard/accounting/sales
+#17 36.16 ├ ƒ /dashboard/accounting/sales/[id]
+#17 36.16 ├ ƒ /dashboard/accounting/sales/new
+#17 36.16 ├ ƒ /dashboard/accounting/tax-rates
+#17 36.16 ├ ƒ /dashboard/approvals
+#17 36.16 ├ ƒ /dashboard/assets
+#17 36.16 ├ ○ /dashboard/audit
+#17 36.16 ├ ○ /dashboard/branch-approvals
+#17 36.16 ├ ƒ /dashboard/branches
+#17 36.16 ├ ○ /dashboard/budgets
+#17 36.16 ├ ○ /dashboard/contracts
+#17 36.16 ├ ƒ /dashboard/expenses
+#17 36.16 ├ ○ /dashboard/expenses/new
+#17 36.16 ├ ƒ /dashboard/forecasting
+#17 36.16 ├ ƒ /dashboard/invoices
+#17 36.16 ├ ƒ /dashboard/invoices/[id]
+#17 36.16 ├ ƒ /dashboard/invoices/new
+#17 36.16 ├ ƒ /dashboard/payments
+#17 36.16 ├ ƒ /dashboard/policies
+#17 36.16 ├ ○ /dashboard/regions
+#17 36.16 ├ ƒ /dashboard/reports
+#17 36.16 ├ ƒ /dashboard/requisitions
+#17 36.16 ├ ƒ /dashboard/requisitions/[id]
+#17 36.16 ├ ○ /dashboard/requisitions/categories
+#17 36.16 ├ ○ /dashboard/requisitions/monthly
+#17 36.16 ├ ○ /dashboard/requisitions/new
+#17 36.16 ├ ƒ /dashboard/roles
+#17 36.16 ├ ƒ /dashboard/roles/[id]
+#17 36.16 ├ ○ /dashboard/roles/new
+#17 36.16 ├ ƒ /dashboard/salaries
+#17 36.16 ├ ƒ /dashboard/salaries/[id]
+#17 36.16 ├ ○ /dashboard/schedules
+#17 36.16 ├ ƒ /dashboard/settings
+#17 36.16 ├ ƒ /dashboard/settings/import
+#17 36.16 ├ ƒ /dashboard/team
+#17 36.16 ├ ○ /dashboard/users
+#17 36.16 ├ ƒ /dashboard/vendors
+#17 36.16 ├ ƒ /dashboard/wallet
+#17 36.16 ├ ○ /dashboard/workflow-analytics
+#17 36.16 ├ ƒ /finance-studio
+#17 36.16 ├ ○ /forgot-password
+#17 36.16 ├ ○ /icon.png
+#17 36.16 ├ ○ /login
+#17 36.16 ├ ○ /receipt-studio
+#17 36.16 ├ ○ /reset-password
+#17 36.16 └ ○ /signup
+#17 36.16 
+#17 36.16 
+#17 36.16 ƒ Proxy (Middleware)
+#17 36.16 
+#17 36.16 ○  (Static)   prerendered as static content
+#17 36.16 ƒ  (Dynamic)  server-rendered on demand
+#17 36.16 
+#17 DONE 36.5s
+
+#18 [build 9/9] RUN npm prune --omit=dev
+#18 4.089 
+#18 4.089 up to date, audited 336 packages in 4s
+#18 4.089 
+#18 4.089 42 packages are looking for funding
+#18 4.089   run `npm fund` for details
+#18 4.170 
+#18 4.170 6 vulnerabilities (1 low, 1 moderate, 3 high, 1 critical)
+#18 4.170 
+#18 4.170 To address issues that do not require attention, run:
+#18 4.170   npm audit fix
+#18 4.170 
+#18 4.170 To address all issues possible, run:
+#18 4.170   npm audit fix --force
+#18 4.170 
+#18 4.170 Some issues need review, and may require choosing
+#18 4.170 a different dependency.
+#18 4.170 
+#18 4.170 Run `npm audit` for details.
+#18 DONE 4.2s
+
+#19 [stage-2 1/2] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y openssl &&     rm -rf /var/lib/apt/lists /var/cache/apt/archives
+#19 CACHED
+
+#20 [stage-2 2/2] COPY --from=build /app /app
+#20 DONE 22.2s
+
+#21 exporting to image
+#21 exporting layers
+#21 exporting layers 26.2s done
+#21 exporting manifest sha256:8ba0d50ac86b92a54dd6fb3bf94eec29997c7f872c4ff2610f0b26c9bed31a09 done
+#21 exporting config sha256:28d2fdc7c5ac7a7419c0d0a1533fd426d812801d1d03ec7d410961660835c44c done
+#21 pushing layers for registry.fly.io/prudenceapp:deployment-01KP1VT4WE2ZTB34W5ZY3HE927@sha256:8ba0d50ac86b92a54dd6fb3bf94eec29997c7f872c4ff2610f0b26c9bed31a09
+#21 pushing layer sha256:28d2fdc7c5ac7a7419c0d0a1533fd426d812801d1d03ec7d410961660835c44c
+#21 pushing layer sha256:8cf08b508de673b57fbf7d0ec015a34161c5339d86abc505b69f23563fc3ef6e
+#21 pushing layer sha256:fb77ee187be7b05fb18152b40bc45c1ed2afc9cd75cfb7625056018373fb1cd5
+#21 pushing layer sha256:6d52df359a2f51edd6a02f538f32f904ae1e836762825f35d266e86c7290fe93
+#21 pushing layer sha256:704ca67b8a6844d790bec0cc2ca9067da4d55c149ec49658a5fc9702e6f0a791
+#21 pushing layer sha256:0a5d4156ceea245f8c12ec39a141960fcf6b4b1e58d255341d18c2db3034ae73
+#21 pushing layer sha256:61f505243f02e83be5c61f46f22b25853c92f8702c7636cdd89d4c7ea45c92f9
+#21 pushing layer sha256:2600202157de8b428adf08baeac6b18aa880b5cc1207123afd551b5b42e87fdf
+#21 pushing layer sha256:55bc372a88ae468f5a821b542610e9b8c2759f4df0505805cb5d1dd7df260712
+#21 pushing layer sha256:2600202157de8b428adf08baeac6b18aa880b5cc1207123afd551b5b42e87fdf 1.0s done
+#21 pushing layer sha256:0a5d4156ceea245f8c12ec39a141960fcf6b4b1e58d255341d18c2db3034ae73 1.4s done
+#21 pushing layer sha256:55bc372a88ae468f5a821b542610e9b8c2759f4df0505805cb5d1dd7df260712 2.2s done
+#21 pushing layer sha256:8cf08b508de673b57fbf7d0ec015a34161c5339d86abc505b69f23563fc3ef6e 2.7s done
+#21 pushing layer sha256:61f505243f02e83be5c61f46f22b25853c92f8702c7636cdd89d4c7ea45c92f9 4.0s done
+#21 pushing layer sha256:6d52df359a2f51edd6a02f538f32f904ae1e836762825f35d266e86c7290fe93 4.0s done
+#21 pushing layer sha256:704ca67b8a6844d790bec0cc2ca9067da4d55c149ec49658a5fc9702e6f0a791 4.0s done
+#21 pushing layer sha256:28d2fdc7c5ac7a7419c0d0a1533fd426d812801d1d03ec7d410961660835c44c 4.2s done
+#21 pushing layers for registry.fly.io/prudenceapp:deployment-01KP1VT4WE2ZTB34W5ZY3HE927@sha256:8ba0d50ac86b92a54dd6fb3bf94eec29997c7f872c4ff2610f0b26c9bed31a09 6.6s done
+#21 pushing layer sha256:fb77ee187be7b05fb18152b40bc45c1ed2afc9cd75cfb7625056018373fb1cd5 6.6s done
+#21 pushing manifest for registry.fly.io/prudenceapp:deployment-01KP1VT4WE2ZTB34W5ZY3HE927@sha256:8ba0d50ac86b92a54dd6fb3bf94eec29997c7f872c4ff2610f0b26c9bed31a09
+#21 pushing manifest for registry.fly.io/prudenceapp:deployment-01KP1VT4WE2ZTB34W5ZY3HE927@sha256:8ba0d50ac86b92a54dd6fb3bf94eec29997c7f872c4ff2610f0b26c9bed31a09 0.1s done
+#21 DONE 32.9s
+--> Build Summary:  (​)
+[38;5;252m--> Building image done[0m
+image: registry.fly.io/prudenceapp:deployment-01KP1VT4WE2ZTB34W5ZY3HE927
+image size: 300 MB
+
+Watch your deployment at https://fly.io/apps/prudenceapp/monitoring
+
+Running prudenceapp release_command: npx prisma db push
+> Created release_command machine 0807663c204178
+> Waiting for 0807663c204178 to have state: stopped
+> Machine 0807663c204178 has state: stopped
+Starting machine
+> Waiting for 0807663c204178 to have state: started
+> Waiting for 0807663c204178 to have state: started
+> Machine 0807663c204178 has state: started
+> Waiting for 0807663c204178 to have state: destroyed
+> Machine 0807663c204178 has state: destroyed
+> Waiting for 0807663c204178 to get exit event
+✔ release_command 0807663c204178 completed successfully
+Updating existing machines in 'prudenceapp' with rolling strategy
+> [1/2] Acquiring lease for 2873975a175938
+> [1/2] Acquired lease for 2873975a175938
+> [2/2] Acquiring lease for 857935b47e61e8
+> [2/2] Acquired lease for 857935b47e61e8
+> [2/2] Updating machine config for 857935b47e61e8
+> [1/2] Updating machine config for 2873975a175938
+> [2/2] Updating 857935b47e61e8 [app]
+> [1/2] Updating 2873975a175938 [app]
+> [1/2] Updated machine config for 2873975a175938
+✔ [1/2] Machine 2873975a175938 is now in a good state
+> [2/2] Updated machine config for 857935b47e61e8
+> [2/2] Waiting for machine 857935b47e61e8 to reach a good state
+> [2/2] Machine 857935b47e61e8 reached started state
+> [2/2] Running smoke checks on machine 857935b47e61e8
+> [2/2] Running machine checks on machine 857935b47e61e8
+> [2/2] Checking health of machine 857935b47e61e8
+✔ [2/2] Machine 857935b47e61e8 is now in a good state
+> [2/2] Clearing lease for 857935b47e61e8
+> [1/2] Clearing lease for 2873975a175938
+✔ [2/2] Cleared lease for 857935b47e61e8
+✔ [1/2] Cleared lease for 2873975a175938
+Checking DNS configuration for prudenceapp.fly.dev
+✓ DNS configuration verified
+
+Visit your newly deployed app at https://prudenceapp.fly.dev/
+

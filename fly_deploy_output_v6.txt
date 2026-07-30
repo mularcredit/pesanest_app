@@ -1,0 +1,229 @@
+==> Verifying app config
+Validating /Users/mac/Desktop/prudenceapp/fly.toml
+[32m✓[0m Configuration is valid
+--> Verified app config
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#4 [internal] load build definition from Dockerfile
+#4 Deduplicating step ID [internal] load build definition from Dockerfile, another build is calculating it done
+#4 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 5)
+#4 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 21)
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:20.11.0-slim
+#5 DONE 0.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 226B 1.3s done
+#6 DONE 1.3s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [base 1/2] FROM docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#8 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98 done
+#8 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 62.04kB 1.8s done
+#7 DONE 1.8s
+
+#9 [build 2/9] COPY package-lock.json package.json ./
+#9 CACHED
+
+#10 [build 5/9] RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/g' prisma/schema.prisma
+#10 CACHED
+
+#11 [build 1/9] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y build-essential node-gyp openssl pkg-config python-is-python3
+#11 CACHED
+
+#12 [build 3/9] RUN npm ci --include=dev
+#12 CACHED
+
+#13 [build 4/9] COPY prisma ./prisma/
+#13 CACHED
+
+#14 [base 2/2] WORKDIR /app
+#14 CACHED
+
+#15 [build 6/9] RUN npx prisma generate
+#15 CACHED
+
+#16 [build 7/9] COPY . .
+#16 DONE 0.2s
+
+#17 [build 8/9] RUN npm run build
+#17 0.353 
+#17 0.353 > expense-system@0.1.0 build
+#17 0.353 > next build
+#17 0.353 
+#17 1.041 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#17 1.041 This information is used to shape Next.js' roadmap and prioritize features.
+#17 1.041 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#17 1.041 https://nextjs.org/telemetry
+#17 1.041 
+#17 1.054 ▲ Next.js 16.1.5 (Turbopack)
+#17 1.054 
+#17 1.111 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+#17 1.192   Creating an optimized production build ...
+#17 16.54 ✓ Compiled successfully in 15.0s
+#17 16.55   Running TypeScript ...
+#17 40.06 Failed to compile.
+#17 40.06 
+#17 40.06 ./src/app/finance-studio/page.tsx:1102:45
+#17 40.06 Type error: Type '{ startDate: Date | null; endDate: Date | null; onSelect: (start: any, end: any) => void; }' is not assignable to type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+#17 40.06   Property 'onSelect' does not exist on type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+#17 40.06 
+#17 40.06 [0m [90m 1100 |[39m                                             startDate[33m=[39m{sscaaData[33m.[39mperiodStart}
+#17 40.06  [90m 1101 |[39m                                             endDate[33m=[39m{sscaaData[33m.[39mperiodEnd}
+#17 40.06 [31m[1m>[22m[39m[90m 1102 |[39m                                             onSelect[33m=[39m{(start[33m,[39m end) [33m=>[39m setSscaaData({ [33m...[39msscaaData[33m,[39m periodStart[33m:[39m start[33m,[39m periodEnd[33m:[39m end })}
+#17 40.06  [90m      |[39m                                             [31m[1m^[22m[39m
+#17 40.06  [90m 1103 |[39m                                         [33m/[39m[33m>[39m
+#17 40.06  [90m 1104 |[39m                                     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+#17 40.06  [90m 1105 |[39m                                     [33m<[39m[33mbutton[39m[0m
+#17 40.25 Next.js build worker exited with code: 1 and signal: null
+#17 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [build 8/9] RUN npm run build:
+40.06   Property 'onSelect' does not exist on type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+40.06 
+40.06 [0m [90m 1100 |[39m                                             startDate[33m=[39m{sscaaData[33m.[39mperiodStart}
+40.06  [90m 1101 |[39m                                             endDate[33m=[39m{sscaaData[33m.[39mperiodEnd}
+40.06 [31m[1m>[22m[39m[90m 1102 |[39m                                             onSelect[33m=[39m{(start[33m,[39m end) [33m=>[39m setSscaaData({ [33m...[39msscaaData[33m,[39m periodStart[33m:[39m start[33m,[39m periodEnd[33m:[39m end })}
+40.06  [90m      |[39m                                             [31m[1m^[22m[39m
+40.06  [90m 1103 |[39m                                         [33m/[39m[33m>[39m
+40.06  [90m 1104 |[39m                                     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+40.06  [90m 1105 |[39m                                     [33m<[39m[33mbutton[39m[0m
+40.25 Next.js build worker exited with code: 1 and signal: null
+------
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#4 [internal] load build definition from Dockerfile
+#4 Deduplicating step ID [internal] load build definition from Dockerfile, another build is calculating it done
+#4 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 5)
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:20.11.0-slim
+#5 DONE 0.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 226B 1.3s done
+#6 DONE 1.3s
+
+#7 [base 1/2] FROM docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#7 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98 done
+#7 DONE 0.0s
+
+#8 [internal] load build context
+#8 transferring context: 44.91kB 1.5s done
+#8 DONE 1.5s
+
+#9 [build 2/9] COPY package-lock.json package.json ./
+#9 CACHED
+
+#10 [build 5/9] RUN sed -i 's/provider = "sqlite"/provider = "postgresql"/g' prisma/schema.prisma
+#10 CACHED
+
+#11 [base 2/2] WORKDIR /app
+#11 CACHED
+
+#12 [build 3/9] RUN npm ci --include=dev
+#12 CACHED
+
+#13 [build 4/9] COPY prisma ./prisma/
+#13 CACHED
+
+#14 [build 1/9] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y build-essential node-gyp openssl pkg-config python-is-python3
+#14 CACHED
+
+#15 [build 6/9] RUN npx prisma generate
+#15 CACHED
+
+#16 [build 7/9] COPY . .
+#16 DONE 0.3s
+
+#17 [build 8/9] RUN npm run build
+#17 0.358 
+#17 0.358 > expense-system@0.1.0 build
+#17 0.358 > next build
+#17 0.358 
+#17 1.079 Attention: Next.js now collects completely anonymous telemetry regarding usage.
+#17 1.079 This information is used to shape Next.js' roadmap and prioritize features.
+#17 1.079 You can learn more, including how to opt-out if you'd not like to participate in this anonymous program, by visiting the following URL:
+#17 1.079 https://nextjs.org/telemetry
+#17 1.079 
+#17 1.092 ▲ Next.js 16.1.5 (Turbopack)
+#17 1.092 
+#17 1.150 ⚠ The "middleware" file convention is deprecated. Please use "proxy" instead. Learn more: https://nextjs.org/docs/messages/middleware-to-proxy
+#17 1.225   Creating an optimized production build ...
+#17 15.80 ✓ Compiled successfully in 14.2s
+#17 15.80   Running TypeScript ...
+#17 34.83 Failed to compile.
+#17 34.83 
+#17 34.83 ./src/app/finance-studio/page.tsx:1102:45
+#17 34.83 Type error: Type '{ startDate: Date | null; endDate: Date | null; onSelect: (start: any, end: any) => void; }' is not assignable to type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+#17 34.83   Property 'onSelect' does not exist on type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+#17 34.83 
+#17 34.83 [0m [90m 1100 |[39m                                             startDate[33m=[39m{sscaaData[33m.[39mperiodStart}
+#17 34.83  [90m 1101 |[39m                                             endDate[33m=[39m{sscaaData[33m.[39mperiodEnd}
+#17 34.83 [31m[1m>[22m[39m[90m 1102 |[39m                                             onSelect[33m=[39m{(start[33m,[39m end) [33m=>[39m setSscaaData({ [33m...[39msscaaData[33m,[39m periodStart[33m:[39m start[33m,[39m periodEnd[33m:[39m end })}
+#17 34.83  [90m      |[39m                                             [31m[1m^[22m[39m
+#17 34.83  [90m 1103 |[39m                                         [33m/[39m[33m>[39m
+#17 34.83  [90m 1104 |[39m                                     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+#17 34.83  [90m 1105 |[39m                                     [33m<[39m[33mbutton[39m[0m
+#17 35.01 Next.js build worker exited with code: 1 and signal: null
+#17 ERROR: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1
+------
+ > [build 8/9] RUN npm run build:
+34.83   Property 'onSelect' does not exist on type 'IntrinsicAttributes & StudioDateRangePickerProps'.
+34.83 
+34.83 [0m [90m 1100 |[39m                                             startDate[33m=[39m{sscaaData[33m.[39mperiodStart}
+34.83  [90m 1101 |[39m                                             endDate[33m=[39m{sscaaData[33m.[39mperiodEnd}
+34.83 [31m[1m>[22m[39m[90m 1102 |[39m                                             onSelect[33m=[39m{(start[33m,[39m end) [33m=>[39m setSscaaData({ [33m...[39msscaaData[33m,[39m periodStart[33m:[39m start[33m,[39m periodEnd[33m:[39m end })}
+34.83  [90m      |[39m                                             [31m[1m^[22m[39m
+34.83  [90m 1103 |[39m                                         [33m/[39m[33m>[39m
+34.83  [90m 1104 |[39m                                     [33m<[39m[33m/[39m[33mdiv[39m[33m>[39m
+34.83  [90m 1105 |[39m                                     [33m<[39m[33mbutton[39m[0m
+35.01 Next.js build worker exited with code: 1 and signal: null
+------
+Error: failed to fetch an image or build from source: error building: failed to solve: process "/bin/sh -c npm run build" did not complete successfully: exit code: 1

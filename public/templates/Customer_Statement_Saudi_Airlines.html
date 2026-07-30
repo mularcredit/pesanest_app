@@ -1,0 +1,702 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Customer Statement of Account - Saudi Arabian Airlines</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800;900&display=swap');
+
+        /* Global Box Sizing */
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: 'Product Sans', 'Open Sans', 'Inter', sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .container {
+            width: 210mm;
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            background: white;
+            padding: 10mm 15mm;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 275mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 500px;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.04;
+            z-index: 0;
+            pointer-events: none;
+            width: 500px;
+            height: 500px;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: grayscale(100%);
+        }
+
+        /* Ensure content appears above watermark */
+        .header,
+        .issuer-contact,
+        .document-label,
+        .info-grid,
+        .customer-box,
+        .summary-box,
+        table,
+        .notes-section,
+        .outstanding-box,
+        .footer {
+            position: relative;
+            z-index: 1;
+        }
+
+
+
+        /* Print specific styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            html,
+            body {
+                width: 210mm;
+                height: 297mm;
+                background-color: white;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                width: 210mm;
+                max-width: 210mm;
+                box-shadow: none;
+                padding: 10mm 15mm;
+                margin: 0;
+                min-height: 280mm;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+            }
+
+
+
+            .logo-container {
+                width: 70px !important;
+                height: 70px !important;
+            }
+
+            .logo-container.right-logo {
+                width: 120px !important;
+                height: 120px !important;
+            }
+        }
+
+        /* Header Layout */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .logo-container {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-container.right-logo {
+            width: 120px;
+            height: 120px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .republic-title {
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: 900;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .authority-title {
+            color: #000;
+            font-size: 13px;
+            font-weight: 900;
+            margin-top: 3px;
+        }
+
+        /* Issuer Contact Info */
+        .issuer-contact {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 8px;
+            color: #555;
+        }
+
+        .contact-item {
+            flex: 1;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .contact-item:nth-child(1) {
+            text-align: left;
+        }
+
+        .contact-item:nth-child(2) {
+            text-align: center;
+        }
+
+        .contact-item:nth-child(3) {
+            text-align: right;
+        }
+
+        .contact-item strong {
+            display: block;
+            color: #666;
+            margin-bottom: 1px;
+            text-transform: uppercase;
+            font-size: 8px;
+            font-weight: 400;
+        }
+
+        /* Document Title */
+        .document-label {
+            background-color: #dc2626;
+            color: white;
+            padding: 6px 15px;
+            font-size: 15px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 12px;
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 10px;
+            margin-bottom: 12px;
+        }
+
+        .info-item h4 {
+            font-size: 8px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin: 0 0 2px 0;
+            font-weight: 400;
+        }
+
+        .info-item:last-child {
+            text-align: right;
+        }
+
+        .info-item p {
+            margin: 0;
+            font-size: 9px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* Customer Box */
+        .customer-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            margin-bottom: 10px;
+        }
+
+        .customer-box-header {
+            padding: 5px 10px;
+            font-weight: 700;
+            font-size: 10px;
+            text-transform: uppercase;
+            background-color: #f8fafc;
+            color: #333;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .customer-box-content {
+            padding: 8px 10px;
+            font-size: 10px;
+            line-height: 1.4;
+            color: #475569;
+        }
+
+        /* Summary Box */
+        .summary-box {
+            background-color: #f8fafc;
+            padding: 8px 12px;
+            border-radius: 4px;
+            margin-bottom: 10px;
+            border: 1px solid #e2e8f0;
+        }
+
+        .summary-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+            font-size: 10px;
+        }
+
+        .summary-row.highlight {
+            font-weight: 700;
+            font-size: 11px;
+            color: #236A9E;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 4px;
+            margin-top: 4px;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 10px;
+            font-size: 9px;
+        }
+
+        th {
+            background-color: #236A9E;
+            color: white;
+            text-align: left;
+            padding: 5px 4px;
+            font-size: 8px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        th.center {
+            text-align: center;
+        }
+
+        th.right {
+            text-align: right;
+        }
+
+        td {
+            padding: 4px 4px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 9px;
+            color: #334155;
+        }
+
+        td.center {
+            text-align: center;
+        }
+
+        td.right {
+            text-align: right;
+        }
+
+        tr.total-row {
+            background-color: #fef9c3;
+            font-weight: 700;
+        }
+
+        tr.total-row td {
+            border-top: 2px solid #236A9E;
+            font-size: 10px;
+        }
+
+        /* Notes Section */
+        .notes-section {
+            background-color: #f8fafc;
+            padding: 8px 10px;
+            border-left: 3px solid #236A9E;
+            margin-bottom: 10px;
+            font-size: 9px;
+            line-height: 1.3;
+        }
+
+        .notes-section h3 {
+            font-size: 10px;
+            font-weight: 700;
+            margin: 0 0 5px 0;
+            color: #236A9E;
+        }
+
+        .notes-section ul {
+            margin: 3px 0;
+            padding-left: 15px;
+        }
+
+        .notes-section li {
+            margin-bottom: 2px;
+        }
+
+        /* Outstanding Box */
+        .outstanding-box {
+            background-color: #dc2626;
+            color: white;
+            padding: 10px;
+            border-radius: 4px;
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .outstanding-box h3 {
+            font-size: 11px;
+            font-weight: 600;
+            margin: 0 0 5px 0;
+            text-transform: uppercase;
+        }
+
+        .outstanding-box .amount {
+            font-size: 20px;
+            font-weight: 900;
+            margin: 0;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .footer-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .footer-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .footer-text {
+            font-size: 8px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-proudly {
+            font-size: 7px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: right;
+            line-height: 1.1;
+        }
+
+        .footer-flag {
+            width: 18px;
+            height: 12px;
+        }
+
+        .footer-flag img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <div class="container">
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <img src="emblem_of_south_sudan-freelogovectors.net_-400x395.png" alt="South Sudan Emblem">
+        </div>
+
+        <!-- HEADER WITH LOGOS (MATCHING CREDIT NOTE) -->
+        <div class="header">
+            <div class="logo-container">
+                <img src="south-sudan-revenue-authority-formerly-national-revenue-authority-586928.jpg"
+                    alt="Revenue Authority Logo">
+            </div>
+
+            <div class="header-center">
+                <div class="republic-title">The Republic of South Sudan</div>
+                <div class="authority-title">Civil Aviation Authority</div>
+            </div>
+
+            <div class="logo-container right-logo">
+                <img src="logo.857ac6f8bbd7.png" alt="Civil Aviation Authority Logo">
+            </div>
+        </div>
+
+        <!-- ISSUER CONTACT DETAILS (MATCHING CREDIT NOTE) -->
+        <div class="issuer-contact">
+            <div class="contact-item" style="text-align: left;">
+                <strong>Site</strong>
+                https://sscaa.eservices.gov.ss
+            </div>
+            <div class="contact-item" style="text-align: center;">
+                <strong>Contact Number</strong>
+                +211 980 11 77 99
+            </div>
+            <div class="contact-item" style="text-align: right;">
+                <strong>Email</strong>
+                sscaa-permit@eservices.gov.ss
+            </div>
+        </div>
+
+        <!-- Document Title -->
+        <div class="document-label">Customer Statement of Account</div>
+
+        <!-- Statement Info Grid -->
+        <div class="info-grid">
+            <div class="info-item">
+                <h4>Statement No.</h4>
+                <p>SOA-2026-SA001</p>
+            </div>
+            <div class="info-item">
+                <h4>Statement Date</h4>
+                <p id="date"></p>
+            </div>
+            <div class="info-item">
+                <h4>Currency</h4>
+                <p>KES</p>
+            </div>
+            <div class="info-item">
+                <h4>Statement Period</h4>
+                <p>May 2025 - Jan 2026</p>
+            </div>
+        </div>
+
+        <!-- Customer Information -->
+        <div class="customer-box">
+            <div class="customer-box-header">Customer Details</div>
+            <div class="customer-box-content">
+                <strong>Saudi Arabian Airlines & FL DEAL (flyadeal)</strong><br>
+                Airlines Group<br>
+                Kingdom of Saudi Arabia<br>
+                <span style="color: #888; font-size: 11px; margin-top: 4px; display: block;">Account Type: Aviation
+                    Overflight Services</span>
+            </div>
+        </div>
+
+        <!-- Statement Summary -->
+        <div class="summary-box">
+            <h3 style="font-size: 13px; font-weight: 700; margin: 0 0 12px 0; color: #236A9E;">Statement Summary</h3>
+            <div class="summary-row">
+                <span>Opening Balance</span>
+                <span>KSh 0.00</span>
+            </div>
+            <div class="summary-row">
+                <span>Total Charges (Overflight Services)</span>
+                <span>KSh 884,800.00</span>
+            </div>
+            <div class="summary-row">
+                <span>Total Payments Received</span>
+                <span>(KSh 154,188.00)</span>
+            </div>
+            <div class="summary-row highlight">
+                <span>Outstanding Balance</span>
+                <span>KSh 730,612.00</span>
+            </div>
+        </div>
+
+        <!-- Transaction Details Table -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 5%;">#</th>
+                    <th style="width: 18%;">Operator</th>
+                    <th style="width: 14%;">Invoice Ref.</th>
+                    <th style="width: 23%;">Period</th>
+                    <th class="right" style="width: 13%;">Debit (KES)</th>
+                    <th class="right" style="width: 13%;">Credit (KES)</th>
+                    <th class="right" style="width: 14%;">Balance (KES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>1</td>
+                    <td>FL DEAL</td>
+                    <td>ANS-EVT7Q</td>
+                    <td>1 May - 31 Dec 2025</td>
+                    <td class="right">389,312.00</td>
+                    <td class="right">2,528.00</td>
+                    <td class="right">386,784.00</td>
+                </tr>
+                <tr>
+                    <td>2</td>
+                    <td>FL DEAL</td>
+                    <td>ANS-EVT7Q</td>
+                    <td>1 May - 31 Dec 2025</td>
+                    <td class="right">—</td>
+                    <td class="right">50,550.00</td>
+                    <td class="right">336,234.00</td>
+                </tr>
+                <tr>
+                    <td>3</td>
+                    <td>FL DEAL</td>
+                    <td>ANS-EVT7Q</td>
+                    <td>1 May - 31 Dec 2025</td>
+                    <td class="right">—</td>
+                    <td class="right">101,110.00</td>
+                    <td class="right">235,124.00</td>
+                </tr>
+                <tr>
+                    <td>4</td>
+                    <td>Saudi Arabian Airlines</td>
+                    <td>ANS-DJTBY</td>
+                    <td>1 May - 31 Dec 2025</td>
+                    <td class="right">429,760.00</td>
+                    <td class="right">—</td>
+                    <td class="right">664,884.00</td>
+                </tr>
+                <tr>
+                    <td>5</td>
+                    <td>Saudi Arabian Airlines</td>
+                    <td>ANS-SR16T</td>
+                    <td>1 Jan - 10 Jan 2026</td>
+                    <td class="right">25,280.00</td>
+                    <td class="right">—</td>
+                    <td class="right">690,164.00</td>
+                </tr>
+                <tr>
+                    <td>6</td>
+                    <td>FL DEAL</td>
+                    <td>ANS-WGTVG</td>
+                    <td>1 Jan - 10 Jan 2026</td>
+                    <td class="right">5,056.00</td>
+                    <td class="right">—</td>
+                    <td class="right">695,220.00</td>
+                </tr>
+                <tr>
+                    <td>7</td>
+                    <td>FL DEAL</td>
+                    <td>ANS-YRT1J</td>
+                    <td>11 Jan - 20 Jan 2026</td>
+                    <td class="right">5,056.00</td>
+                    <td class="right">—</td>
+                    <td class="right">700,276.00</td>
+                </tr>
+                <tr>
+                    <td>8</td>
+                    <td>Saudi Arabian Airlines</td>
+                    <td>ANS-RG10Y</td>
+                    <td>11 Jan - 20 Jan 2026</td>
+                    <td class="right">30,336.00</td>
+                    <td class="right">—</td>
+                    <td class="right">730,612.00</td>
+                </tr>
+                <tr class="total-row">
+                    <td colspan="4" style="text-align: right; text-transform: uppercase;">Totals</td>
+                    <td class="right">884,800.00</td>
+                    <td class="right">154,188.00</td>
+                    <td class="right">730,612.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- Notes to Customer -->
+        <div class="notes-section">
+            <h3>Notes to Customer</h3>
+            <ul>
+                <li><strong>Overflight Charges:</strong> The charges listed above apply to aircraft operating under
+                    Saudi Arabian Airlines and FL DEAL (flyadeal) call signs that transited South Sudan airspace without
+                    landing during the specified periods.</li>
+                <li><strong>Operator Distinction:</strong> Saudi Arabian Airlines and FL DEAL (flyadeal) are part of the
+                    same airline group but are billed separately as they operate under distinct flight operator
+                    designations and flight plans.</li>
+                <li><strong>Payment Application:</strong> Payments have been applied chronologically to the oldest
+                    outstanding invoices first, as shown in the running balance column.</li>
+                <li><strong>Billing Period:</strong> This statement consolidates all overflight activity from May 1,
+                    2025 through January 20, 2026.</li>
+            </ul>
+        </div>
+
+        <!-- Outstanding Balance Highlight -->
+        <div class="outstanding-box">
+            <h3>Total Outstanding Balance</h3>
+            <p class="amount">KSh 730,612.00</p>
+            <p style="font-size: 11px; margin: 8px 0 0 0; opacity: 0.9;">Payment Due Upon Receipt</p>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-left">
+                <div class="footer-icon">
+                    <img src="eservice-logo.png" alt="eServices Logo">
+                </div>
+                <div class="footer-text">eServices.gov.ss</div>
+            </div>
+            <div class="footer-right">
+                <div class="footer-proudly">Proudly South<br>Sudanese</div>
+                <div class="footer-flag">
+                    <img src="Flag_of_South_Sudan.svg.png" alt="South Sudan Flag">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const dateSpan = document.getElementById('date');
+        const today = new Date();
+        dateSpan.textContent = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    </script>
+</body>
+
+</html>

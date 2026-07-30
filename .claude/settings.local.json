@@ -1,0 +1,15 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(sleep 6 && grep -E \"\\(ready|error|Error\\)\" /tmp/nextdev.log | head -20)",
+      "Read(//private/tmp/**)",
+      "Bash(curl -s -o /dev/null -w \"%{http_code}\" http://localhost:3000)",
+      "Bash(npm run *)",
+      "Bash(echo \"PID: $!\")",
+      "Bash(curl -s -b /tmp/test-cookies.txt http://localhost:3000/api/auth/session -w \"\\\\nHTTP: %{http_code}\")",
+      "Bash(npx prisma *)",
+      "Bash(2>&1)",
+      "Bash(node -e ' *)"
+    ]
+  }
+}

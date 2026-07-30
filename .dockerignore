@@ -1,0 +1,16 @@
+node_modules
+npm-debug.log
+Dockerfile
+.dockerignore
+.git
+.gitignore
+.next
+.env
+.env.local
+.env.development.local
+.env.test.local
+.env.production.local
+README.md
+*.md
+.agents/
+.gemini/

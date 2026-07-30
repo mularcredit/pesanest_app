@@ -1,0 +1,8 @@
+[
+  {
+    "f": "./src/app/dashboard/workflow-analytics/page.tsx",
+    "match": [
+      "emerald-500\">✓"
+    ]
+  }
+]

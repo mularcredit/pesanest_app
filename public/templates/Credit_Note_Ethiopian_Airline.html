@@ -1,0 +1,583 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Credit Note - Ethiopian Airline</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800;900&display=swap');
+
+        /* Global Box Sizing */
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            /* customized to look like Google Sans */
+            font-family: 'Product Sans', 'Open Sans', 'Inter', sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 12px;
+            /* Reduced from default */
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .container {
+            width: 210mm;
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            background: white;
+            padding: 10mm 15mm;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 275mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 500px;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.04;
+            z-index: 0;
+            pointer-events: none;
+            width: 500px;
+            height: 500px;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: grayscale(100%);
+        }
+
+
+
+        /* Print specific styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            html,
+            body {
+                width: 210mm;
+                height: 297mm;
+                background-color: white;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                width: 210mm;
+                max-width: 210mm;
+                box-shadow: none;
+                padding: 10mm 15mm;
+                margin: 0;
+                min-height: 280mm;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+            }
+
+
+
+            .logo-container {
+                width: 70px !important;
+                height: 70px !important;
+            }
+
+            /* Ensure right logo sizes correctly in print */
+            .logo-container.right-logo {
+                width: 120px !important;
+                height: 120px !important;
+            }
+        }
+
+        /* Header Layout */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            padding-bottom: 15px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .logo-container {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        /* Scaled down container for right logo to visually match left */
+        .logo-container.right-logo {
+            width: 120px;
+            height: 120px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .republic-title {
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: 900;
+            /* Maximum bold */
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .authority-title {
+            color: #000;
+            font-size: 13px;
+            font-weight: 900;
+            /* Maximum bold */
+            margin-top: 3px;
+        }
+
+        /* Issuer Contact Info */
+        .issuer-contact {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 25px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            font-size: 9px;
+            /* Reduced from 10px */
+            color: #555;
+            /* text-transform: removed to allow lowercase details */
+        }
+
+        .contact-group {
+            display: flex;
+            gap: 20px;
+        }
+
+        .contact-item {
+            flex: 1;
+            font-weight: 700;
+            /* Value Bold */
+            color: #333;
+        }
+
+        .contact-item:nth-child(1) {
+            text-align: left;
+        }
+
+        .contact-item:nth-child(2) {
+            text-align: center;
+        }
+
+        .contact-item:nth-child(3) {
+            text-align: right;
+        }
+
+        .contact-item strong {
+            display: block;
+            color: #666;
+            /* Label Color */
+            margin-bottom: 1px;
+            text-transform: uppercase;
+            /* Keep labels uppercase */
+            font-size: 8px;
+            /* Slightly smaller label */
+            font-weight: 400;
+            /* Label Normal */
+        }
+
+        /* Red Bar for Credit Note Title */
+        .document-label {
+            background-color: #dc2626;
+            color: white;
+            padding: 10px 20px;
+            font-size: 18px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            text-align: center;
+            border-radius: 4px;
+            /* Optional rounded corners */
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 15px;
+            margin-bottom: 25px;
+        }
+
+        .info-item h4 {
+            font-size: 10px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin: 0 0 4px 0;
+            font-weight: 400;
+            /* Label Normal */
+        }
+
+        /* Align only the last item (Reason) to the far right */
+        .info-item:last-child {
+            text-align: right;
+        }
+
+        .info-item p {
+            margin: 0;
+            font-size: 11px;
+            /* Reduced to 11px */
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* Two Column Box Layout for Address/CreditTo */
+        .boxes-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-bottom: 30px;
+        }
+
+        .detail-box {
+            border: 1px solid #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .detail-box-header {
+            padding: 8px 15px;
+            font-weight: 700;
+            font-size: 12px;
+            text-transform: uppercase;
+            background-color: #f8fafc;
+            color: #333;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        /* Red background for right box header as requested */
+        /* Reverted to standard gray for Credit To box header */
+        /* .detail-box.credit-to .detail-box-header {
+            background-color: #dc2626;
+            color: white;
+        } */
+
+        .detail-box.credit-to {
+            text-align: right;
+        }
+
+        /* Standard gray for left box header (or white/gray) - keeping clean */
+        /* .detail-box.address .detail-box-header {
+            background-color: #f8fafc;
+            color: #333;
+            border-bottom: 1px solid #e2e8f0;
+        } */
+
+        .detail-box-content {
+            padding: 15px;
+            font-size: 12px;
+            line-height: 1.5;
+            color: #475569;
+        }
+
+        /* Table */
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            margin-bottom: 25px;
+            font-size: 12px;
+        }
+
+        th {
+            background-color: #236A9E;
+            color: white;
+            text-align: left;
+            padding: 10px 12px;
+            font-size: 11px;
+            text-transform: uppercase;
+            font-weight: 600;
+        }
+
+        td {
+            padding: 12px;
+            border-bottom: 1px solid #e2e8f0;
+            font-size: 12px;
+            color: #334155;
+        }
+
+        .amount-col {
+            text-align: right;
+        }
+
+        .total-section {
+            display: flex;
+            justify-content: flex-end;
+            margin-top: 15px;
+        }
+
+        .total-box {
+            background-color: #f8fafc;
+            padding: 15px;
+            border-radius: 6px;
+            width: 280px;
+        }
+
+        .total-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 6px;
+            font-size: 12px;
+        }
+
+        .total-row.tax {
+            color: #666;
+            font-size: 11px;
+        }
+
+        .grand-total {
+            font-weight: 700;
+            font-size: 16px;
+            color: #236A9E;
+            border-top: 2px solid #e2e8f0;
+            padding-top: 8px;
+            margin-top: 4px;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .footer-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .footer-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .footer-text {
+            font-size: 8px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-proudly {
+            font-size: 7px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: right;
+            line-height: 1.1;
+        }
+
+        .footer-flag {
+            width: 18px;
+            height: 12px;
+        }
+
+        .footer-flag img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <div class="container">
+
+        <!-- HEADER WITH LOGOS -->
+        <div class="header">
+            <div class="logo-container">
+                <!-- Swapped: Revenue Authority on LEFT -->
+                <img src="south-sudan-revenue-authority-formerly-national-revenue-authority-586928.jpg"
+                    alt="Revenue Authority Logo">
+            </div>
+
+            <div class="header-center">
+                <div class="republic-title">The Republic of South Sudan</div>
+                <div class="authority-title">Civil Aviation Authority</div>
+            </div>
+
+            <!-- Added right-logo class -->
+            <div class="logo-container right-logo">
+                <!-- Swapped: SSCAA/Company Logo on RIGHT -->
+                <img src="logo.857ac6f8bbd7.png" alt="Civil Aviation Authority Logo">
+            </div>
+        </div>
+
+        <!-- ISSUER CONTACT DETAILS (Left/Center/Right) -->
+        <div class="issuer-contact">
+            <div class="contact-item" style="text-align: left;">
+                <strong>Site</strong>
+                https://sscaa.eservices.gov.ss
+            </div>
+            <div class="contact-item" style="text-align: center;">
+                <strong>Contact Number</strong>
+                +211 980 11 77 99
+            </div>
+            <div class="contact-item" style="text-align: right;">
+                <strong>Email</strong>
+                sscaa-permit@eservices.gov.ss
+            </div>
+        </div>
+
+        <!-- Credit Note Red Bar -->
+        <div class="document-label">Credit Note</div>
+
+        <!-- INFO GRID -->
+        <div class="info-grid">
+            <div class="info-item">
+                <h4>Original Invc. Ref</h4>
+                <p>ANS-A7T4L</p>
+            </div>
+            <div class="info-item">
+                <h4>Credit Note No.</h4>
+                <p>CN-2026-001</p>
+            </div>
+            <div class="info-item">
+                <h4>Date</h4>
+                <p id="date"></p>
+            </div>
+            <div class="info-item">
+                <h4>Reason</h4>
+                <p>Payment Adjustment</p>
+            </div>
+        </div>
+
+        <!-- BOXES SECTION (Address & Credit To) -->
+        <div class="boxes-section">
+
+            <!-- Address Box -->
+            <div class="detail-box address">
+                <div class="detail-box-header">E-Government Services</div>
+                <div class="detail-box-content">
+                    UAP Equatoria Tower<br>
+                    Hai Malakal Road<br>
+                    8th Floor, Wing B, Suite 2
+                </div>
+            </div>
+
+            <!-- Credit To Box (Reverted Header) -->
+            <div class="detail-box credit-to">
+                <div class="detail-box-header">Credit To</div>
+                <div class="detail-box-content">
+                    <strong>Ethiopian Airline</strong><br>
+                    Addis Ababa, Ethiopia<br>
+                    <span style="color: #888; font-size: 11px; margin-top: 4px; display: block;">TIN/Reg: N/A</span>
+                </div>
+            </div>
+
+        </div>
+
+        <!-- TABLE -->
+        <table>
+            <thead>
+                <tr>
+                    <th style="width: 50%;">Description</th>
+                    <th>Period</th>
+                    <th class="amount-col">Amount (KES)</th>
+                </tr>
+            </thead>
+            <tbody>
+                <tr>
+                    <td>
+                        Air Navigation Services - Adjustment/Credit
+                        <div style="font-size: 11px; color: #666; margin-top: 4px;">Ref: Invoice #ANS-A7T4L</div>
+                    </td>
+                    <td>1st Jan - 10th Jan</td>
+                    <td class="amount-col">15,168.00</td>
+                </tr>
+            </tbody>
+        </table>
+
+        <!-- TOTALS -->
+        <div class="total-section">
+            <div class="total-box">
+                <div class="total-row">
+                    <span>Subtotal</span>
+                    <span>15,168.00</span>
+                </div>
+                <div class="total-row tax">
+                    <span>Tax / VAT (0%)</span>
+                    <span>0.00</span>
+                </div>
+                <div class="total-row grand-total">
+                    <span>Total Credit KES</span>
+                    <span>KSh 15,168.00</span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Removed Signature Section -->
+
+        <!-- FOOTER -->
+        <div class="footer">
+            <div class="footer-left">
+                <div class="footer-icon">
+                    <img src="eservice-logo.png" alt="eServices Logo">
+                </div>
+                <div class="footer-text">eServices.gov.ss</div>
+            </div>
+            <div class="footer-right">
+                <div class="footer-proudly">Proudly South<br>Sudanese</div>
+                <div class="footer-flag">
+                    <img src="Flag_of_South_Sudan.svg.png" alt="South Sudan Flag">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const dateSpan = document.getElementById('date');
+        const today = new Date();
+        dateSpan.textContent = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    </script>
+</body>
+
+</html>

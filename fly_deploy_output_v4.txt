@@ -1,0 +1,174 @@
+==> Verifying app config
+Validating /Users/mac/Desktop/prudenceapp/fly.toml
+[32m✓[0m Configuration is valid
+--> Verified app config
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.58kB 1.5s done
+#1 DONE 1.5s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.58kB 1.5s done
+#1 DONE 1.5s
+
+#4 [internal] load build definition from Dockerfile
+#4 Deduplicating step ID [internal] load build definition from Dockerfile, another build is calculating it done
+#4 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 5)
+#4 WARN: FromAsCasing: 'as' and 'FROM' keywords' casing do not match (line 21)
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:20.11.0-slim
+#5 DONE 0.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 226B 1.3s done
+#6 DONE 1.3s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [base 1/2] FROM docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#8 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98 done
+#8 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 909.47kB 4.5s done
+#7 DONE 4.5s
+
+#9 [base 2/2] WORKDIR /app
+#9 CACHED
+
+#10 [build 1/9] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y build-essential node-gyp openssl pkg-config python-is-python3
+#10 CACHED
+
+#11 [build 2/9] COPY package-lock.json package.json ./
+#11 DONE 0.0s
+
+#12 [build 3/9] RUN npm ci --include=dev
+#12 1.472 npm WARN EBADENGINE Unsupported engine {
+#12 1.472 npm WARN EBADENGINE   package: '@prisma/streams-local@0.1.2',
+#12 1.472 npm WARN EBADENGINE   required: { bun: '>=1.3.6', node: '>=22.0.0' },
+#12 1.473 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 1.473 npm WARN EBADENGINE }
+#12 1.474 npm WARN EBADENGINE Unsupported engine {
+#12 1.474 npm WARN EBADENGINE   package: '@prisma/studio-core@0.27.3',
+#12 1.474 npm WARN EBADENGINE   required: { node: '^20.19 || ^22.12 || >=24.0', pnpm: '8' },
+#12 1.474 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 1.474 npm WARN EBADENGINE }
+#12 1.477 npm WARN EBADENGINE Unsupported engine {
+#12 1.477 npm WARN EBADENGINE   package: 'prisma@7.7.0',
+#12 1.477 npm WARN EBADENGINE   required: { node: '^20.19 || ^22.12 || >=24.0' },
+#12 1.477 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 1.477 npm WARN EBADENGINE }
+==> Building image
+Waiting for depot builder...
+
+==> Building image with Depot
+--> build:  (​)
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile:
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#2 resolve image config for docker-image://docker.io/docker/dockerfile:1
+#2 DONE 0.3s
+
+#1 [internal] load build definition from Dockerfile
+#1 transferring dockerfile: 1.58kB 1.3s done
+#1 DONE 1.3s
+
+#3 docker-image://docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769
+#3 resolve docker.io/docker/dockerfile:1@sha256:2780b5c3bab67f1f76c781860de469442999ed1a0d7992a5efdf2cffc0e3d769 done
+#3 CACHED
+
+#4 [internal] load build definition from Dockerfile
+#4 Deduplicating step ID [internal] load build definition from Dockerfile, another build is calculating it done
+#4 DONE 0.0s
+
+#5 [internal] load metadata for docker.io/library/node:20.11.0-slim
+#5 DONE 0.3s
+
+#6 [internal] load .dockerignore
+#6 transferring context:
+#6 transferring context: 226B 1.4s done
+#6 DONE 1.4s
+
+#7 [internal] load build context
+#7 DONE 0.0s
+
+#8 [base 1/2] FROM docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98
+#8 resolve docker.io/library/node:20.11.0-slim@sha256:ecc9a2581f8588014a49a523a9ed146d27963f6d988d11bd16bbdcb3598f5f98 done
+#8 DONE 0.0s
+
+#7 [internal] load build context
+#7 transferring context: 42.05kB 1.5s done
+#7 DONE 1.5s
+
+#9 [base 2/2] WORKDIR /app
+#9 CACHED
+
+#10 [build 1/9] RUN apt-get update -qq &&     apt-get install --no-install-recommends -y build-essential node-gyp openssl pkg-config python-is-python3
+#10 CACHED
+
+#11 [build 2/9] COPY package-lock.json package.json ./
+#11 CACHED
+
+#12 [build 3/9] RUN npm ci --include=dev
+#12 0.898 npm WARN EBADENGINE Unsupported engine {
+#12 0.898 npm WARN EBADENGINE   package: '@prisma/streams-local@0.1.2',
+#12 0.898 npm WARN EBADENGINE   required: { bun: '>=1.3.6', node: '>=22.0.0' },
+#12 0.898 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 0.898 npm WARN EBADENGINE }
+#12 0.899 npm WARN EBADENGINE Unsupported engine {
+#12 0.899 npm WARN EBADENGINE   package: '@prisma/studio-core@0.27.3',
+#12 0.899 npm WARN EBADENGINE   required: { node: '^20.19 || ^22.12 || >=24.0', pnpm: '8' },
+#12 0.899 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 0.899 npm WARN EBADENGINE }
+#12 0.903 npm WARN EBADENGINE Unsupported engine {
+#12 0.903 npm WARN EBADENGINE   package: 'prisma@7.7.0',
+#12 0.903 npm WARN EBADENGINE   required: { node: '^20.19 || ^22.12 || >=24.0' },
+#12 0.903 npm WARN EBADENGINE   current: { node: 'v20.11.0', npm: '10.2.4' }
+#12 0.903 npm WARN EBADENGINE }
+#12 33.49 npm notice 
+#12 33.49 npm notice New major version of npm available! 10.2.4 -> 11.12.1
+#12 33.49 npm notice Changelog: <https://github.com/npm/cli/releases/tag/v11.12.1>
+#12 33.49 npm notice Run `npm install -g npm@11.12.1` to update!
+#12 33.49 npm notice 
+#12 33.49 npm ERR! code 1
+#12 33.49 npm ERR! path /app/node_modules/prisma
+#12 33.50 npm ERR! command failed
+#12 33.50 npm ERR! command sh -c node scripts/preinstall-entry.js
+#12 33.50 npm ERR! ┌────────────────────────────────────────────────────────────────────┐
+#12 33.50 npm ERR! │    Prisma only supports Node.js versions 20.19+, 22.12+, 24.0+.    │
+#12 33.50 npm ERR! │    Please upgrade your Node.js version.                            │
+#12 33.50 npm ERR! └────────────────────────────────────────────────────────────────────┘
+#12 33.50 
+#12 33.50 npm ERR! A complete log of this run can be found in: /root/.npm/_logs/2026-04-12T21_55_14_046Z-debug-0.log
+#12 ERROR: process "/bin/sh -c npm ci --include=dev" did not complete successfully: exit code: 1
+------
+ > [build 3/9] RUN npm ci --include=dev:
+33.49 npm ERR! code 1
+33.49 npm ERR! path /app/node_modules/prisma
+33.50 npm ERR! command failed
+33.50 npm ERR! command sh -c node scripts/preinstall-entry.js
+33.50 npm ERR! ┌────────────────────────────────────────────────────────────────────┐
+33.50 npm ERR! │    Prisma only supports Node.js versions 20.19+, 22.12+, 24.0+.    │
+33.50 npm ERR! │    Please upgrade your Node.js version.                            │
+33.50 npm ERR! └────────────────────────────────────────────────────────────────────┘
+33.50 
+33.50 npm ERR! A complete log of this run can be found in: /root/.npm/_logs/2026-04-12T21_55_14_046Z-debug-0.log
+------
+Error: failed to fetch an image or build from source: error building: failed to solve: process "/bin/sh -c npm ci --include=dev" did not complete successfully: exit code: 1

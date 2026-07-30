@@ -1,0 +1,629 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Payment Receipt - Ethiopian Airlines</title>
+    <style>
+        @import url('https://fonts.googleapis.com/css2?family=Open+Sans:wght@400;600;700;800;900&display=swap');
+
+        /* Global Box Sizing */
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: 'Product Sans', 'Open Sans', 'Inter', sans-serif;
+            margin: 0;
+            padding: 10px;
+            background-color: #f5f5f5;
+            color: #333;
+            font-size: 12px;
+            -webkit-print-color-adjust: exact;
+            print-color-adjust: exact;
+        }
+
+        .container {
+            width: 210mm;
+            max-width: 100%;
+            margin: 0 auto;
+            position: relative;
+            background: white;
+            padding: 10mm 15mm;
+            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.1);
+            min-height: 275mm;
+            display: flex;
+            flex-direction: column;
+        }
+
+        .watermark {
+            position: absolute;
+            top: 500px;
+            left: 50%;
+            transform: translate(-50%, -50%);
+            opacity: 0.04;
+            z-index: 0;
+            pointer-events: none;
+            width: 500px;
+            height: 500px;
+        }
+
+        .watermark img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+            filter: grayscale(100%);
+        }
+
+        /* Ensure content appears above watermark */
+        .header,
+        .issuer-contact,
+        .document-label,
+        .info-grid,
+        .payment-details,
+        .invoice-details,
+        .amount-box,
+        .footer {
+            position: relative;
+            z-index: 1;
+        }
+
+
+
+        /* Print specific styles */
+        @media print {
+            @page {
+                size: A4;
+                margin: 0;
+            }
+
+            html,
+            body {
+                width: 210mm;
+                height: 297mm;
+                background-color: white;
+            }
+
+            body {
+                padding: 0;
+                margin: 0;
+            }
+
+            .container {
+                width: 210mm;
+                max-width: 210mm;
+                box-shadow: none;
+                padding: 10mm 15mm;
+                margin: 0;
+                min-height: 280mm;
+                overflow: visible;
+                display: flex;
+                flex-direction: column;
+            }
+
+
+
+            .logo-container {
+                width: 70px !important;
+                height: 70px !important;
+            }
+
+            .logo-container.right-logo {
+                width: 120px !important;
+                height: 120px !important;
+            }
+        }
+
+        /* Header Layout */
+        .header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 8px;
+            padding-bottom: 8px;
+            border-bottom: 2px solid #eee;
+        }
+
+        .logo-container {
+            width: 70px;
+            height: 70px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .logo-container.right-logo {
+            width: 120px;
+            height: 120px;
+        }
+
+        .logo-container img {
+            max-width: 100%;
+            max-height: 100%;
+            object-fit: contain;
+        }
+
+        .header-center {
+            text-align: center;
+            flex-grow: 1;
+        }
+
+        .republic-title {
+            color: #dc2626;
+            font-size: 13px;
+            font-weight: 900;
+            margin: 0;
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .authority-title {
+            color: #000;
+            font-size: 13px;
+            font-weight: 900;
+            margin-top: 3px;
+        }
+
+        /* Issuer Contact Info */
+        .issuer-contact {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 12px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #eee;
+            font-size: 8px;
+            color: #555;
+        }
+
+        .contact-item {
+            flex: 1;
+            font-weight: 700;
+            color: #333;
+        }
+
+        .contact-item:nth-child(1) {
+            text-align: left;
+        }
+
+        .contact-item:nth-child(2) {
+            text-align: center;
+        }
+
+        .contact-item:nth-child(3) {
+            text-align: right;
+        }
+
+        .contact-item strong {
+            display: block;
+            color: #666;
+            margin-bottom: 1px;
+            text-transform: uppercase;
+            font-size: 8px;
+            font-weight: 400;
+        }
+
+        /* Document Title */
+        .document-label {
+            background-color: #dc2626;
+            color: white;
+            padding: 8px 15px;
+            font-size: 16px;
+            font-weight: 700;
+            text-transform: uppercase;
+            margin-bottom: 15px;
+            text-align: center;
+            border-radius: 4px;
+        }
+
+        /* Info Grid */
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(3, 1fr);
+            gap: 12px;
+            margin-bottom: 15px;
+        }
+
+        .info-item h4 {
+            font-size: 9px;
+            text-transform: uppercase;
+            color: #64748b;
+            margin: 0 0 2px 0;
+            font-weight: 400;
+        }
+
+        .info-item p {
+            margin: 0;
+            font-size: 10px;
+            font-weight: 700;
+            color: #1a1a1a;
+        }
+
+        /* Payment Details Box */
+        .payment-details {
+            border: 1px solid #e2e8f0;
+            border-radius: 6px;
+            overflow: hidden;
+            margin-bottom: 15px;
+        }
+
+        .payment-details-header {
+            padding: 6px 12px;
+            font-weight: 700;
+            font-size: 11px;
+            text-transform: uppercase;
+            background-color: #236A9E;
+            color: white;
+        }
+
+        .payment-details-content {
+            padding: 12px;
+            background-color: #f8fafc;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 8px;
+            font-size: 11px;
+            padding-bottom: 8px;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+            margin-bottom: 0;
+        }
+
+        .detail-row .label {
+            color: #64748b;
+            font-weight: 400;
+        }
+
+        .detail-row .value {
+            color: #1a1a1a;
+            font-weight: 700;
+        }
+
+        /* Invoice Details */
+        .invoice-details {
+            background-color: #f8fafc;
+            padding: 10px 15px;
+            border-radius: 6px;
+            margin-bottom: 15px;
+        }
+
+        .invoice-details h3 {
+            font-size: 11px;
+            font-weight: 700;
+            margin: 0 0 8px 0;
+            color: #236A9E;
+            text-transform: uppercase;
+        }
+
+        .invoice-row {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 5px;
+            font-size: 10px;
+        }
+
+        .invoice-row .label {
+            color: #64748b;
+        }
+
+        .invoice-row .value {
+            color: #1a1a1a;
+            font-weight: 600;
+        }
+
+        /* Amount Paid Box */
+        .amount-box {
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            padding: 20px;
+            border-radius: 8px;
+            text-align: center;
+            margin-bottom: 20px;
+            box-shadow: 0 4px 6px rgba(16, 185, 129, 0.3);
+        }
+
+        .amount-box h3 {
+            font-size: 13px;
+            font-weight: 600;
+            margin: 0 0 8px 0;
+            text-transform: uppercase;
+            opacity: 0.9;
+        }
+
+        .amount-box .amount {
+            font-size: 32px;
+            font-weight: 900;
+            margin: 0;
+            letter-spacing: 1px;
+        }
+
+        .amount-box .status {
+            font-size: 11px;
+            margin: 8px 0 0 0;
+            opacity: 0.9;
+            background-color: rgba(255, 255, 255, 0.2);
+            display: inline-block;
+            padding: 4px 12px;
+            border-radius: 12px;
+            font-weight: 600;
+        }
+
+        /* Notes */
+        .notes {
+            background-color: #fef3c7;
+            padding: 12px;
+            margin-bottom: 20px;
+            font-size: 10px;
+            line-height: 1.5;
+            border-radius: 4px;
+        }
+
+        .notes strong {
+            color: #92400e;
+        }
+
+        /* Signature Section */
+        .signature-section {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 30px;
+            margin-top: 30px;
+            padding-top: 20px;
+            border-top: 1px solid #e2e8f0;
+        }
+
+        .signature-box {
+            text-align: center;
+        }
+
+        .signature-line {
+            border-bottom: 2px solid #334155;
+            margin-bottom: 8px;
+            height: 50px;
+        }
+
+        .signature-label {
+            font-size: 10px;
+            color: #64748b;
+            font-weight: 600;
+        }
+
+        .footer {
+            margin-top: auto;
+            padding: 10px 0;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-left {
+            display: flex;
+            align-items: center;
+            gap: 4px;
+        }
+
+        .footer-icon {
+            width: 14px;
+            height: 14px;
+        }
+
+        .footer-icon img {
+            width: 100%;
+            height: 100%;
+            object-fit: contain;
+        }
+
+        .footer-text {
+            font-size: 8px;
+            font-weight: 600;
+            color: #94a3b8;
+        }
+
+        .footer-right {
+            display: flex;
+            align-items: center;
+            gap: 6px;
+        }
+
+        .footer-proudly {
+            font-size: 7px;
+            font-weight: 600;
+            color: #94a3b8;
+            text-align: right;
+            line-height: 1.1;
+        }
+
+        .footer-flag {
+            width: 18px;
+            height: 12px;
+        }
+
+        .footer-flag img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            border: none;
+        }
+    </style>
+</head>
+
+<body>
+
+
+
+    <div class="container">
+
+        <!-- Watermark -->
+        <div class="watermark">
+            <img src="emblem_of_south_sudan-freelogovectors.net_-400x395.png" alt="South Sudan Emblem">
+        </div>
+
+        <!-- HEADER WITH LOGOS -->
+        <div class="header">
+            <div class="logo-container">
+                <img src="south-sudan-revenue-authority-formerly-national-revenue-authority-586928.jpg"
+                    alt="Revenue Authority Logo">
+            </div>
+
+            <div class="header-center">
+                <div class="republic-title">The Republic of South Sudan</div>
+                <div class="authority-title">Civil Aviation Authority</div>
+            </div>
+
+            <div class="logo-container right-logo">
+                <img src="logo.857ac6f8bbd7.png" alt="Civil Aviation Authority Logo">
+            </div>
+        </div>
+
+        <!-- ISSUER CONTACT DETAILS -->
+        <div class="issuer-contact">
+            <div class="contact-item" style="text-align: left;">
+                <strong>Site</strong>
+                https://sscaa.eservices.gov.ss
+            </div>
+            <div class="contact-item" style="text-align: center;">
+                <strong>Contact Number</strong>
+                +211 980 11 77 99
+            </div>
+            <div class="contact-item" style="text-align: right;">
+                <strong>Email</strong>
+                sscaa-permit@eservices.gov.ss
+            </div>
+        </div>
+
+        <!-- Document Title -->
+        <div class="document-label">Payment Receipt</div>
+
+        <!-- Receipt Info Grid -->
+        <div class="info-grid">
+            <div class="info-item">
+                <h4>Receipt No.</h4>
+                <p id="receiptNo">REC-2026-001</p>
+            </div>
+            <div class="info-item">
+                <h4>Receipt Date</h4>
+                <p id="date"></p>
+            </div>
+            <div class="info-item">
+                <h4>Currency</h4>
+                <p>KES</p>
+            </div>
+        </div>
+
+        <!-- Payment Details -->
+        <div class="payment-details">
+            <div class="payment-details-header">Payment Information</div>
+            <div class="payment-details-content">
+                <div class="detail-row">
+                    <span class="label">Received From:</span>
+                    <span class="value">Ethiopian Airlines</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Payment Method:</span>
+                    <span class="value">Bank Wire Transfer</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Transaction Reference:</span>
+                    <span class="value">TXN-ETH-2026-A7T4L</span>
+                </div>
+                <div class="detail-row">
+                    <span class="label">Payment Date:</span>
+                    <span class="value" id="paymentDate"></span>
+                </div>
+            </div>
+        </div>
+
+        <!-- Invoice Details -->
+        <div class="invoice-details">
+            <h3>Invoice Details</h3>
+            <div class="invoice-row">
+                <span class="label">Invoice Number:</span>
+                <span class="value">ANS-A7T4L</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">Service Type:</span>
+                <span class="value">Air Navigation Services - Overflight Charges</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">Billing Period:</span>
+                <span class="value">1 May 2025 - 31 December 2025</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">Original Invoice Amount:</span>
+                <span class="value">KSh 1,079,456.00</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">Credit Note Applied:</span>
+                <span class="value">-KSh 15,168.00</span>
+            </div>
+            <div class="invoice-row">
+                <span class="label">Adjusted Amount Due:</span>
+                <span class="value">KSh 1,064,288.00</span>
+            </div>
+        </div>
+
+        <!-- Amount Paid -->
+        <div class="amount-box">
+            <h3>Amount Paid</h3>
+            <p class="amount">KSh 1,064,288.00</p>
+            <p class="status">✓ PAYMENT RECEIVED</p>
+        </div>
+
+        <!-- Notes -->
+        <div class="notes">
+            <strong>Payment Confirmation:</strong> This receipt confirms that the Civil Aviation Authority of South
+            Sudan has received payment of KSh 1,064,288.00 for invoice ANS-A7T4L. A credit note of KSh 15,168.00 was applied
+            to the original invoice amount of KSh 1,079,456.00. This payment settles all outstanding charges related to
+            overflight services provided to Ethiopian Airlines during the billing period specified above.
+        </div>
+
+        <!-- Signature Section -->
+        <div class="signature-section">
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Received By</div>
+                <div class="signature-label" style="font-size: 9px; margin-top: 4px;">Civil Aviation Authority</div>
+            </div>
+            <div class="signature-box">
+                <div class="signature-line"></div>
+                <div class="signature-label">Date</div>
+            </div>
+        </div>
+
+        <!-- Footer -->
+        <div class="footer">
+            <div class="footer-left">
+                <div class="footer-icon">
+                    <img src="eservice-logo.png" alt="eServices Logo">
+                </div>
+                <div class="footer-text">eServices.gov.ss</div>
+            </div>
+            <div class="footer-right">
+                <div class="footer-proudly">Proudly South<br>Sudanese</div>
+                <div class="footer-flag">
+                    <img src="Flag_of_South_Sudan.svg.png" alt="South Sudan Flag">
+                </div>
+            </div>
+        </div>
+
+    </div>
+
+    <script>
+        const dateSpan = document.getElementById('date');
+        const paymentDateSpan = document.getElementById('paymentDate');
+        const today = new Date();
+        const formattedDate = today.toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+        dateSpan.textContent = formattedDate;
+        paymentDateSpan.textContent = formattedDate;
+    </script>
+</body>
+
+</html>

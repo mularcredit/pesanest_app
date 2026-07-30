@@ -1,0 +1,2 @@
+.next/types/validator.ts(485,39): error TS2307: Cannot find module '../../src/app/dashboard/trips/page.js' or its corresponding type declarations.
+src/app/dashboard/requisitions/new/multi-item-actions.ts(165,50): error TS18048: 'session.user' is possibly 'undefined'.

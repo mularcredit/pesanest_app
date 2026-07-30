@@ -1,0 +1,684 @@
+<!DOCTYPE html>
+<html lang="en">
+
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>South Sudan Finance Studio</title>
+    <link rel="stylesheet"
+        href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;500;600;700;800&family=Outfit:wght@300;400;500;600;700;800;900&display=swap">
+    <style>
+        :root {
+            --primary: #2563eb;
+            --primary-hover: #1d4ed8;
+            --ss-red: #dc2626;
+            --ss-blue: #236A9E;
+            --bg: #f8fafc;
+            --sidebar-bg: #ffffff;
+            --border: #e2e8f0;
+            --text-main: #0f172a;
+            --text-muted: #64748b;
+            --radius: 12px;
+            --shadow: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+        }
+
+        * {
+            box-sizing: border-box;
+            -webkit-font-smoothing: antialiased;
+        }
+
+        body {
+            font-family: 'Inter', sans-serif;
+            margin: 0;
+            background-color: var(--bg);
+            color: var(--text-main);
+            height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow: hidden;
+        }
+
+        /* Top Bar */
+        .top-bar {
+            height: 64px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(12px);
+            border-bottom: 1px solid var(--border);
+            display: flex;
+            align-items: center;
+            justify-content: flex-end;
+            padding: 0 24px;
+            z-index: 100;
+        }
+
+
+
+        .top-actions {
+            display: flex;
+            gap: 12px;
+        }
+
+        .btn {
+            padding: 8px 16px;
+            border-radius: 8px;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            border: 1px solid var(--border);
+            background: white;
+            color: var(--text-main);
+            display: flex;
+            align-items: center;
+            gap: 8px;
+        }
+
+        .btn:hover {
+            background: #f1f5f9;
+        }
+
+        .btn-primary {
+            background: var(--primary);
+            color: white;
+            border: none;
+        }
+
+        .btn-primary:hover {
+            background: var(--primary-hover);
+        }
+
+        /* Main Layout */
+        .app-container {
+            display: flex;
+            flex: 1;
+            overflow: hidden;
+        }
+
+        /* Sidebar Control */
+        .sidebar {
+            width: 400px;
+            background: var(--sidebar-bg);
+            border-right: 1px solid var(--border);
+            display: flex;
+            flex-direction: column;
+            overflow-y: auto;
+            padding: 24px;
+        }
+
+        .sidebar-section {
+            margin-bottom: 32px;
+        }
+
+        .sidebar-section h3 {
+            font-size: 12px;
+            text-transform: uppercase;
+            letter-spacing: 0.05em;
+            color: var(--text-muted);
+            margin-bottom: 16px;
+        }
+
+        .form-group {
+            margin-bottom: 16px;
+        }
+
+        label {
+            display: block;
+            font-size: 13px;
+            font-weight: 500;
+            color: var(--text-main);
+            margin-bottom: 6px;
+        }
+
+        input,
+        select,
+        textarea {
+            width: 100%;
+            padding: 10px 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            font-family: inherit;
+            font-size: 14px;
+            transition: border-color 0.2s;
+        }
+
+        input:focus,
+        select:focus,
+        textarea:focus {
+            outline: none;
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        .pill-container {
+            margin-bottom: 24px;
+        }
+
+        .doc-selector {
+            width: 100%;
+            padding: 12px;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            background: white;
+            font-size: 14px;
+            font-weight: 600;
+            cursor: pointer;
+            outline: none;
+            transition: all 0.2s;
+            appearance: none;
+            background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='16' height='16' viewBox='0 0 24 24' fill='none' stroke='currentColor' stroke-width='2' stroke-linecap='round' stroke-linejoin='round'%3E%3Cpolyline points='6 9 12 15 18 9'%3E%3C/polyline%3E%3C/svg%3E");
+            background-repeat: no-repeat;
+            background-position: right 12px center;
+            background-size: 16px;
+        }
+
+        .doc-selector:focus {
+            border-color: var(--primary);
+            box-shadow: 0 0 0 2px rgba(37, 99, 235, 0.1);
+        }
+
+        /* Preview Area */
+        .preview-area {
+            flex: 1;
+            background: #cbd5e1;
+            display: flex;
+            justify-content: center;
+            overflow: auto;
+            padding: 40px;
+            background-image: radial-gradient(#94a3b8 1px, transparent 1px);
+            background-size: 20px 20px;
+        }
+
+        .preview-canvas {
+            width: 210mm;
+            background: white;
+            box-shadow: 0 25px 50px -12px rgb(0 0 0 / 0.25);
+            transform-origin: top center;
+            min-height: 297mm;
+        }
+
+        #preview-frame {
+            width: 100%;
+            border: none;
+            background: #fff;
+            display: block;
+        }
+
+        /* Responsive Controls */
+        .zoom-controls {
+            position: fixed;
+            bottom: 24px;
+            right: 24px;
+            background: white;
+            padding: 8px;
+            border-radius: 100px;
+            box-shadow: var(--shadow);
+            display: flex;
+            gap: 8px;
+            border: 1px solid var(--border);
+        }
+
+        /* Table Editor */
+        .item-list {
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+        }
+
+        .item-row {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            gap: 8px;
+            padding: 12px;
+            background: #f8fafc;
+            border-radius: 8px;
+            border: 1px solid var(--border);
+            position: relative;
+        }
+
+        .item-row input {
+            padding: 6px 8px;
+            font-size: 11px;
+        }
+
+        .remove-btn {
+            position: absolute;
+            top: -8px;
+            right: -8px;
+            width: 20px;
+            height: 20px;
+            background: var(--ss-red);
+            color: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-size: 14px;
+            cursor: pointer;
+            box-shadow: var(--shadow);
+        }
+
+        .btn img {
+            width: 18px;
+            height: 18px;
+            object-fit: contain;
+        }
+
+        @media print {
+
+            .top-bar,
+            .sidebar,
+            .zoom-controls {
+                display: none !important;
+            }
+
+            .app-container {
+                display: block !important;
+                margin: 0 !important;
+                padding: 0 !important;
+            }
+
+            .preview-area {
+                padding: 0 !important;
+                background: none !important;
+                overflow: visible !important;
+                display: block !important;
+            }
+
+            .preview-canvas {
+                transform: none !important;
+                box-shadow: none !important;
+                width: 100% !important;
+                margin: 0 !important;
+                min-height: auto !important;
+            }
+        }
+    </style>
+</head>
+
+<body>
+    <div class="top-bar">
+        <div class="top-actions">
+            <button class="btn" onclick="saveData()">
+                <img src="floppy-disc.png" alt="Save">
+                Save Draft
+            </button>
+            <button class="btn btn-primary" onclick="generatePDF()">
+                <img src="business.png" alt="Download">
+                Download PDF
+            </button>
+        </div>
+    </div>
+
+    <div class="app-container">
+        <!-- Sidebar Controls -->
+        <div class="sidebar">
+            <div class="sidebar-section">
+                <h3>Select Document Type</h3>
+                <div class="pill-container">
+                    <select class="doc-selector" id="doc-selector" onchange="switchDoc(this.value)">
+                        <option value="credit_note">Credit Note</option>
+                        <option value="receipt">Payment Receipt</option>
+                        <option value="statement">Customer Statement</option>
+                    </select>
+                </div>
+            </div>
+
+            <div id="form-container">
+                <!-- Form fields will be dynamically injected here -->
+            </div>
+        </div>
+
+        <!-- Live Preview -->
+        <div class="preview-area">
+            <div class="preview-canvas" id="canvas">
+                <iframe id="preview-frame" name="preview-frame"></iframe>
+            </div>
+        </div>
+    </div>
+
+    <div class="zoom-controls">
+        <button class="btn" style="width: 40px; justify-content: center;" onclick="zoom(-0.1)">-</button>
+        <span id="zoom-label"
+            style="font-size: 12px; font-weight: 600; line-height: 32px; width: 40px; text-align: center;">85%</span>
+        <button class="btn" style="width: 40px; justify-content: center;" onclick="zoom(0.1)">+</button>
+    </div>
+
+    <script>
+        let currentDoc = 'credit_note';
+        let zoomLevel = 0.85;
+
+        // Default Data for Tables
+        let statementRows = [
+            { id: 1, operator: 'FL DEAL', ref: 'ANS-EVT7Q', period: '1 May - 31 Dec 2025', debit: 389312, credit: 2528, balance: 386784 },
+            { id: 2, operator: 'FL DEAL', ref: 'ANS-EVT7Q', period: '1 May - 31 Dec 2025', debit: 0, credit: 50550, balance: 336234 },
+            { id: 3, operator: 'FL DEAL', ref: 'ANS-EVT7Q', period: '1 May - 31 Dec 2025', debit: 0, credit: 101110, balance: 235124 },
+            { id: 4, operator: 'Saudi Arabian Airlines', ref: 'ANS-DJTBY', period: '1 May - 31 Dec 2025', debit: 429760, credit: 0, balance: 664884 },
+            { id: 5, operator: 'Saudi Arabian Airlines', ref: 'ANS-SR16T', period: '1 Jan - 10 Jan 2026', debit: 25280, credit: 0, balance: 690164 },
+            { id: 6, operator: 'FL DEAL', ref: 'ANS-WGTVG', period: '1 Jan - 10 Jan 2026', debit: 5056, credit: 0, balance: 695220 },
+            { id: 7, operator: 'FL DEAL', ref: 'ANS-YRT1J', period: '11 Jan - 20 Jan 2026', debit: 5056, credit: 0, balance: 700276 },
+            { id: 8, operator: 'Saudi Arabian Airlines', ref: 'ANS-RG10Y', period: '11 Jan - 20 Jan 2026', debit: 30336, credit: 0, balance: 730612 }
+        ];
+
+        // Document Templates Metadata
+        const templates = {
+            credit_note: {
+                file: 'Credit_Note_Ethiopian_Airline.html',
+                fields: [
+                    { id: 'customer', label: 'Customer Name', type: 'text', default: 'Ethiopian Airlines' },
+                    { id: 'inv_ref', label: 'Invc. Ref', type: 'text', default: 'ANS-A7T4L' },
+                    { id: 'cn_no', label: 'Credit Note No.', type: 'text', default: 'CN-2026-001' },
+                    { id: 'amount', label: 'Amount (KES)', type: 'number', default: 15168 },
+                    { id: 'reason', label: 'Reason', type: 'text', default: 'Payment Adjustment' }
+                ]
+            },
+            receipt: {
+                file: 'Payment_Receipt_Ethiopian_Airlines.html',
+                fields: [
+                    { id: 'customer', label: 'Customer Name', type: 'text', default: 'Ethiopian Airlines' },
+                    { id: 'receipt_no', label: 'Receipt No.', type: 'text', default: 'REC-2026-001' },
+                    { id: 'original_amount', label: 'Original Invoice', type: 'number', default: 1079456 },
+                    { id: 'paid_amount', label: 'Amount Paid', type: 'number', default: 1064288 }
+                ]
+            },
+            statement: {
+                file: 'Customer_Statement_Saudi_Airlines.html',
+                fields: [
+                    { id: 'customer', label: 'Customer Name', type: 'text', default: 'Saudi Arabian Airlines' },
+                    { id: 'address', label: 'Address', type: 'textarea', default: 'King Abdulaziz International Airport\nJeddah, Saudi Arabia' },
+                    { id: 'account_no', label: 'Account No.', type: 'text', default: 'ACC-SA-001' },
+                    { id: 'statement_no', label: 'Statement No.', type: 'text', default: 'SOA-2026-SA001' },
+                    { id: 'period', label: 'Statement Period', type: 'text', default: '1 May 2025 - 20 Jan 2026' },
+                    { id: 'opening_balance', label: 'Opening Balance', type: 'number', default: 0 },
+                    { id: 'total_debit', label: 'Total Debit', type: 'number', default: 884800 },
+                    { id: 'total_credit', label: 'Total Credit', type: 'number', default: 154188 },
+                    { id: 'outstanding', label: 'Total Outstanding', type: 'number', default: 730612 }
+                ]
+            }
+        };
+
+        function switchDoc(type) {
+            currentDoc = type;
+            // Update selector value if called programmatically
+            const selector = document.getElementById('doc-selector');
+            if (selector && selector.value !== type) {
+                selector.value = type;
+            }
+            renderForm();
+            loadPreview();
+        }
+
+        function renderForm() {
+            const container = document.getElementById('form-container');
+            const config = templates[currentDoc];
+
+            let html = `<div class="sidebar-section"><h3>Document Details</h3>`;
+            config.fields.forEach(field => {
+                if (field.type === 'textarea') {
+                    html += `
+                        <div class="form-group">
+                            <label>${field.label}</label>
+                            <textarea id="field-${field.id}" rows="3" oninput="updatePreview()">${field.default}</textarea>
+                        </div>
+                    `;
+                } else {
+                    html += `
+                        <div class="form-group">
+                            <label>${field.label}</label>
+                            <input type="${field.type}" id="field-${field.id}" value="${field.default}" oninput="updatePreview()">
+                        </div>
+                    `;
+                }
+            });
+            html += `</div>`;
+
+            // Special Section for Statement Transactions
+            if (currentDoc === 'statement') {
+                html += `
+                    <div class="sidebar-section">
+                        <h3>Transactions</h3>
+                        <div id="statement-rows" class="item-list"></div>
+                        <button class="btn" style="width: 100%; margin-top: 12px;" onclick="addStatementRow()">+ Add Row</button>
+                    </div>
+                `;
+            }
+
+            container.innerHTML = html;
+            if (currentDoc === 'statement') renderStatementRows();
+        }
+
+        function renderStatementRows() {
+            const container = document.getElementById('statement-rows');
+            container.innerHTML = statementRows.map((row, index) => `
+                <div class="item-row" style="grid-template-columns: 1fr 1fr; gap: 4px;">
+                    <div class="remove-btn" onclick="removeStatementRow(${index})">×</div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="text" placeholder="Operator" value="${row.operator}" oninput="updateRow(${index}, 'operator', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="text" placeholder="Ref" value="${row.ref}" oninput="updateRow(${index}, 'ref', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="text" placeholder="Period" value="${row.period}" oninput="updateRow(${index}, 'period', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="number" placeholder="Debit" value="${row.debit}" oninput="updateRow(${index}, 'debit', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="number" placeholder="Credit" value="${row.credit}" oninput="updateRow(${index}, 'credit', this.value)">
+                    </div>
+                    <div class="form-group" style="margin-bottom: 4px">
+                        <input type="number" placeholder="Balance" value="${row.balance}" oninput="updateRow(${index}, 'balance', this.value)">
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        function addStatementRow() {
+            statementRows.push({ operator: '', ref: '', period: '', debit: 0, credit: 0, balance: 0 });
+            renderStatementRows();
+            updatePreview();
+        }
+
+        function removeStatementRow(index) {
+            statementRows.splice(index, 1);
+            renderStatementRows();
+            updatePreview();
+        }
+
+        function updateRow(index, field, value) {
+            statementRows[index][field] = (field === 'operator' || field === 'ref' || field === 'period') ? value : Number(value);
+            updatePreview();
+        }
+
+        async function loadPreview() {
+            const frame = document.getElementById('preview-frame');
+            const file = templates[currentDoc].file;
+
+            // Using src instead of srcdoc for better external asset loading and printing
+            frame.src = file;
+            frame.onload = () => {
+                updatePreview();
+            };
+        }
+
+        function updatePreview() {
+            const frame = document.getElementById('preview-frame');
+            const doc = frame.contentDocument || frame.contentWindow.document;
+            if (!doc || !doc.body) return;
+
+            // Mapping Logic
+            if (currentDoc === 'statement') {
+                // Update Customer & Address
+                const customerStrong = doc.querySelector('.customer-box-content strong');
+                if (customerStrong) {
+                    customerStrong.textContent = document.getElementById('field-customer')?.value || '';
+                }
+
+                const addrInput = document.getElementById('field-address');
+                if (addrInput) {
+                    const container = doc.querySelector('.customer-box-content');
+                    if (container) {
+                        let addrDiv = container.querySelector('.addr-wrap');
+                        if (!addrDiv) {
+                            addrDiv = doc.createElement('div');
+                            addrDiv.className = 'addr-wrap';
+                            const br = container.querySelector('br');
+                            if (br) br.after(addrDiv);
+                            else container.appendChild(addrDiv);
+                        }
+                        addrDiv.innerHTML = addrInput.value.replace(/\n/g, '<br>');
+                    }
+                }
+
+                const map = {
+                    'statement_no': '.info-grid .info-item:nth-child(1) p',
+                    'account_no': '.info-grid .info-item:nth-child(2) p',
+                    'period': '.info-grid .info-item:nth-child(4) p',
+                };
+
+                for (let id in map) {
+                    const el = doc.querySelector(map[id]);
+                    const input = document.getElementById(`field-${id}`);
+                    if (el && input) el.textContent = input.value;
+                }
+
+                const numMap = {
+                    'opening_balance': { sel: '.summary-box .summary-row:nth-child(2) span:nth-child(2)', prefix: 'KSh ' },
+                    'total_debit': { sel: '.summary-box .summary-row:nth-child(3) span:nth-child(2)', prefix: 'KSh ' },
+                    'total_credit': { sel: '.summary-box .summary-row:nth-child(4) span:nth-child(2)', prefix: '(KSh ', suffix: ')' }
+                };
+
+                for (let id in numMap) {
+                    const cfg = numMap[id];
+                    const el = doc.querySelector(cfg.sel);
+                    const input = document.getElementById(`field-${id}`);
+                    if (el && input) {
+                        const cleanVal = input.value.replace(/[^0-9.-]/g, '');
+                        const val = Number(cleanVal).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                        el.textContent = (cfg.prefix || '') + val + (cfg.suffix || '');
+                    }
+                }
+
+                const outstandingInput = document.getElementById('field-outstanding');
+                if (outstandingInput) {
+                    const cleanVal = outstandingInput.value.replace(/[^0-9.-]/g, '');
+                    const val = Number(cleanVal).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                    const el1 = doc.querySelector('.summary-box .summary-row.highlight span:nth-child(2)');
+                    const el2 = doc.querySelector('.outstanding-box .amount');
+                    if (el1) el1.textContent = 'KSh ' + val;
+                    if (el2) el2.textContent = 'KSh ' + val;
+                }
+
+                // Update Table
+                const tbody = doc.querySelector('table tbody');
+                if (tbody) {
+                    const rowsHtml = statementRows.map((row, i) => `
+                        <tr>
+                            <td>${i + 1}</td>
+                            <td>${row.operator}</td>
+                            <td>${row.ref}</td>
+                            <td>${row.period}</td>
+                            <td class="right">${row.debit === 0 ? '—' : row.debit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="right">${row.credit === 0 ? '—' : row.credit.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="right">${row.balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    `).join('');
+
+                    const tDebit = document.getElementById('field-total_debit')?.value || 0;
+                    const tCredit = document.getElementById('field-total_credit')?.value || 0;
+                    const tBalance = document.getElementById('field-outstanding')?.value || 0;
+
+                    const totalRowHtml = `
+                        <tr class="total-row">
+                            <td colspan="4" style="text-align: right; text-transform: uppercase;">Totals</td>
+                            <td class="right">${Number(tDebit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="right">${Number(tCredit).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                            <td class="right">${Number(tBalance).toLocaleString(undefined, { minimumFractionDigits: 2 })}</td>
+                        </tr>
+                    `;
+                    tbody.innerHTML = rowsHtml + totalRowHtml;
+                }
+
+            } else if (currentDoc === 'receipt') {
+                const custEl = doc.querySelector('.payment-details-content .detail-row:nth-child(1) .value');
+                const custIn = document.getElementById('field-customer');
+                if (custEl && custIn) custEl.textContent = custIn.value;
+
+                const recEl = doc.querySelector('#receiptNo');
+                const recIn = document.getElementById('field-receipt_no');
+                if (recEl && recIn) recEl.textContent = recIn.value;
+
+                const origEl = doc.querySelector('.invoice-row:nth-child(4) .value');
+                const origIn = document.getElementById('field-original_amount');
+                if (origEl && origIn) origEl.textContent = 'KSh ' + Number(origIn.value).toLocaleString(undefined, { minimumFractionDigits: 2 });
+
+                const paidIn = document.getElementById('field-paid_amount');
+                if (paidIn) {
+                    const format = Number(paidIn.value).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                    const amountEl = doc.querySelector('.amount-box .amount');
+                    if (amountEl) amountEl.textContent = 'KSh ' + format;
+
+                    const noteEl = doc.querySelector('.notes');
+                    if (noteEl) {
+                        noteEl.innerHTML = `<strong>Payment Confirmation:</strong> This receipt confirms that the Civil Aviation Authority of South Sudan has received payment of <strong>KSh ${format}</strong> for invoice <strong>ANS-A7T4L</strong>. Since a credit note was applied, this settles the balance.`;
+                    }
+                }
+            } else if (currentDoc === 'credit_note') {
+                const custEl = doc.querySelector('.detail-box.credit-to .detail-box-content strong');
+                const custIn = document.getElementById('field-customer');
+                if (custEl && custIn) custEl.textContent = custIn.value;
+
+                const cnEl = doc.querySelector('.info-item:nth-child(2) p');
+                const cnIn = document.getElementById('field-cn_no');
+                if (cnEl && cnIn) cnEl.textContent = cnIn.value;
+
+                const amtIn = document.getElementById('field-amount');
+                if (amtIn) {
+                    const format = Number(amtIn.value).toLocaleString(undefined, { minimumFractionDigits: 2 });
+                    const el1 = doc.querySelector('.grand-total span:nth-child(2)');
+                    const el2 = doc.querySelector('td.amount-col');
+                    if (el1) el1.textContent = 'KSh ' + format;
+                    if (el2) el2.textContent = format;
+                }
+
+            }
+
+            setTimeout(() => {
+                if (!doc || !doc.body) return;
+                const h = Math.max(
+                    doc.documentElement.scrollHeight,
+                    doc.body.scrollHeight,
+                    doc.body.offsetHeight,
+                    doc.documentElement.offsetHeight
+                );
+                const finalH = (h + 40) + 'px';
+                frame.style.height = finalH;
+                document.getElementById('canvas').style.height = 'auto'; // Let it grow
+            }, 300);
+        }
+
+        function zoom(delta) {
+            zoomLevel = Math.max(0.3, Math.min(1.5, zoomLevel + delta));
+            document.getElementById('canvas').style.transform = `scale(${zoomLevel})`;
+            document.getElementById('zoom-label').textContent = Math.round(zoomLevel * 100) + '%';
+        }
+
+        function generatePDF() {
+            const frame = document.getElementById('preview-frame');
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+        }
+
+        function saveData() {
+            alert('Draft saved to local storage.');
+        }
+
+        // Initialize
+        window.onload = () => {
+            switchDoc('credit_note');
+            zoom(0);
+        };
+    </script>
+</body>
+
+</html>

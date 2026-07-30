@@ -1,0 +1,40 @@
+
+model Asset {
+  id              String    @id @default(cuid())
+  name            String
+  description     String?
+  serialNumber    String?   @unique
+  assetTag        String?   @unique
+  category        String
+  
+  // Financials
+  purchaseDate    DateTime
+  purchasePrice   Float
+  currency        String    @default("KES")
+  currentValue    Float?
+  usefulLife      Int?      // In months
+  
+  // Status & Location
+  status          String    @default("ACTIVE") // ACTIVE, MAINTENANCE, RETIRED, LOST, DISPOSED
+  condition       String?   // NEW, GOOD, FAIR, POOR
+  location        String?   // Office, Branch, Warehouse
+  
+  // Assignment
+  assignedToId    String?
+  assignedTo      User?     @relation(fields: [assignedToId], references: [id])
+  
+  // Warranty
+  warrantyExpiry  DateTime?
+  vendor          String?
+  
+  // Metadata
+  notes           String?
+  imageUrl        String?
+  
+  createdAt       DateTime  @default(now())
+  updatedAt       DateTime  @updatedAt
+
+  @@index([status])
+  @@index([category])
+  @@index([assignedToId])
+}
