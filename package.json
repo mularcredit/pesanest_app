@@ -13,7 +13,7 @@
   "dependencies": {
     "@flydotio/litestream": "^1.0.1",
     "@hookform/resolvers": "^5.2.2",
-    "@neondatabase/serverless": "^1.1.0",
+    "@neondatabase/serverless": "^0.10.4",
     "@prisma/adapter-neon": "^5.22.0",
     "@prisma/client": "^5.22.0",
     "@radix-ui/react-slot": "^1.2.4",
