@@ -4,5 +4,5 @@
 const { execSync } = require('child_process');
 
 console.log('Syncing database schema...');
-execSync('npx prisma db push --skip-generate --accept-data-loss', { stdio: 'inherit' });
+execSync('npx prisma db push --accept-data-loss', { stdio: 'inherit' });
 console.log('Schema sync complete.');
