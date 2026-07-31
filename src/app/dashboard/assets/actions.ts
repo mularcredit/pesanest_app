@@ -6,6 +6,26 @@ import { revalidatePath } from "next/cache";
 import { AccountingEngine } from "@/lib/accounting/accounting-engine";
 import { auth } from "@/auth";
 
+type AssetInput = {
+    name?: string;
+    description?: string;
+    serialNumber?: string;
+    assetTag?: string;
+    category?: string;
+    purchaseDate?: string;
+    purchasePrice?: string;
+    currentValue?: string;
+    location?: string;
+    assignedToId?: string;
+    vendor?: string;
+    notes?: string;
+    receiptUrl?: string | null;
+    depreciationMethod?: string;
+    usefulLifeYears?: string;
+    salvageValue?: string;
+    depreciationRate?: string;
+};
+
 /*
   Data Fetching
 */
@@ -64,7 +84,7 @@ export async function getAssetStats() {
 /*
   Mutations
 */
-export async function createAsset(data: any) {
+export async function createAsset(data: AssetInput) {
     try {
         // Basic validation
         if (!data.name || !data.category || !data.purchasePrice) {
@@ -86,6 +106,7 @@ export async function createAsset(data: any) {
                 assignedToId: data.assignedToId || null,
                 vendor: data.vendor,
                 notes: data.notes,
+                receiptUrl: data.receiptUrl || null,
                 depreciationMethod: data.depreciationMethod || "NONE",
                 usefulLife: data.usefulLifeYears ? Math.round(parseFloat(data.usefulLifeYears) * 12) : null,
                 salvageValue: data.salvageValue ? parseFloat(data.salvageValue) : 0,
@@ -106,6 +127,43 @@ export async function createAsset(data: any) {
     } catch (error) {
         console.error("Create asset error:", error);
         return { success: false, error: "Failed to create asset" };
+    }
+}
+
+export async function updateAsset(id: string, data: AssetInput) {
+    try {
+        if (!data.name || !data.category || !data.purchasePrice) {
+            return { success: false, error: "Missing required fields" };
+        }
+
+        const asset = await prisma.asset.update({
+            where: { id },
+            data: {
+                name: data.name,
+                description: data.description,
+                serialNumber: data.serialNumber?.trim() || null,
+                assetTag: data.assetTag?.trim() || null,
+                category: data.category,
+                purchaseDate: new Date(data.purchaseDate),
+                purchasePrice: parseFloat(data.purchasePrice),
+                currentValue: data.currentValue ? parseFloat(data.currentValue) : undefined,
+                location: data.location,
+                assignedToId: data.assignedToId || null,
+                vendor: data.vendor,
+                notes: data.notes,
+                receiptUrl: data.receiptUrl || null,
+                depreciationMethod: data.depreciationMethod || "NONE",
+                usefulLife: data.usefulLifeYears ? Math.round(parseFloat(data.usefulLifeYears) * 12) : null,
+                salvageValue: data.salvageValue ? parseFloat(data.salvageValue) : 0,
+                depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null
+            }
+        });
+
+        revalidatePath("/dashboard/assets");
+        return { success: true, data: asset };
+    } catch (error) {
+        console.error("Update asset error:", error);
+        return { success: false, error: "Failed to update asset" };
     }
 }
 

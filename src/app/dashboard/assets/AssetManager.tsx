@@ -6,12 +6,13 @@ import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
     PiPlus, PiPackage, PiCheckCircle,
-    PiWarning, PiTrash, PiTag, PiUser, PiX, PiCaretDown,
-    PiArrowsClockwise, PiCurrencyDollar,
+    PiTrash, PiTag, PiUser, PiX, PiCaretDown,
+    PiArrowsClockwise, PiFileText, PiPencil,
 } from "react-icons/pi";
-import { createAsset, deleteAsset, runDepreciation } from "./actions";
+import { createAsset, deleteAsset, runDepreciation, updateAsset } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DatePicker } from "@/components/ui/DatePicker";
+import { DocumentDropzone } from "@/components/ui/DocumentDropzone";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 const ROW_BORDER: React.CSSProperties = { borderBottom: '1px solid rgba(0,0,0,0.06)' };
@@ -41,7 +42,34 @@ const BLANK_ASSET = {
     depreciationMethod: "NONE", usefulLifeYears: "", salvageValue: "", depreciationRate: "",
 };
 
-export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
+type AssetRecord = {
+    id: string;
+    name: string;
+    category: string;
+    status: string;
+    purchaseDate: string | Date;
+    purchasePrice: number;
+    serialNumber?: string | null;
+    assetTag?: string | null;
+    location?: string | null;
+    assignedToId?: string | null;
+    assignedTo?: { name: string } | null;
+    notes?: string | null;
+    receiptUrl?: string | null;
+    depreciationMethod?: string | null;
+    usefulLife?: number | null;
+    salvageValue?: number | null;
+    depreciationRate?: number | null;
+};
+
+type AssetStats = {
+    total: number;
+    active: number;
+    maintenance: number;
+    totalValue: number;
+};
+
+export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: AssetStats }) {
     const router       = useRouter();
     const searchParams = useSearchParams();
     const { showToast } = useToast();
@@ -54,6 +82,8 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
     const [isDepreciationOpen, setIsDepreciationOpen] = useState(false);
     const [isDepreciating, setIsDepreciating]   = useState(false);
     const [newAsset, setNewAsset]               = useState({ ...BLANK_ASSET });
+    const [purchaseReceipt, setPurchaseReceipt] = useState<File | string | null>(null);
+    const [editingAssetId, setEditingAssetId]   = useState<string | null>(null);
     const [disposingAssetId, setDisposingAssetId] = useState<string | null>(null);
     const [disposeForm, setDisposeForm]         = useState({ proceeds: '', disposalDate: new Date().toISOString().slice(0, 10), reason: '' });
     const [isDisposing, setIsDisposing]         = useState(false);
@@ -73,17 +103,53 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
         if (!newAsset.name || !newAsset.purchasePrice) { showToast("Please fill in required fields", "error"); return; }
         setIsSubmitting(true);
         try {
-            const result = await createAsset(newAsset);
+            let receiptUrl = typeof purchaseReceipt === "string" ? purchaseReceipt : null;
+            if (purchaseReceipt instanceof File) {
+                const formData = new FormData();
+                formData.append("file", purchaseReceipt);
+                const uploadResponse = await fetch("/api/upload", { method: "POST", body: formData });
+                const uploadResult = await uploadResponse.json();
+                if (!uploadResponse.ok) throw new Error(uploadResult.error || "Failed to upload purchase receipt");
+                receiptUrl = uploadResult.url;
+            }
+
+            const result = editingAssetId
+                ? await updateAsset(editingAssetId, { ...newAsset, receiptUrl })
+                : await createAsset({ ...newAsset, receiptUrl });
             if (result.success) {
-                showToast("Asset created successfully", "success");
+                showToast(editingAssetId ? "Asset updated successfully" : "Asset created successfully", "success");
                 setIsAddModalOpen(false);
                 setNewAsset({ ...BLANK_ASSET });
+                setPurchaseReceipt(null);
+                setEditingAssetId(null);
                 router.refresh();
             } else {
                 showToast(result.error || "Failed to create asset", "error");
             }
         } catch { showToast("An error occurred", "error"); }
         finally { setIsSubmitting(false); }
+    };
+
+    const handleEdit = (asset: AssetRecord) => {
+        setNewAsset({
+            name: asset.name || "",
+            category: asset.category || "",
+            status: asset.status || "ACTIVE",
+            purchaseDate: new Date(asset.purchaseDate).toISOString().split("T")[0],
+            purchasePrice: String(asset.purchasePrice ?? ""),
+            serialNumber: asset.serialNumber || "",
+            assetTag: asset.assetTag || "",
+            location: asset.location || "",
+            assignedToId: asset.assignedToId || "",
+            notes: asset.notes || "",
+            depreciationMethod: asset.depreciationMethod || "NONE",
+            usefulLifeYears: asset.usefulLife ? String(asset.usefulLife / 12) : "",
+            salvageValue: asset.salvageValue != null ? String(asset.salvageValue) : "",
+            depreciationRate: asset.depreciationRate != null ? String(asset.depreciationRate) : "",
+        });
+        setPurchaseReceipt(asset.receiptUrl || null);
+        setEditingAssetId(asset.id);
+        setIsAddModalOpen(true);
     };
 
     const handleDelete = async (id: string) => {
@@ -110,8 +176,8 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
             showToast(`Asset disposed. ${gain}`, "success");
             setDisposingAssetId(null);
             router.refresh();
-        } catch (err: any) {
-            showToast(err.message, "error");
+        } catch (err) {
+            showToast(err instanceof Error ? err.message : "Failed to dispose asset", "error");
         } finally { setIsDisposing(false); }
     };
 
@@ -144,8 +210,8 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
                             <PiPackage className="text-[#6366F1] text-[15px]" />
                         </div>
                         <div>
-                            <h2 className="text-[14px] font-[600] text-gray-900 leading-none">Add New Asset</h2>
-                            <p className="text-[12px] text-gray-400 mt-0.5">Register a new company asset</p>
+                            <h2 className="text-[14px] font-[600] text-gray-900 leading-none">{editingAssetId ? 'Edit Asset' : 'Add New Asset'}</h2>
+                            <p className="text-[12px] text-gray-400 mt-0.5">{editingAssetId ? 'Update the asset record' : 'Register a new company asset'}</p>
                         </div>
                     </div>
                     <button onClick={() => setIsAddModalOpen(false)}
@@ -247,6 +313,17 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
                             onChange={e => setNewAsset({ ...newAsset, location: e.target.value })} />
                     </div>
 
+                    <div>
+                        <label className={LABEL_CLASS}>Purchase receipt <span className="text-gray-300">(optional)</span></label>
+                        <DocumentDropzone
+                            file={purchaseReceipt}
+                            onFileChange={setPurchaseReceipt}
+                            label="Purchase receipt"
+                            description="PDF, JPG or PNG up to 10MB"
+                            isUploading={isSubmitting}
+                        />
+                    </div>
+
                     {/* Depreciation section */}
                     <div className="pt-4 space-y-4" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
                         <p className="text-[11px] font-[600] uppercase tracking-[0.07em] text-gray-400">Valuation &amp; Depreciation</p>
@@ -321,7 +398,7 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
                     <button onClick={handleSubmit} disabled={isSubmitting}
                         className="flex items-center gap-2 px-5 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-[#6366F1] hover:bg-indigo-600 transition-colors disabled:opacity-60">
                         <PiCheckCircle className="text-[14px]" />
-                        {isSubmitting ? 'Saving…' : 'Save Asset'}
+                        {isSubmitting ? 'Saving…' : editingAssetId ? 'Save Changes' : 'Save Asset'}
                     </button>
                 </div>
             </div>
@@ -433,7 +510,7 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
                         <PiArrowsClockwise className={cn('text-[13px]', isDepreciating && 'animate-spin')} />
                         {isDepreciating ? 'Running…' : 'Run Depreciation'}
                     </button>
-                    <button onClick={() => setIsAddModalOpen(true)}
+                    <button onClick={() => { setEditingAssetId(null); setNewAsset({ ...BLANK_ASSET }); setPurchaseReceipt(null); setIsAddModalOpen(true); }}
                         className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[12.5px] font-[500] bg-[#6366F1] text-white hover:bg-indigo-600 transition-colors">
                         <PiPlus className="text-[14px]" />
                         Add Asset
@@ -515,6 +592,18 @@ export function AssetManager({ assets, stats }: { assets: any[]; stats: any }) {
                                                             Dispose
                                                         </button>
                                                     )}
+                                                    {asset.receiptUrl && (
+                                                        <a href={asset.receiptUrl} target="_blank" rel="noopener noreferrer"
+                                                            title="View purchase receipt"
+                                                            className="p-1.5 text-gray-300 hover:text-[#6366F1] hover:bg-indigo-50 rounded-[5px] transition-colors">
+                                                            <PiFileText className="text-[14px]" />
+                                                        </a>
+                                                    )}
+                                                    <button onClick={() => handleEdit(asset)}
+                                                        title="Edit asset"
+                                                        className="p-1.5 text-gray-300 hover:text-[#6366F1] hover:bg-indigo-50 rounded-[5px] transition-colors">
+                                                        <PiPencil className="text-[14px]" />
+                                                    </button>
                                                     <button onClick={() => handleDelete(asset.id)}
                                                         className="p-1.5 text-gray-300 hover:text-rose-500 hover:bg-rose-50 rounded-[5px] transition-colors">
                                                         <PiTrash className="text-[14px]" />
