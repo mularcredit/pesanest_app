@@ -114,12 +114,15 @@ export async function createAsset(data: AssetInput) {
             }
         });
 
-        // INTEGRATION: Post to General Ledger
         try {
             await AccountingEngine.postAssetPurchase(asset.id);
         } catch (error) {
             console.error("Ledger Post Error:", error);
-            // Don't block creation, but log it
+            revalidatePath("/dashboard/assets");
+            return {
+                success: false,
+                error: `Asset was saved but could not be posted to the General Ledger: ${error instanceof Error ? error.message : "Unknown error"}`
+            };
         }
 
         revalidatePath("/dashboard/assets");
@@ -127,6 +130,33 @@ export async function createAsset(data: AssetInput) {
     } catch (error) {
         console.error("Create asset error:", error);
         return { success: false, error: "Failed to create asset" };
+    }
+}
+
+export async function syncAssetsToLedger() {
+    try {
+        const assets = await prisma.asset.findMany({ select: { id: true } });
+        let posted = 0;
+        let failed = 0;
+
+        for (const asset of assets) {
+            try {
+                const reference = `ASSET-${asset.id}`;
+                const existingEntry = await prisma.journalEntry.findFirst({ where: { reference } });
+                if (existingEntry) continue;
+                await AccountingEngine.postAssetPurchase(asset.id);
+                posted++;
+            } catch (error) {
+                console.error(`Failed to post asset ${asset.id}:`, error);
+                failed++;
+            }
+        }
+
+        revalidatePath("/dashboard/assets");
+        return { success: failed === 0, posted, failed };
+    } catch (error) {
+        console.error("Asset ledger sync error:", error);
+        return { success: false, error: "Failed to post assets to the General Ledger" };
     }
 }
 

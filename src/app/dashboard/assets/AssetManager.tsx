@@ -9,10 +9,11 @@ import {
     PiTrash, PiTag, PiUser, PiX, PiCaretDown,
     PiArrowsClockwise, PiFileText, PiPencil,
 } from "react-icons/pi";
-import { createAsset, deleteAsset, runDepreciation, updateAsset } from "./actions";
+import { createAsset, deleteAsset, runDepreciation, syncAssetsToLedger, updateAsset } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { DocumentDropzone } from "@/components/ui/DocumentDropzone";
+import { getReceiptViewerUrl } from "@/lib/receipt-url";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 const ROW_BORDER: React.CSSProperties = { borderBottom: '1px solid rgba(0,0,0,0.06)' };
@@ -81,6 +82,7 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
     const [categorySearch, setCategorySearch]   = useState("");
     const [isDepreciationOpen, setIsDepreciationOpen] = useState(false);
     const [isDepreciating, setIsDepreciating]   = useState(false);
+    const [isSyncingLedger, setIsSyncingLedger] = useState(false);
     const [newAsset, setNewAsset]               = useState({ ...BLANK_ASSET });
     const [purchaseReceipt, setPurchaseReceipt] = useState<File | string | null>(null);
     const [editingAssetId, setEditingAssetId]   = useState<string | null>(null);
@@ -190,6 +192,24 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
             else showToast(result.error || "Failed to run depreciation", "error");
         } catch { showToast("An error occurred", "error"); }
         finally { setIsDepreciating(false); }
+    };
+
+    const handleSyncAssetsToLedger = async () => {
+        if (!confirm("Post all assets that are missing General Ledger entries?")) return;
+        setIsSyncingLedger(true);
+        try {
+            const result = await syncAssetsToLedger();
+            if (result.success) {
+                showToast(result.posted ? `${result.posted} asset${result.posted === 1 ? '' : 's'} posted to the General Ledger.` : "All assets are already posted to the General Ledger.", "success");
+            } else if ("error" in result) {
+                showToast(result.error || "Failed to post assets to the General Ledger", "error");
+            } else {
+                showToast(`${result.posted} assets posted; ${result.failed} could not be posted.`, "error");
+            }
+            router.refresh();
+        } catch {
+            showToast("Failed to post assets to the General Ledger", "error");
+        } finally { setIsSyncingLedger(false); }
     };
 
     const depreciationMethodLabel = (m: string) =>
@@ -504,6 +524,12 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                         value={searchQuery} onChange={e => handleSearch(e.target.value)} />
                 </div>
                 <div className="flex items-center gap-2.5 ml-auto">
+                    <button onClick={handleSyncAssetsToLedger} disabled={isSyncingLedger}
+                        className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
+                        style={INPUT_STYLE}>
+                        <PiArrowsClockwise className={cn('text-[13px]', isSyncingLedger && 'animate-spin')} />
+                        {isSyncingLedger ? 'Posting…' : 'Post to GL'}
+                    </button>
                     <button onClick={handleRunDepreciation} disabled={isDepreciating}
                         className="flex items-center gap-2 px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-gray-600 hover:bg-gray-50 transition-colors disabled:opacity-50"
                         style={INPUT_STYLE}>
@@ -593,7 +619,7 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                                                         </button>
                                                     )}
                                                     {asset.receiptUrl && (
-                                                        <a href={asset.receiptUrl} target="_blank" rel="noopener noreferrer"
+                                                        <a href={getReceiptViewerUrl(asset.receiptUrl)} target="_blank" rel="noopener noreferrer"
                                                             title="View purchase receipt"
                                                             className="p-1.5 text-gray-300 hover:text-[#6366F1] hover:bg-indigo-50 rounded-[5px] transition-colors">
                                                             <PiFileText className="text-[14px]" />

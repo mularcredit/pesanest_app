@@ -394,24 +394,43 @@ export class AccountingEngine {
         const asset = await (prisma as any).asset.findUnique({ where: { id: assetId } });
         if (!asset) throw new Error("Asset not found");
 
+        const reference = `ASSET-${asset.id}`;
+        const existingEntry = await prisma.journalEntry.findFirst({ where: { reference } });
+        if (existingEntry) return existingEntry;
+
         let assetAccount = await prisma.account.findFirst({
             where: { name: asset.category, type: 'ASSET' }
         });
         if (!assetAccount) {
-            assetAccount = await prisma.account.findFirst({ where: { code: '1500' } });
+            assetAccount = await prisma.account.upsert({
+                where: { code: '1500' },
+                update: {},
+                create: {
+                    code: '1500',
+                    name: 'Fixed Assets',
+                    type: 'ASSET',
+                    subtype: 'FIXED_ASSET',
+                    description: 'Default account for asset purchases'
+                }
+            });
         }
 
-        const bankAccount = await prisma.account.findFirst({ where: { code: '1000' } });
-
-        if (!assetAccount || !bankAccount) {
-            console.warn("Missing GL Accounts for Asset Purchase. Skipping Ledger Post.");
-            return;
-        }
+        const bankAccount = await prisma.account.upsert({
+            where: { code: '1000' },
+            update: {},
+            create: {
+                code: '1000',
+                name: 'Cash & Bank',
+                type: 'ASSET',
+                subtype: 'CURRENT_ASSET',
+                description: 'Default cash account for asset purchases'
+            }
+        });
 
         return this.postJournalEntry({
             date: asset.purchaseDate,
             description: `Asset Purchase: ${asset.name}`,
-            reference: asset.assetTag || asset.serialNumber || `ASSET-${asset.id.substring(0, 8)}`,
+            reference,
             source: {},
             lines: [
                 { accountId: assetAccount.id, debit: asset.purchasePrice, credit: 0 },

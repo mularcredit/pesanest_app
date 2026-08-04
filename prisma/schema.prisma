@@ -811,6 +811,19 @@ model Asset {
   @@index([assignedToId])
 }
 
+model UploadedReceipt {
+  id          String   @id @default(cuid())
+  filename    String
+  contentType String
+  data        Bytes
+  size        Int
+  createdById String
+  createdAt   DateTime @default(now())
+
+  @@index([createdById])
+  @@index([createdAt])
+}
+
 model FiscalYear {
   id        String             @id @default(cuid())
   name      String

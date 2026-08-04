@@ -1,7 +1,21 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { writeFile, mkdir } from 'fs/promises';
-import { join } from 'path';
 import { auth } from '@/auth';
+import prisma from '@/lib/prisma';
+import { getReceiptUrl } from '@/lib/receipt-url';
+
+const receiptStore = prisma as unknown as {
+    uploadedReceipt: {
+        create: (args: {
+            data: {
+                filename: string;
+                contentType: string;
+                data: Uint8Array;
+                size: number;
+                createdById: string;
+            };
+        }) => Promise<{ id: string }>;
+    };
+};
 
 export async function POST(req: NextRequest) {
     try {
@@ -35,28 +49,26 @@ export async function POST(req: NextRequest) {
             );
         }
 
-        // Create uploads directory if it doesn't exist
-        const uploadsDir = join(process.cwd(), 'public', 'uploads', 'receipts');
-        try {
-            await mkdir(uploadsDir, { recursive: true });
-        } catch (error) {
-            // Directory might already exist, that's fine
-        }
-
-        // Generate unique filename
+        // Generate a display filename
         const timestamp = Date.now();
         const randomString = Math.random().toString(36).substring(7);
         const extension = file.name.split('.').pop();
         const filename = `receipt-${timestamp}-${randomString}.${extension}`;
-        const filepath = join(uploadsDir, filename);
 
-        // Convert file to buffer and save
+        // Convert file to bytes and persist with the receipt metadata
         const bytes = await file.arrayBuffer();
         const buffer = Buffer.from(bytes);
-        await writeFile(filepath, buffer);
+        const receipt = await receiptStore.uploadedReceipt.create({
+            data: {
+                filename,
+                contentType: file.type,
+                data: buffer,
+                size: file.size,
+                createdById: session.user.id,
+            }
+        });
 
-        // Return the public URL
-        const url = `/uploads/receipts/${filename}`;
+        const url = getReceiptUrl(receipt.id);
 
         return NextResponse.json({
             success: true,

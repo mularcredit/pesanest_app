@@ -16,6 +16,7 @@ import { EditBudgetModal } from "@/components/requisitions/EditBudgetModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { EXPENSE_CATEGORIES_WITH_GROUPS } from "@/lib/constants";
+import { getReceiptViewerUrl } from "@/lib/receipt-url";
 
 interface RequisitionListProps {
     requisitions: any[];
@@ -340,9 +341,9 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                                 </Link>
                                             ) : null}
 
-                                            {req.listType === 'STANDARD' && ((req.status === 'FULFILLED' || req.status === 'COMPLETED') && req.receiptUrl) ? (
+                                            {req.listType === 'STANDARD' && req.receiptUrl ? (
                                                 <a
-                                                    href={req.receiptUrl}
+                                                    href={getReceiptViewerUrl(req.receiptUrl)}
                                                     target="_blank"
                                                     rel="noopener noreferrer"
                                                     className="p-1.5 rounded-md hover:bg-emerald-50 text-emerald-500 hover:text-emerald-700 transition-all"

@@ -6,6 +6,7 @@ import {
     PiX, PiCheckCircle, PiWarningCircle, PiClock, PiEye,
     PiShieldCheck, PiUploadSimple, PiReceipt,
 } from "react-icons/pi";
+import { getReceiptViewerUrl } from "@/lib/receipt-url";
 
 export interface ReceiptVerificationSummary {
     id: string;
@@ -572,7 +573,13 @@ export function ReconcileModal({ batch, isSystemAdmin, onClose, onComplete }: Pr
                                                 style={{ border: '1px solid rgba(0,0,0,0.12)' }} />
                                         </div>
                                     </div>
-                                    <div className="flex items-center justify-end pt-1">
+                                    <div className="flex items-center justify-end gap-3 pt-1">
+                                        {ev.receiptUrl && (
+                                            <a href={getReceiptViewerUrl(ev.receiptUrl)} target="_blank" rel="noreferrer"
+                                                className="text-[11px] text-indigo-500 hover:underline">
+                                                View receipt
+                                            </a>
+                                        )}
                                         <button onClick={() => handleVerifyRequisition(req)}
                                             disabled={!canVerify}
                                             className="px-4 py-2 text-[12px] font-[600] text-white rounded-[6px] hover:opacity-90 transition-colors disabled:opacity-40 flex items-center gap-2 shrink-0"
