@@ -17,9 +17,13 @@ export async function POST(req: Request) {
     try {
         const result = await EtimsService.verifyVendorReceipt(etrNumber);
 
-        // If an expenseId is provided and verification passed, persist the result
+        // If an expenseId is provided and verification passed, persist the result.
+        // Stamping is a side effect: a missing or non-Expense id must not turn a
+        // successful verification into a 500, so failures are reported alongside
+        // the verdict instead of replacing it.
+        let stamped: boolean | undefined;
         if (expenseId && result.valid) {
-            await prisma.expense.update({
+            const updated = await prisma.expense.updateMany({
                 where: { id: expenseId },
                 data: {
                     etrNumber: etrNumber.trim().toUpperCase(),
@@ -27,9 +31,13 @@ export async function POST(req: Request) {
                     etrVerifiedAt: new Date(),
                 },
             });
+            stamped = updated.count > 0;
         }
 
-        return NextResponse.json(result, { status: result.valid ? 200 : 400 });
+        return NextResponse.json(
+            stamped === undefined ? result : { ...result, stamped },
+            { status: result.valid ? 200 : 400 }
+        );
     } catch (err: any) {
         return NextResponse.json({ error: err.message }, { status: 500 });
     }

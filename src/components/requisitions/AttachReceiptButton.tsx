@@ -231,11 +231,13 @@ export function AttachReceiptButton({
                         <label className={LABEL_CLASS}>
                             ETR / eTIMS number <span className="text-gray-300 font-[400]">(optional)</span>
                         </label>
+                        {/* No expenseId: that prop makes the endpoint stamp an Expense
+                            row, and this id is a Requisition. The verified flag is
+                            persisted onto the requisition by attachRequisitionReceipt. */}
                         <EtrReceiptInput
                             value={etrNumber}
                             onChange={setEtrNumber}
                             onVerified={(verified) => setEtrVerified(verified)}
-                            expenseId={requisitionId}
                         />
                     </div>
                 </div>
