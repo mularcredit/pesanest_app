@@ -6,8 +6,11 @@ import { redirect, notFound } from "next/navigation";
 import Link from "next/link";
 import { RequisitionItemActions } from "@/components/requisitions/RequisitionItemActions";
 import { AdjustmentPanel } from "@/components/requisitions/AdjustmentPanel";
+import { AttachReceiptButton } from "@/components/requisitions/AttachReceiptButton";
+import { getReceiptViewerUrl } from "@/lib/receipt-url";
 import {
     PiCaretLeft,
+    PiPaperclip,
     PiCaretRight,
     PiCheckCircle,
     PiXCircle,
@@ -189,6 +192,57 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
                                 </div>
                             </div>
                         )}
+
+                        {/* Receipt card */}
+                        <div className={card} style={cardBorder}>
+                            <div className="px-5 py-4">
+                                <h3 className="text-[12.5px] font-[600] text-gray-900 mb-3">Receipt</h3>
+
+                                {req.receiptUrl ? (
+                                    <div className="space-y-3">
+                                        <a href={getReceiptViewerUrl(req.receiptUrl)} target="_blank" rel="noopener noreferrer"
+                                            className="flex items-center gap-3 p-3 rounded-[7px] bg-emerald-50/50 hover:bg-emerald-50 transition-colors group"
+                                            style={{ border: '1px solid rgba(16,185,129,0.22)' }}>
+                                            <div className="w-9 h-9 rounded-[6px] bg-white flex items-center justify-center shrink-0"
+                                                style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                                <PiPaperclip className="text-emerald-600" style={{ fontSize: 15 }} />
+                                            </div>
+                                            <div className="min-w-0">
+                                                <p className="text-[12.5px] font-[500] text-gray-800 group-hover:text-emerald-700 transition-colors">
+                                                    Receipt attached
+                                                </p>
+                                                <p className="text-[11.5px] text-gray-400 mt-0.5">Click to open in a new tab</p>
+                                            </div>
+                                        </a>
+
+                                        {req.etrNumber && (
+                                            <div className="flex items-center justify-between gap-2 px-1">
+                                                <span className="text-[11.5px] text-gray-400">ETR number</span>
+                                                <span className={`text-[12px] font-[600] font-mono ${req.etrVerified ? 'text-emerald-600' : 'text-amber-600'}`}>
+                                                    {req.etrNumber}{req.etrVerified ? ' ✓' : ''}
+                                                </span>
+                                            </div>
+                                        )}
+                                    </div>
+                                ) : (
+                                    <p className="text-[12.5px] text-gray-400 leading-relaxed">
+                                        No receipt attached to this expense yet.
+                                    </p>
+                                )}
+
+                                {(isOwner || isPrivileged) && (
+                                    <div className="mt-3.5">
+                                        <AttachReceiptButton
+                                            requisitionId={req.id}
+                                            requisitionTitle={req.title}
+                                            currentReceiptUrl={req.receiptUrl}
+                                            currentEtrNumber={req.etrNumber}
+                                            variant="full"
+                                        />
+                                    </div>
+                                )}
+                            </div>
+                        </div>
                     </div>
 
                     {/* RIGHT: col-span-2 */}

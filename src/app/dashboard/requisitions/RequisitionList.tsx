@@ -12,6 +12,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { EtrReceiptInput } from "@/components/accounting/EtrReceiptInput";
 import { DeleteEntityButton } from "@/components/dashboard/DeleteEntityButton";
 import { AddItemModal } from "@/components/requisitions/AddItemModal";
+import { AttachReceiptButton } from "@/components/requisitions/AttachReceiptButton";
 import { EditBudgetModal } from "@/components/requisitions/EditBudgetModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
@@ -352,6 +353,15 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                                 >
                                                     <BiReceipt className="text-base" />
                                                 </a>
+                                            ) : null}
+
+                                            {req.listType === 'STANDARD' ? (
+                                                <AttachReceiptButton
+                                                    requisitionId={req.id}
+                                                    requisitionTitle={req.title}
+                                                    currentReceiptUrl={req.receiptUrl}
+                                                    currentEtrNumber={req.etrNumber}
+                                                />
                                             ) : null}
 
                                             <div className="flex items-center gap-0.5 ml-0.5 border-l border-slate-100 pl-0.5">

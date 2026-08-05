@@ -51,9 +51,12 @@ export default async function RequisitionsPage() {
         }).catch(() => []) : Promise.resolve([])
     ]);
 
+    // A receipt can live on the requisition itself (attached at creation or via
+    // the attach action) or on the child Expense created when it was fulfilled.
+    // Prefer the directly attached one, then fall back to the fulfilment record.
     const requisitions = rawRequisitions.map((r: any) => ({
         ...r,
-        receiptUrl: r.expenses?.[0]?.receiptUrl || null
+        receiptUrl: r.receiptUrl || r.expenses?.[0]?.receiptUrl || null
     }));
 
     // Group requisitions by ledger account. A requisition's item category is

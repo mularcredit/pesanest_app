@@ -62,6 +62,83 @@ export async function fulfillRequisition(formData: FormData) {
     }
 }
 
+/**
+ * Attach (or replace) the receipt on an expense itself.
+ *
+ * Deliberately separate from fulfillRequisition: that one is a workflow step
+ * which spawns a child Expense and moves the requisition to FULFILLED. This
+ * just files the paperwork against the expense and leaves the status alone,
+ * so a receipt can be added at any point in the lifecycle.
+ */
+export async function attachRequisitionReceipt(formData: FormData) {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+    const requisitionId = formData.get("requisitionId") as string;
+    const receiptUrl = (formData.get("receiptUrl") as string)?.trim();
+    const etrNumber = (formData.get("etrNumber") as string)?.trim().toUpperCase() || null;
+    const etrVerified = formData.get("etrVerified") === "true";
+
+    if (!requisitionId || !receiptUrl) {
+        return { success: false, message: "Expense and receipt are both required" };
+    }
+
+    try {
+        const requisition = await prisma.requisition.findUnique({
+            where: { id: requisitionId },
+            select: { id: true, userId: true, receiptUrl: true },
+        });
+        if (!requisition) return { success: false, message: "Expense not found" };
+
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, customRole: { select: { isSystem: true } } },
+        });
+        const isAdmin = user?.role === 'SYSTEM_ADMIN' || !!user?.customRole?.isSystem;
+        // Same set the detail page treats as privileged, so the button is never
+        // shown to someone the action would then reject.
+        const isPrivileged = ['SYSTEM_ADMIN', 'FINANCE_APPROVER', 'FINANCE_TEAM', 'MANAGER', 'TEAM_LEADER']
+            .includes(user?.role || '');
+        const isOwner = requisition.userId === session.user.id;
+
+        if (!isOwner && !isAdmin && !isPrivileged) {
+            return { success: false, message: "You can only attach receipts to your own expenses" };
+        }
+
+        const replaced = !!requisition.receiptUrl;
+
+        await prisma.requisition.update({
+            where: { id: requisitionId },
+            data: {
+                receiptUrl,
+                ...(etrNumber
+                    ? { etrNumber, etrVerified, etrVerifiedAt: etrVerified ? new Date() : null }
+                    : {}),
+            },
+        });
+
+        await (prisma as any).auditLog.create({
+            data: {
+                actorId: session.user.id,
+                action: replaced ? 'RECEIPT_REPLACE' : 'RECEIPT_ATTACH',
+                entity: 'Requisition',
+                entityId: requisitionId,
+                after: { receiptUrl, etrNumber },
+            },
+        }).catch(() => {});
+
+        revalidatePath("/dashboard/requisitions");
+        revalidatePath(`/dashboard/requisitions/${requisitionId}`);
+        return {
+            success: true,
+            message: replaced ? "Receipt replaced" : "Receipt attached",
+        };
+    } catch (e: any) {
+        console.error("Failed to attach receipt:", e);
+        return { success: false, message: e.message || "Failed to attach receipt" };
+    }
+}
+
 export async function deleteRequisition(id: string) {
     const session = await auth();
     if (!session?.user?.id) return { success: false, message: "Unauthorized" };

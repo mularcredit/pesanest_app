@@ -11,6 +11,7 @@ import {
 } from "react-icons/pi";
 import { createTransfer, updateTransferStatus, deleteTransfer } from "./actions";
 import { TRANSFER_TYPES, TRANSFER_STATUSES } from "./constants";
+import { BankAccountsPanel, type BankAccountRow } from "./BankAccountsPanel";
 import { useToast } from "@/components/ui/ToastProvider";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
@@ -61,11 +62,12 @@ const BLANK = {
 };
 
 export function TransfersManager({
-    transfers, stats, bankAccounts, isAdmin,
+    transfers, stats, bankAccounts, bankAccountRows = [], isAdmin,
 }: {
     transfers: TransferRow[];
     stats: Stats;
     bankAccounts: { id: string; label: string; currency: string }[];
+    bankAccountRows?: BankAccountRow[];
     isAdmin: boolean;
 }) {
     const router = useRouter();
@@ -238,7 +240,8 @@ export function TransfersManager({
                             </select>
                             {bankAccounts.length === 0 && (
                                 <p className="text-[11px] text-amber-600 mt-1.5">
-                                    No bank accounts set up yet — the transfer will be recorded without a ledger entry.
+                                    No bank accounts set up yet — close this and use “Bank accounts” to add one,
+                                    or save now and the transfer is logged without a ledger entry.
                                 </p>
                             )}
                         </div>
@@ -373,10 +376,24 @@ export function TransfersManager({
                 <FilterSelect value={statusFilter} onChange={setStatusFilter}
                     options={[{ value: 'ALL', label: 'All statuses' }, ...TRANSFER_STATUSES.map(s => ({ value: s, label: STATUS_META[s].label }))]} />
 
-                <p className="text-[12px] text-gray-400 ml-auto">
-                    {visible.length} of {transfers.length}
-                </p>
+                <div className="ml-auto flex items-center gap-2">
+                    <p className="text-[12px] text-gray-400">{visible.length} of {transfers.length}</p>
+                    <BankAccountsPanel accounts={bankAccountRows} isAdmin={isAdmin} />
+                </div>
             </div>
+
+            {bankAccounts.length === 0 && (
+                <div className="rounded-[8px] px-4 py-3 flex items-center gap-2.5 bg-amber-50/70"
+                    style={{ border: '1px solid rgba(245,158,11,0.25)' }}>
+                    <PiWarningCircle className="text-amber-500 text-[15px] shrink-0" />
+                    <p className="text-[12.5px] text-gray-700">
+                        No bank accounts set up yet, so transfers can be logged but won't post to the ledger.
+                    </p>
+                    <div className="ml-auto shrink-0">
+                        <BankAccountsPanel accounts={bankAccountRows} isAdmin={isAdmin} />
+                    </div>
+                </div>
+            )}
 
             <div className="bg-white rounded-[9px] overflow-hidden" style={CARD_STYLE}>
                 {visible.length === 0 ? (

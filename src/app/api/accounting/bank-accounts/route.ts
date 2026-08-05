@@ -1,6 +1,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { provisionBankAccount } from "@/lib/accounting/bank-accounts";
 
 async function requireAdmin(session: any) {
     if (!session?.user?.id) return false;
@@ -52,40 +53,7 @@ export async function POST(req: Request) {
     }
 
     try {
-        // Allocate a sequential GL account code in the 1100–1199 range
-        const existing = await prisma.account.findMany({
-            where: { code: { startsWith: '11' } },
-            orderBy: { code: 'desc' },
-            take: 1
-        });
-
-        const nextCode = existing.length > 0
-            ? String(parseInt(existing[0].code) + 1)
-            : '1100';
-
-        const bankAccount = await prisma.$transaction(async (tx) => {
-            const glAccount = await tx.account.create({
-                data: {
-                    code: nextCode,
-                    name: `Bank — ${name}`,
-                    type: 'ASSET',
-                    subtype: 'BANK',
-                    currency: currency || 'KES',
-                    description: `GL sub-account for ${bankName} — ${accountNumber || 'N/A'}`
-                }
-            });
-
-            return (tx as any).bankAccount.create({
-                data: {
-                    name,
-                    bankName,
-                    accountNumber,
-                    currency: currency || 'KES',
-                    glAccountId: glAccount.id
-                },
-                include: { glAccount: true }
-            });
-        });
+        const bankAccount = await provisionBankAccount({ name, bankName, accountNumber, currency });
 
         await (prisma as any).auditLog.create({
             data: {
@@ -93,7 +61,7 @@ export async function POST(req: Request) {
                 action: 'BANK_ACCOUNT_CREATE',
                 entity: 'BankAccount',
                 entityId: bankAccount.id,
-                after: { name, bankName, accountNumber, glCode: nextCode }
+                after: { name, bankName, accountNumber, glCode: bankAccount.glAccount?.code }
             }
         });
 

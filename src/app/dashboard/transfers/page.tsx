@@ -3,6 +3,7 @@ import { redirect } from "next/navigation";
 import prisma from "@/lib/prisma";
 import { requirePermission } from "@/lib/access-control";
 import { getTransfers, getTransferStats, getBankAccounts } from "./actions";
+import { getBankAccountsDetailed } from "./bank-actions";
 import { TransfersManager } from "./TransfersManager";
 
 export const dynamic = 'force-dynamic';
@@ -17,10 +18,11 @@ export default async function TransfersPage() {
     if (!session?.user?.id) return redirect("/login");
     requirePermission(session, ['TRANSFERS.VIEW', 'FINANCE.VIEW']);
 
-    const [transfers, stats, bankAccounts, user] = await Promise.all([
+    const [transfers, stats, bankAccounts, bankAccountRows, user] = await Promise.all([
         getTransfers(),
         getTransferStats(),
         getBankAccounts(),
+        getBankAccountsDetailed(),
         prisma.user.findUnique({
             where: { id: session.user.id },
             select: { role: true, customRole: { select: { isSystem: true } } },
@@ -41,6 +43,7 @@ export default async function TransfersPage() {
                 transfers={transfers}
                 stats={stats}
                 bankAccounts={bankAccounts}
+                bankAccountRows={bankAccountRows}
                 isAdmin={isAdmin}
             />
         </div>

@@ -49,7 +49,7 @@ export default async function AccountCategoryPage({ params }: { params: Promise<
 
     const requisitions = rawRequisitions.map((r: any) => ({
         ...r,
-        receiptUrl: r.expenses?.[0]?.receiptUrl || null
+        receiptUrl: r.receiptUrl || r.expenses?.[0]?.receiptUrl || null
     }));
 
     return (
