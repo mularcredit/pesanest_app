@@ -51,6 +51,10 @@ const ALL_PERMISSIONS = [
     { resource: 'FORECASTING', action: 'VIEW', description: 'View financial forecasts' },
     { resource: 'STUDIO', action: 'VIEW', description: 'Access finance studio' },
     { resource: 'ANALYTICS', action: 'VIEW', description: 'View analytics and workflow reports' },
+    { resource: 'PETTY_CASH', action: 'VIEW', description: 'View the petty cash float and ledger' },
+    { resource: 'PETTY_CASH', action: 'MANAGE', description: 'Replenish, pay out and reconcile petty cash' },
+    { resource: 'TRANSFERS', action: 'VIEW', description: 'View bank, mobile and paybill transfers' },
+    { resource: 'TRANSFERS', action: 'MANAGE', description: 'Record and update transfers' },
 
     // Vendors & Procurement
     { resource: 'VENDORS', action: 'VIEW', description: 'View vendor list' },

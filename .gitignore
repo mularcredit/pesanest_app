@@ -35,3 +35,6 @@ next-env.d.ts
 
 # prisma generated client (regenerated on every build)
 /src/generated/
+
+# local dev server logs
+pesanest-local.*.log

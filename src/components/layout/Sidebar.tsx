@@ -87,6 +87,8 @@ const menuCategories: MenuCategory[] = [
         icon: PiCoins,
         items: [
             { name: "Corporate wallet", href: "/dashboard/wallet", icon: PiChartPieSlice },
+            { name: "Petty cash", href: "/dashboard/petty-cash", icon: PiCoins },
+            { name: "Transfers", href: "/dashboard/transfers", icon: PiArrowsLeftRight },
             { name: "Budgets", href: "/dashboard/budgets", icon: PiTrendUp },
             { name: "Forecasting", href: "/dashboard/forecasting", icon: PiChartPieSlice },
             { name: "Audit trail", href: "/dashboard/audit", icon: PiClockCounterClockwise },
@@ -206,6 +208,8 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
             "/dashboard/invoices": ["INVOICES.VIEW", "INVOICES.MANAGE", "SALES.MANAGE"],
             "/dashboard/approvals": ["EXPENSES.APPROVE", "REQUISITIONS.APPROVE", "APPROVALS.VIEW"],
             "/dashboard/wallet": ["WALLET.VIEW", "FINANCE.VIEW"],
+            "/dashboard/petty-cash": ["PETTY_CASH.VIEW", "FINANCE.VIEW"],
+            "/dashboard/transfers": ["TRANSFERS.VIEW", "FINANCE.VIEW"],
             "/dashboard/budgets": ["BUDGETS.VIEW", "FINANCE.VIEW"],
             "/dashboard/forecasting": ["FORECASTING.VIEW", "FINANCE.VIEW"],
             "/dashboard/audit": ["AUDIT.VIEW"],

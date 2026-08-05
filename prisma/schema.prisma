@@ -696,6 +696,7 @@ model Account {
   branchWallets         BranchWallet[]         @relation("BranchWalletGL")
   journalLines          JournalLine[]
   periodBalances        PeriodBalance[]
+  pettyCashWallets      PettyCashWallet[]      @relation("PettyCashGL")
   recurringJournalLines RecurringJournalLine[]
   hqWallet              Wallet?                @relation("HQWalletGL")
 
@@ -933,6 +934,8 @@ model BankAccount {
   updatedAt     DateTime        @updatedAt
   glAccount     Account         @relation(fields: [glAccountId], references: [id])
   statements    BankStatement[]
+  transfersOut  Transfer[]      @relation("TransferFrom")
+  transfersIn   Transfer[]      @relation("TransferTo")
 
   @@index([isActive])
 }
@@ -1112,4 +1115,84 @@ model SmsLog {
 
   @@index([createdAt])
   @@index([status])
+}
+
+/// Physical cash float held on premises, replenished on an imprest basis.
+/// Separate from `Wallet` (Paystack-backed corporate wallet) — this money is
+/// never routed through a payment gateway.
+model PettyCashWallet {
+  id           String                 @id @default(cuid())
+  name         String                 @default("Petty Cash")
+  branchId     String?
+  balance      Decimal                @default(0) @db.Decimal(18, 2)
+  currency     String                 @default("KES")
+  floatLimit   Decimal                @default(0) @db.Decimal(18, 2)
+  custodianId  String?
+  glAccountId  String?                @unique
+  isActive     Boolean                @default(true)
+  createdAt    DateTime               @default(now())
+  updatedAt    DateTime               @updatedAt
+  glAccount    Account?               @relation("PettyCashGL", fields: [glAccountId], references: [id])
+  transactions PettyCashTransaction[]
+
+  @@index([branchId])
+  @@index([isActive])
+}
+
+/// Ledger of every movement in/out of a petty cash float.
+/// type: REPLENISH | EXPENSE | ADJUSTMENT | RETURN
+model PettyCashTransaction {
+  id             String          @id @default(cuid())
+  walletId       String
+  type           String
+  amount         Decimal         @db.Decimal(18, 2)
+  balanceAfter   Decimal         @db.Decimal(18, 2)
+  description    String
+  voucherNumber  String?
+  reference      String?
+  requisitionId  String?
+  journalEntryId String?
+  createdBy      String?
+  createdAt      DateTime        @default(now())
+  wallet         PettyCashWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
+
+  @@index([walletId])
+  @@index([createdAt])
+  @@index([requisitionId])
+}
+
+/// Money moved between the company's own cash locations, or to/from a
+/// counterparty via mobile money or paybill.
+/// type: BANK_TO_BANK | BANK_TO_MOBILE | TO_PAYBILL | FROM_PAYBILL
+/// status: PENDING | COMPLETED | FAILED | REVERSED
+model Transfer {
+  id                String       @id @default(cuid())
+  reference         String       @unique
+  type              String
+  status            String       @default("COMPLETED")
+  amount            Decimal      @db.Decimal(18, 2)
+  charges           Decimal      @default(0) @db.Decimal(18, 2)
+  currency          String       @default("KES")
+  transferDate      DateTime
+  fromBankAccountId String?
+  fromLabel         String?
+  toBankAccountId   String?
+  toLabel           String?
+  toPhone           String?
+  paybillNumber     String?
+  paybillAccount    String?
+  narration         String?
+  externalRef       String?
+  journalEntryId    String?
+  createdBy         String?
+  createdAt         DateTime     @default(now())
+  updatedAt         DateTime     @updatedAt
+  fromBankAccount   BankAccount? @relation("TransferFrom", fields: [fromBankAccountId], references: [id])
+  toBankAccount     BankAccount? @relation("TransferTo", fields: [toBankAccountId], references: [id])
+
+  @@index([type])
+  @@index([status])
+  @@index([transferDate])
+  @@index([fromBankAccountId])
+  @@index([toBankAccountId])
 }

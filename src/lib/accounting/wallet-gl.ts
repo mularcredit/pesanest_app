@@ -13,7 +13,7 @@ type Tx = Prisma.TransactionClient;
 
 // ── Account bootstrap helpers ──────────────────────────────────────────────
 
-async function findOrCreate(tx: Tx, code: string, name: string, type: string, subtype?: string) {
+export async function findOrCreate(tx: Tx, code: string, name: string, type: string, subtype?: string) {
     let acct = await tx.account.findFirst({ where: { code } });
     if (!acct) {
         acct = await tx.account.create({ data: { code, name, type, subtype } });
@@ -21,7 +21,7 @@ async function findOrCreate(tx: Tx, code: string, name: string, type: string, su
     return acct;
 }
 
-async function nextJENumber(tx: Tx): Promise<string> {
+export async function nextJENumber(tx: Tx): Promise<string> {
     const seq = await (tx as any).documentSequence.upsert({
         where: { prefix: 'JE' },
         update: { lastNumber: { increment: 1 } },
@@ -30,7 +30,7 @@ async function nextJENumber(tx: Tx): Promise<string> {
     return `JE-${String(seq.lastNumber).padStart(6, '0')}`;
 }
 
-async function postGL(
+export async function postGL(
     tx: Tx,
     params: {
         date: Date;
@@ -42,6 +42,10 @@ async function postGL(
 ) {
     const totalDebit = params.lines.reduce((s, l) => s + l.debit, 0);
     const totalCredit = params.lines.reduce((s, l) => s + l.credit, 0);
+    // NaN fails every comparison, so check finiteness before the tolerance test.
+    if (!Number.isFinite(totalDebit) || !Number.isFinite(totalCredit)) {
+        throw new Error(`Wallet GL: non-numeric amount in journal lines`);
+    }
     if (Math.abs(totalDebit - totalCredit) > 0.01) {
         throw new Error(`Wallet GL: debits (${totalDebit}) ≠ credits (${totalCredit})`);
     }

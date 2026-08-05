@@ -92,6 +92,7 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
 
     const PAYMENT_METHODS = [
         { value: "CASH", label: "Cash" },
+        { value: "PETTY_CASH", label: "Petty Cash" },
         { value: "BANK_TRANSFER", label: "Bank Transfer" },
         { value: "MPESA", label: "M-Pesa" },
         { value: "CHEQUE", label: "Cheque" },

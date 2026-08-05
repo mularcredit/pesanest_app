@@ -63,6 +63,7 @@ function PaymentMethodLabel({ method }: { method?: string | null }) {
         AIRTEL_MONEY: "Airtel Money",
         CASH: "Cash",
         CHEQUE: "Cheque",
+        PETTY_CASH: "Petty Cash",
     };
     if (!method) return <span className="text-gray-400">Not specified</span>;
     return <>{labels[method] ?? method}</>;

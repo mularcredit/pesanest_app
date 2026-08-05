@@ -136,6 +136,7 @@ function NewRequisitionForm() {
         { value: 'AIRTEL_MONEY',  label: 'Airtel Money',   img: '/pay/Airtel-Logo.png' },
         { value: 'CASH',          label: 'Cash',            img: '/pay/money-stack.png' },
         { value: 'CHEQUE',        label: 'Cheque',          img: '/pay/cheque.png' },
+        { value: 'PETTY_CASH',    label: 'Petty Cash',      img: '/pay/petty-cash.svg' },
     ];
 
     useEffect(() => {
@@ -394,7 +395,7 @@ function NewRequisitionForm() {
                         {/* Section 3: Payment Method */}
                         <SectionDivider title="Payment Method" />
                         <div className="px-6 py-5">
-                            <div className="grid grid-cols-6 gap-2 mb-4">
+                            <div className="grid grid-cols-7 gap-2 mb-4">
                                 {paymentOptions.map(opt => {
                                     const isSelected = paymentMethod === opt.value;
                                     return (
@@ -406,7 +407,11 @@ function NewRequisitionForm() {
                                                 background: isSelected ? 'rgba(99,102,241,0.05)' : 'white',
                                             }}>
                                             <div className="w-8 h-8 flex items-center justify-center">
-                                                <Image src={opt.img} alt={opt.label} width={32} height={32} className="object-contain w-full h-full" />
+                                                {opt.img.endsWith('.svg') ? (
+                                                    <img src={opt.img} alt={opt.label} width={32} height={32} className="object-contain w-full h-full" />
+                                                ) : (
+                                                    <Image src={opt.img} alt={opt.label} width={32} height={32} className="object-contain w-full h-full" />
+                                                )}
                                             </div>
                                             <span className={`text-[10.5px] font-[500] text-center leading-tight ${isSelected ? 'text-[#6366F1]' : 'text-gray-400'}`}>
                                                 {opt.label}
@@ -434,9 +439,12 @@ function NewRequisitionForm() {
                                             <label className={LABEL_CLASS}>
                                                 {paymentMethod === 'MPESA_TILL' ? 'M-Pesa till number' :
                                                  paymentMethod === 'BANK_TRANSFER' ? 'Bank account' :
-                                                 paymentMethod === 'AIRTEL_MONEY' ? 'Airtel Money number' : 'Reference'}
+                                                 paymentMethod === 'AIRTEL_MONEY' ? 'Airtel Money number' :
+                                                 paymentMethod === 'PETTY_CASH' ? 'Petty cash voucher no.' : 'Reference'}
                                             </label>
-                                            <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)} placeholder="Enter detail…" className={INPUT_CLASS} style={INPUT_STYLE} />
+                                            <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
+                                                placeholder={paymentMethod === 'PETTY_CASH' ? 'e.g. PCV-0012' : 'Enter detail…'}
+                                                className={INPUT_CLASS} style={INPUT_STYLE} />
                                         </div>
                                     )}
                                 </div>

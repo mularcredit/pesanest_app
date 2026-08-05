@@ -64,7 +64,7 @@ export interface CreateExpenseData {
     expenseDate: string;
     merchant?: string;
     receiptUrl?: string;
-    paymentMethod?: 'PERSONAL_CARD' | 'CORPORATE_CARD' | 'CASH' | 'DIRECT_BILL' | 'WALLET';
+    paymentMethod?: 'PERSONAL_CARD' | 'CORPORATE_CARD' | 'CASH' | 'PETTY_CASH' | 'DIRECT_BILL' | 'WALLET';
     requisitionId?: string;
     isReimbursable?: boolean;
     isBillable?: boolean;

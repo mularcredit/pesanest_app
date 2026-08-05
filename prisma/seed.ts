@@ -175,6 +175,10 @@ async function main() {
         { resource: 'FORECASTING', action: 'VIEW', description: 'View financial forecasts' },
         { resource: 'STUDIO', action: 'VIEW', description: 'Access finance studio' },
         { resource: 'ANALYTICS', action: 'VIEW', description: 'View analytics and workflow reports' },
+        { resource: 'PETTY_CASH', action: 'VIEW', description: 'View the petty cash float and ledger' },
+        { resource: 'PETTY_CASH', action: 'MANAGE', description: 'Replenish, pay out and reconcile petty cash' },
+        { resource: 'TRANSFERS', action: 'VIEW', description: 'View bank, mobile and paybill transfers' },
+        { resource: 'TRANSFERS', action: 'MANAGE', description: 'Record and update transfers' },
 
         // Vendors & Procurement
         { resource: 'VENDORS', action: 'VIEW', description: 'View vendor list' },
@@ -232,6 +236,8 @@ async function main() {
                 'EXPENSES_VIEW_ALL', 'EXPENSES_APPROVE',
                 'REQUISITIONS_APPROVE', 'REQUISITIONS_VIEW_BRANCH', 'APPROVALS_VIEW',
                 'WALLET_VIEW', 'FINANCE_VIEW', 'BUDGETS_VIEW', 'FORECASTING_VIEW',
+                'PETTY_CASH_VIEW', 'PETTY_CASH_MANAGE',
+                'TRANSFERS_VIEW', 'TRANSFERS_MANAGE',
                 'VENDORS_VIEW', 'CONTRACTS_VIEW', 'ASSETS_VIEW',
                 'BRANCHES_VIEW', 'REGIONS_VIEW',
                 'USERS_VIEW', 'AUDIT_VIEW', 'ANALYTICS_VIEW',
@@ -249,6 +255,8 @@ async function main() {
                 'PAYMENTS_CREATE',
                 'CUSTOMERS_VIEW', 'CUSTOMERS_MANAGE', 'SALES_MANAGE',
                 'EXPENSES_VIEW_ALL', 'APPROVALS_VIEW',
+                'PETTY_CASH_VIEW', 'PETTY_CASH_MANAGE',
+                'TRANSFERS_VIEW', 'TRANSFERS_MANAGE',
                 'VENDORS_VIEW', 'ASSETS_VIEW',
                 'AUDIT_VIEW',
             ]
