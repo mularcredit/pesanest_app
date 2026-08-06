@@ -7,7 +7,9 @@ import {
     PiCheckCircle, PiXCircle, PiClock, PiUser, PiCalendar,
     PiMoney, PiReceipt, PiFileText, PiBuildings, PiEye, PiX,
     PiUserSwitch, PiSpinner, PiListBullets, PiGridFour,
+    PiCheckSquare, PiSquare, PiWarningCircle,
 } from "react-icons/pi";
+import { createPortal } from "react-dom";
 import { cn } from "@/lib/utils";
 import Image from "next/image";
 import { DelegateModal } from "@/components/workflow/DelegationEscalation";
@@ -97,8 +99,11 @@ function TableShell({ cols, children }: { cols: string[]; children: React.ReactN
                 <table className="w-full min-w-[700px]">
                     <thead>
                         <tr className="bg-gray-50/60" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-                            {cols.map(c => (
-                                <th key={c} className="px-5 py-2.5 text-left text-[10.5px] font-[500] uppercase tracking-[0.08em] text-gray-400 whitespace-nowrap">{c}</th>
+                            {cols.map((c, i) => (
+                                <th key={i} className={cn(
+                                    "py-2.5 text-left text-[10.5px] font-[500] uppercase tracking-[0.08em] text-gray-400 whitespace-nowrap",
+                                    c === '' ? "pl-5 pr-1 w-8" : "px-5"
+                                )}>{c}</th>
                             ))}
                         </tr>
                     </thead>
@@ -231,7 +236,120 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
     const [showReceipt, setShowReceipt] = useState<string | null>(null);
     const [delegateData, setDelegateData] = useState<{ id: string; title: string } | null>(null);
 
-    useEffect(() => { setSelectedItem(null); setComments(""); }, [activeTab]);
+    // Bulk selection, keyed by approvalId. Cleared on tab change so ids from one
+    // queue can never be submitted while a different tab is on screen.
+    const [selectedApprovals, setSelectedApprovals] = useState<Set<string>>(new Set());
+    const [bulkConfirm, setBulkConfirm] = useState<{
+        decision: 'APPROVED' | 'REJECTED';
+        items: { approvalId: string; amount: number }[];
+    } | null>(null);
+    const [bulkComments, setBulkComments] = useState("");
+    const [bulkResult, setBulkResult] = useState<any>(null);
+    const [isBulkRunning, setIsBulkRunning] = useState(false);
+    const [mounted, setMounted] = useState(false);
+    useEffect(() => setMounted(true), []);
+
+    useEffect(() => { setSelectedItem(null); setComments(""); setSelectedApprovals(new Set()); setBulkConfirm(null); }, [activeTab]);
+
+    const toggleApproval = (approvalId: string) => {
+        setSelectedApprovals(prev => {
+            const next = new Set(prev);
+            next.has(approvalId) ? next.delete(approvalId) : next.add(approvalId);
+            return next;
+        });
+    };
+
+    const runBulkApproval = async () => {
+        if (!bulkConfirm) return;
+        const { decision, items } = bulkConfirm;
+
+        setIsBulkRunning(true);
+        try {
+            const res = await fetch('/api/approvals/bulk', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({
+                    approvalIds: items.map(i => i.approvalId),
+                    decision,
+                    comments: bulkComments || undefined,
+                }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Bulk action failed');
+
+            setBulkConfirm(null);
+            setBulkComments("");
+            setSelectedApprovals(new Set());
+
+            const verb = decision === 'APPROVED' ? 'approved' : 'rejected';
+            if (data.failed > 0) {
+                setBulkResult(data);
+                showToast(`${data.succeeded} ${verb}, ${data.failed} failed`, data.succeeded > 0 ? 'warning' : 'error');
+            } else {
+                showToast(`${data.succeeded} item${data.succeeded !== 1 ? 's' : ''} ${verb}`, 'success');
+            }
+            router.refresh();
+        } catch (e: any) {
+            showToast(e.message || 'Bulk action failed', 'error');
+        } finally {
+            setIsBulkRunning(false);
+        }
+    };
+
+    const SelectBox = ({ approvalId }: { approvalId: string }) => (
+        <button
+            onClick={(e) => { e.stopPropagation(); toggleApproval(approvalId); }}
+            aria-label={selectedApprovals.has(approvalId) ? 'Deselect item' : 'Select item'}
+            className="p-0.5 rounded hover:bg-gray-100 transition-colors shrink-0">
+            {selectedApprovals.has(approvalId)
+                ? <PiCheckSquare className="text-[#6366F1] text-[17px]" />
+                : <PiSquare className="text-gray-300 text-[17px]" />}
+        </button>
+    );
+
+    const BulkBar = ({ items }: { items: { approvalId: string; amount: number }[] }) => {
+        const chosen = items.filter(i => selectedApprovals.has(i.approvalId));
+        const allOn = items.length > 0 && chosen.length === items.length;
+
+        return (
+            <div className="flex items-center gap-3 flex-wrap bg-white rounded-[8px] px-4 py-2.5 mb-3" style={CARD_STYLE}>
+                <button
+                    onClick={() => setSelectedApprovals(allOn ? new Set() : new Set(items.map(i => i.approvalId)))}
+                    className="flex items-center gap-1.5 text-[11.5px] font-[500] text-gray-600 hover:text-gray-900 transition-colors">
+                    {allOn ? <PiCheckSquare className="text-[#6366F1] text-[15px]" /> : <PiSquare className="text-gray-300 text-[15px]" />}
+                    {allOn ? 'Deselect all' : 'Select all'}
+                </button>
+
+                <span className="h-4 w-px bg-gray-200" />
+
+                {chosen.length === 0 ? (
+                    <p className="text-[11.5px] text-gray-400">Select items to review them together</p>
+                ) : (
+                    <p className="text-[11.5px] text-gray-600">
+                        <span className="font-[600] text-gray-900">{chosen.length}</span> selected ·{' '}
+                        <span className="font-mono font-[600] text-gray-900">
+                            {fmtCurrency(chosen.reduce((s, i) => s + (i.amount || 0), 0))}
+                        </span>
+                    </p>
+                )}
+
+                <div className="ml-auto flex items-center gap-1.5">
+                    <button
+                        onClick={() => { setBulkComments(""); setBulkConfirm({ decision: 'REJECTED', items: chosen }); }}
+                        disabled={chosen.length === 0 || isBulkRunning}
+                        className="px-3 py-1.5 rounded-md text-[11.5px] font-[500] text-white bg-rose-500 hover:bg-rose-600 transition-all disabled:opacity-35 disabled:cursor-not-allowed">
+                        Reject{chosen.length > 0 ? ` (${chosen.length})` : ''}
+                    </button>
+                    <button
+                        onClick={() => { setBulkComments(""); setBulkConfirm({ decision: 'APPROVED', items: chosen }); }}
+                        disabled={chosen.length === 0 || isBulkRunning}
+                        className="px-3 py-1.5 rounded-md text-[11.5px] font-[500] text-white bg-emerald-600 hover:bg-emerald-700 transition-all disabled:opacity-35 disabled:cursor-not-allowed">
+                        Approve{chosen.length > 0 ? ` (${chosen.length})` : ''}
+                    </button>
+                </div>
+            </div>
+        );
+    };
 
     useEffect(() => {
         if (expenses.length > 0) setActiveTab('expenses');
@@ -370,10 +488,13 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                             ))}
                         </div>
                     ) : (
-                        <TableShell cols={['Date', 'Title / Category', 'Originator', 'Amount', 'Actions']}>
+                        <>
+                        <BulkBar items={expenses.map(e => ({ approvalId: (e as any).approvalId, amount: e.amount }))} />
+                        <TableShell cols={['', 'Date', 'Title / Category', 'Originator', 'Amount', 'Actions']}>
                             {expenses.map(exp => (
                                 <Fragment key={exp.id}>
-                                    <tr className="hover:bg-gray-50/60 transition-colors group" style={ROW_BORDER}>
+                                    <tr className={cn("hover:bg-gray-50/60 transition-colors group", selectedApprovals.has((exp as any).approvalId) && "bg-indigo-50/40")} style={ROW_BORDER}>
+                                        <td className="pl-5 pr-1 py-3.5"><SelectBox approvalId={(exp as any).approvalId} /></td>
                                         <td className="px-5 py-3.5 text-[12px] text-gray-400 whitespace-nowrap">{fmtDate(exp.createdAt)}</td>
                                         <td className="px-5 py-3.5">
                                             <p className="text-[13px] font-[500] text-gray-900">{exp.title}</p>
@@ -407,6 +528,7 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                                 </Fragment>
                             ))}
                         </TableShell>
+                        </>
                     )
                 )}
 
@@ -436,10 +558,13 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                             ))}
                         </div>
                     ) : (
-                        <TableShell cols={['Date', 'Title / Category', 'Originator', 'Amount', 'Actions']}>
+                        <>
+                        <BulkBar items={requisitions.map(r => ({ approvalId: (r as any).approvalId, amount: r.amount }))} />
+                        <TableShell cols={['', 'Date', 'Title / Category', 'Originator', 'Amount', 'Actions']}>
                             {requisitions.map(req => (
                                 <Fragment key={req.id}>
-                                    <tr className="hover:bg-gray-50/60 transition-colors" style={ROW_BORDER}>
+                                    <tr className={cn("hover:bg-gray-50/60 transition-colors", selectedApprovals.has((req as any).approvalId) && "bg-indigo-50/40")} style={ROW_BORDER}>
+                                        <td className="pl-5 pr-1 py-3.5"><SelectBox approvalId={(req as any).approvalId} /></td>
                                         <td className="px-5 py-3.5 text-[12px] text-gray-400 whitespace-nowrap">{fmtDate(req.createdAt)}</td>
                                         <td className="px-5 py-3.5">
                                             <p className="text-[13px] font-[500] text-gray-900">{req.title}</p>
@@ -465,6 +590,7 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                                 </Fragment>
                             ))}
                         </TableShell>
+                        </>
                     )
                 )}
 
@@ -495,12 +621,15 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                             })}
                         </div>
                     ) : (
-                        <TableShell cols={['Date', 'Period / Plan', 'Originator', 'Amount', 'Actions']}>
+                        <>
+                        <BulkBar items={budgets.map(b => ({ approvalId: (b as any).approvalId, amount: b.totalAmount }))} />
+                        <TableShell cols={['', 'Date', 'Period / Plan', 'Originator', 'Amount', 'Actions']}>
                             {budgets.map(b => {
                                 const title = `${MONTHS_SHORT[b.month - 1]} ${b.year} Budget`;
                                 return (
                                     <Fragment key={b.id}>
-                                        <tr className="hover:bg-gray-50/60 transition-colors" style={ROW_BORDER}>
+                                        <tr className={cn("hover:bg-gray-50/60 transition-colors", selectedApprovals.has((b as any).approvalId) && "bg-indigo-50/40")} style={ROW_BORDER}>
+                                            <td className="pl-5 pr-1 py-3.5"><SelectBox approvalId={(b as any).approvalId} /></td>
                                             <td className="px-5 py-3.5 text-[12px] text-gray-400 whitespace-nowrap">{fmtDate(b.createdAt)}</td>
                                             <td className="px-5 py-3.5">
                                                 <p className="text-[13px] font-[500] text-gray-900">{title}</p>
@@ -527,6 +656,7 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                                 );
                             })}
                         </TableShell>
+                        </>
                     )
                 )}
 
@@ -562,10 +692,13 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                             ))}
                         </div>
                     ) : (
-                        <TableShell cols={['Due Date', 'Invoice / Vendor', 'Originator', 'Amount', 'Actions']}>
+                        <>
+                        <BulkBar items={invoices.map(i => ({ approvalId: (i as any).approvalId, amount: i.amount }))} />
+                        <TableShell cols={['', 'Due Date', 'Invoice / Vendor', 'Originator', 'Amount', 'Actions']}>
                             {invoices.map(inv => (
                                 <Fragment key={inv.id}>
-                                    <tr className="hover:bg-gray-50/60 transition-colors" style={ROW_BORDER}>
+                                    <tr className={cn("hover:bg-gray-50/60 transition-colors", selectedApprovals.has((inv as any).approvalId) && "bg-indigo-50/40")} style={ROW_BORDER}>
+                                        <td className="pl-5 pr-1 py-3.5"><SelectBox approvalId={(inv as any).approvalId} /></td>
                                         <td className="px-5 py-3.5 text-[12px] text-gray-400 whitespace-nowrap">{fmtDate(inv.dueDate)}</td>
                                         <td className="px-5 py-3.5">
                                             <p className="text-[13px] font-[500] text-gray-900">{inv.invoiceNumber}</p>
@@ -599,6 +732,7 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                                 </Fragment>
                             ))}
                         </TableShell>
+                        </>
                     )
                 )}
 
@@ -695,6 +829,130 @@ export function ApprovalQueue({ expenses, requisitions, budgets = [], invoices =
                 <DelegateModal approvalId={delegateData.id} itemTitle={delegateData.title}
                     onClose={() => setDelegateData(null)}
                     onSuccess={() => { showToast("Approval delegated", "success"); router.refresh(); }} />
+            )}
+
+            {/* ── BULK CONFIRM ── */}
+            {mounted && bulkConfirm && createPortal(
+                <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4"
+                    style={{ background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)' }}
+                    onClick={() => !isBulkRunning && setBulkConfirm(null)}>
+                    <div className="w-full max-w-[440px] bg-white rounded-[10px] overflow-hidden"
+                        style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.18)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                            <h3 className="text-[14px] font-[600] text-gray-900">
+                                {bulkConfirm.decision === 'APPROVED' ? 'Approve' : 'Reject'} {bulkConfirm.items.length} item
+                                {bulkConfirm.items.length !== 1 ? 's' : ''}
+                            </h3>
+                            <p className="text-[12px] text-gray-400 mt-1">
+                                Reviewed one after another so each keeps its own workflow step.
+                            </p>
+                        </div>
+
+                        <div className="px-5 py-4 space-y-3.5">
+                            <div className="flex items-center justify-between px-3 py-2.5 rounded-[7px] bg-gray-50" style={CARD_STYLE}>
+                                <span className="text-[12px] text-gray-500">Total value</span>
+                                <span className="text-[14px] font-[700] font-mono text-gray-900">
+                                    {fmtCurrency(bulkConfirm.items.reduce((s, i) => s + (i.amount || 0), 0))}
+                                </span>
+                            </div>
+
+                            <div>
+                                <label className="block text-[11.5px] font-[500] text-gray-400 mb-1.5">
+                                    Comment {bulkConfirm.decision === 'REJECTED'
+                                        ? <span className="text-gray-300 font-[400]">(recommended)</span>
+                                        : <span className="text-gray-300 font-[400]">(optional)</span>}
+                                </label>
+                                <input type="text" value={bulkComments} onChange={e => setBulkComments(e.target.value)}
+                                    placeholder={bulkConfirm.decision === 'REJECTED' ? 'Why are these being rejected?' : 'Applied to every selected item'}
+                                    className="w-full rounded-[6px] px-3 py-[10px] text-[13px] text-gray-900 placeholder:text-gray-300 outline-none focus:ring-1 focus:ring-[#6366F1] bg-white"
+                                    style={{ border: '1px solid rgba(0,0,0,0.09)' }} />
+                                <p className="text-[11px] text-gray-400 mt-1.5">
+                                    The same comment is recorded against each item.
+                                </p>
+                            </div>
+
+                            {bulkConfirm.decision === 'APPROVED' && (
+                                <p className="text-[11.5px] text-gray-400 leading-snug">
+                                    Anything above your approval limit, or already decided by someone else, will be
+                                    skipped and listed afterwards.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="px-5 py-3.5 flex items-center justify-end gap-2 bg-gray-50/60"
+                            style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                            <button onClick={() => setBulkConfirm(null)} disabled={isBulkRunning}
+                                className="px-3 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-gray-500 hover:bg-gray-100 transition-colors disabled:opacity-50">
+                                Cancel
+                            </button>
+                            <button onClick={runBulkApproval} disabled={isBulkRunning}
+                                className={cn(
+                                    "px-3.5 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-white transition-colors disabled:opacity-50",
+                                    bulkConfirm.decision === 'APPROVED' ? 'bg-emerald-600 hover:bg-emerald-700' : 'bg-rose-500 hover:bg-rose-600'
+                                )}>
+                                {isBulkRunning
+                                    ? `Processing ${bulkConfirm.items.length}…`
+                                    : `${bulkConfirm.decision === 'APPROVED' ? 'Approve' : 'Reject'} ${bulkConfirm.items.length}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* ── BULK RESULTS (only when something failed) ── */}
+            {mounted && bulkResult && createPortal(
+                <div className="fixed inset-0 z-[9998] flex items-center justify-center p-4"
+                    style={{ background: 'rgba(15,23,42,0.35)', backdropFilter: 'blur(2px)' }}
+                    onClick={() => setBulkResult(null)}>
+                    <div className="w-full max-w-[560px] max-h-[80vh] bg-white rounded-[10px] overflow-hidden flex flex-col"
+                        style={{ boxShadow: '0 20px 50px rgba(0,0,0,0.18)' }}
+                        onClick={e => e.stopPropagation()}>
+
+                        <div className="px-5 py-4 flex items-start justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                            <div>
+                                <h3 className="text-[14px] font-[600] text-gray-900">Bulk review result</h3>
+                                <p className="text-[12px] text-gray-400 mt-1">
+                                    {bulkResult.succeeded} of {bulkResult.requested} processed · {bulkResult.failed} skipped
+                                </p>
+                            </div>
+                            <button onClick={() => setBulkResult(null)}
+                                className="p-1 text-gray-300 hover:text-gray-500 rounded-[5px] transition-colors">
+                                <PiX className="text-[15px]" />
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto px-5 py-4 space-y-2">
+                            {(bulkResult.results || []).map((r: any) => (
+                                <div key={r.approvalId}
+                                    className={cn("flex items-start gap-2.5 px-3 py-2.5 rounded-[7px]",
+                                        r.ok ? "bg-emerald-50/50" : "bg-rose-50/50")}
+                                    style={{ border: `1px solid ${r.ok ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}` }}>
+                                    {r.ok
+                                        ? <PiCheckCircle className="text-emerald-600 text-[14px] mt-[1px] shrink-0" />
+                                        : <PiWarningCircle className="text-rose-500 text-[14px] mt-[1px] shrink-0" />}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[12.5px] font-[500] text-gray-800 truncate">
+                                            {r.label}
+                                            <span className="ml-2 font-mono text-[11.5px] text-gray-400">{fmtCurrency(r.amount || 0)}</span>
+                                        </p>
+                                        {r.error && <p className="text-[11.5px] text-rose-600 mt-0.5 break-words">{r.error}</p>}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="px-5 py-3.5 flex justify-end bg-gray-50/60" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                            <button onClick={() => setBulkResult(null)}
+                                className="px-3.5 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-white bg-gray-700 hover:bg-gray-800 transition-colors">
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
             )}
         </div>
     );
