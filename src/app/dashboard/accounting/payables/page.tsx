@@ -6,6 +6,7 @@ import {
 } from "react-icons/pi";
 import { PayableInvoiceCard } from "@/components/accounting/PayableInvoiceCard";
 import { PayablesLedger } from "@/components/accounting/PayablesLedger";
+import { PayablesHeaderActions } from "@/components/accounting/PayablesHeaderActions";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 
@@ -23,6 +24,12 @@ export default async function AccountsPayablePage() {
         amount: Number(inv.amount),
         taxAmount: Number(inv.taxAmount)
     }));
+
+    const vendors = await prisma.vendor.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true },
+        orderBy: { name: 'asc' }
+    });
 
     // Outstanding = still owed and actionable here. DRAFT hasn't been submitted yet
     // and REJECTED needs resubmission elsewhere, so neither belongs on this ledger.
@@ -77,9 +84,12 @@ export default async function AccountsPayablePage() {
     return (
         <div className="space-y-6 pb-24">
             {/* Header */}
-            <div>
-                <h1 className="text-[20px] font-[600] text-gray-900 tracking-tight">Accounts Payable</h1>
-                <p className="text-[12.5px] text-gray-400 mt-0.5">Vendor invoices and payment obligations</p>
+            <div className="flex items-start justify-between">
+                <div>
+                    <h1 className="text-[20px] font-[600] text-gray-900 tracking-tight">Accounts Payable</h1>
+                    <p className="text-[12.5px] text-gray-400 mt-0.5">Vendor invoices and payment obligations</p>
+                </div>
+                <PayablesHeaderActions vendors={vendors} />
             </div>
 
             {/* Summary Stats */}

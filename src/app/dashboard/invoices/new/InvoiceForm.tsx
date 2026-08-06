@@ -14,6 +14,8 @@ import { CustomSelect } from "@/components/ui/CustomSelect";
 
 interface InvoiceFormProps {
     vendors: Array<{ id: string; name: string }>;
+    onSuccess?: () => void;
+    onCancel?: () => void;
 }
 
 interface InvoiceItem {
@@ -42,7 +44,7 @@ const LABEL_CLASS = "block text-[11.5px] font-[500] text-gray-400 mb-1.5";
 
 const CURRENCIES: Record<string, string> = { KES: 'KES', USD: 'USD', SSP: 'SSP' };
 
-export function InvoiceForm({ vendors }: InvoiceFormProps) {
+export function InvoiceForm({ vendors, onSuccess, onCancel }: InvoiceFormProps) {
     const router        = useRouter();
     const { showToast } = useToast();
     const searchParams  = useSearchParams();
@@ -107,7 +109,11 @@ export function InvoiceForm({ vendors }: InvoiceFormProps) {
             });
             if (!res.ok) { const json = await res.json(); throw new Error(json.error || "Failed to create invoice"); }
             showToast("Invoice recorded successfully!", "success");
-            router.push("/dashboard/invoices");
+            if (onSuccess) {
+                onSuccess();
+            } else {
+                router.push("/dashboard/invoices");
+            }
             router.refresh();
         } catch (error: any) {
             showToast(error.message, "error");
@@ -280,7 +286,7 @@ export function InvoiceForm({ vendors }: InvoiceFormProps) {
                                 ? <><PiSpinner className="animate-spin text-[15px]" /> Saving…</>
                                 : <><PiFloppyDisk className="text-[15px]" /> Save Invoice</>}
                         </button>
-                        <button type="button" onClick={() => router.back()}
+                        <button type="button" onClick={() => onCancel ? onCancel() : router.back()}
                             className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-[6px] text-[13px] font-[500] text-gray-500 hover:bg-gray-50 transition-colors"
                             style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
                             Cancel
