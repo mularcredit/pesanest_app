@@ -188,6 +188,19 @@ export function PaymentQueue({
     const [selectedInvoices, setSelectedInvoices] = useState<Set<string>>(new Set());
     const [selectedRequisitions, setSelectedRequisitions] = useState<Set<string>>(new Set());
     const [selectedBudgets, setSelectedBudgets] = useState<Set<string>>(new Set());
+
+    // Bulk processing of existing batches (authorize / reject / pay / close).
+    // One set is enough — the stage tabs are mutually exclusive and selection is
+    // cleared whenever the tab changes, so ids can never leak across stages.
+    const [selectedBatches, setSelectedBatches] = useState<Set<string>>(new Set());
+    const [bulkConfirm, setBulkConfirm] = useState<{
+        action: 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE';
+        ids: string[];
+        total: number;
+        currency: string;
+    } | null>(null);
+    const [bulkResult, setBulkResult] = useState<any>(null);
+    const [isBulkRunning, setIsBulkRunning] = useState(false);
     const [failureDetails, setFailureDetails] = useState<{ details: any[], summary: any } | null>(null);
     const [isFailureModalOpen, setIsFailureModalOpen] = useState(false);
     const [isProcessing, setIsProcessing] = useState(false);
@@ -312,6 +325,145 @@ export function PaymentQueue({
 
     const [selectedFile, setSelectedFile] = useState<File | null>(null);
     const [reconcileBatch, setReconcileBatch] = useState<BatchForReconcile | null>(null);
+
+    // ── Bulk stage processing ───────────────────────────────────────────────
+
+    // Selection is per-stage; leaving a tab must not carry ids into the next one
+    // where a different action would be applied to them.
+    useEffect(() => {
+        setSelectedBatches(new Set());
+        setBulkConfirm(null);
+    }, [activeTab]);
+
+    const toggleBatch = (id: string) => {
+        setSelectedBatches(prev => {
+            const next = new Set(prev);
+            next.has(id) ? next.delete(id) : next.add(id);
+            return next;
+        });
+    };
+
+    const toggleAllBatches = (batches: { id: string }[]) => {
+        setSelectedBatches(prev => {
+            const allOn = batches.length > 0 && batches.every(b => prev.has(b.id));
+            return allOn ? new Set() : new Set(batches.map(b => b.id));
+        });
+    };
+
+    const openBulkConfirm = (
+        action: 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE',
+        batches: { id: string; amount: number; currency?: string }[]
+    ) => {
+        const chosen = batches.filter(b => selectedBatches.has(b.id));
+        if (chosen.length === 0) return;
+        setBulkConfirm({
+            action,
+            ids: chosen.map(b => b.id),
+            total: chosen.reduce((s, b) => s + (b.amount || 0), 0),
+            currency: chosen[0]?.currency || 'KES',
+        });
+    };
+
+    const runBulk = async () => {
+        if (!bulkConfirm) return;
+        const { action, ids } = bulkConfirm;
+
+        setIsBulkRunning(true);
+        try {
+            const res = await fetch('/api/payments/bulk-action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ paymentIds: ids, action, paymentMethod: paymentMethod || 'WALLET' }),
+            });
+            const data = await res.json();
+            if (!res.ok) throw new Error(data.error || 'Bulk action failed');
+
+            setBulkConfirm(null);
+            setSelectedBatches(new Set());
+
+            const verb = action === 'AUTHORIZE' ? 'authorized'
+                : action === 'REJECT' ? 'rejected'
+                : action === 'DISBURSE' ? 'paid' : 'closed';
+
+            if (data.failed > 0) {
+                // Keep the detail on screen — a partial run needs reading, not a toast.
+                setBulkResult(data);
+                showToast(`${data.succeeded} ${verb}, ${data.failed} failed`, data.succeeded > 0 ? 'warning' : 'error');
+            } else {
+                showToast(`${data.succeeded} payment${data.succeeded !== 1 ? 's' : ''} ${verb}`, 'success');
+            }
+
+            router.refresh();
+            if (data.succeeded > 0) {
+                if (action === 'AUTHORIZE') setActiveTab('disbursements');
+                else if (action === 'DISBURSE') setActiveTab('closing');
+            }
+        } catch (err: any) {
+            showToast(err.message || 'Bulk action failed', 'error');
+        } finally {
+            setIsBulkRunning(false);
+        }
+    };
+
+    const BatchCheckbox = ({ id }: { id: string }) => (
+        <button
+            onClick={(e) => { e.stopPropagation(); toggleBatch(id); }}
+            aria-label={selectedBatches.has(id) ? 'Deselect batch' : 'Select batch'}
+            className="p-0.5 rounded hover:bg-slate-100 transition-colors shrink-0"
+        >
+            {selectedBatches.has(id)
+                ? <CheckSquare className="text-[#6366F1] text-[17px]" />
+                : <Square className="text-slate-300 text-[17px]" />}
+        </button>
+    );
+
+    const BulkBar = ({
+        batches, actions,
+    }: {
+        batches: { id: string; amount: number; currency?: string }[];
+        actions: { action: 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE'; label: string; cls: string }[];
+    }) => {
+        const chosen = batches.filter(b => selectedBatches.has(b.id));
+        const allOn = batches.length > 0 && chosen.length === batches.length;
+
+        return (
+            <div className="flex items-center gap-3 flex-wrap bg-white rounded-[8px] px-4 py-2.5"
+                style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                <button onClick={() => toggleAllBatches(batches)}
+                    className="flex items-center gap-1.5 text-[11.5px] font-[500] text-slate-600 hover:text-slate-900 transition-colors">
+                    {allOn ? <CheckSquare className="text-[#6366F1] text-[15px]" /> : <Square className="text-slate-300 text-[15px]" />}
+                    {allOn ? 'Deselect all' : 'Select all'}
+                </button>
+
+                <span className="h-4 w-px bg-slate-200" />
+
+                {chosen.length === 0 ? (
+                    <p className="text-[11.5px] text-slate-400">Select batches to process them together</p>
+                ) : (
+                    <p className="text-[11.5px] text-slate-600">
+                        <span className="font-[600] text-slate-900">{chosen.length}</span> selected ·{' '}
+                        <span className="font-mono font-[600] text-slate-900">
+                            {formatAmount(chosen.reduce((s, b) => s + (b.amount || 0), 0), chosen[0]?.currency || 'KES')}
+                        </span>
+                    </p>
+                )}
+
+                <div className="ml-auto flex items-center gap-1.5">
+                    {actions.map(a => (
+                        <button key={a.action}
+                            onClick={() => openBulkConfirm(a.action, batches)}
+                            disabled={chosen.length === 0 || isProcessing || isBulkRunning}
+                            className={cn(
+                                "px-3 py-1.5 rounded-md text-[11.5px] font-[500] text-white transition-all disabled:opacity-35 disabled:cursor-not-allowed",
+                                a.cls
+                            )}>
+                            {a.label}{chosen.length > 0 ? ` (${chosen.length})` : ''}
+                        </button>
+                    ))}
+                </div>
+            </div>
+        );
+    };
 
     const handleAuthorization = (paymentId: string, action: 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE') => {
         const batch = [...pendingPayments, ...authorizedPayments, ...paidPayments].find(p => p.id === paymentId);
@@ -917,6 +1069,16 @@ export function PaymentQueue({
                                 </div>
                             </div>
 
+                            {pendingPayments.length > 0 && (
+                                <BulkBar
+                                    batches={pendingPayments}
+                                    actions={[
+                                        { action: 'REJECT', label: 'Reject', cls: 'bg-orange-500 hover:bg-orange-600' },
+                                        { action: 'AUTHORIZE', label: 'Authorize', cls: 'bg-emerald-600 hover:bg-emerald-700' },
+                                    ]}
+                                />
+                            )}
+
                             {pendingPayments.length === 0 ? (
  <div className="bg-white rounded-[8px] p-12 text-center" style={{border:'1px solid rgba(0,0,0,0.09)'}}>
                                     <div className="w-16 h-16 rounded-full bg-slate-50 border border-slate-100 flex items-center justify-center mx-auto mb-4">
@@ -930,8 +1092,11 @@ export function PaymentQueue({
                                     {pendingPayments.map(batch => (
                                         <div key={batch.id} className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-md transition-all p-5 flex flex-col group">
                                             <div className="flex justify-between items-start mb-4">
-                                                <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">
-                                                    <PiStackSimple className="text-xl text-slate-400" />
+                                                <div className="flex items-center gap-2">
+                                                    <BatchCheckbox id={batch.id} />
+                                                    <div className="w-10 h-10 rounded-xl bg-slate-50 border border-slate-100 flex items-center justify-center shadow-sm">
+                                                        <PiStackSimple className="text-xl text-slate-400" />
+                                                    </div>
                                                 </div>
                                                 <span className="px-2.5 py-1 bg-amber-50 text-amber-700 rounded-md text-[10px] font-semibold uppercase tracking-wider border border-amber-100">
                                                     Pending Auth
@@ -984,6 +1149,7 @@ export function PaymentQueue({
                                         <table className="w-full text-left text-[12px] whitespace-nowrap min-w-[800px]">
                                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-semibold">
                                                 <tr>
+                                                    <th className="pl-4 pr-1 py-3 w-8"></th>
                                                     <th className="px-4 py-3 w-28">Date</th>
                                                     <th className="px-4 py-3">Ref ID</th>
                                                     <th className="px-4 py-3">Originator</th>
@@ -993,7 +1159,8 @@ export function PaymentQueue({
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {pendingPayments.map(batch => (
-                                                    <tr key={batch.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <tr key={batch.id} className={cn("hover:bg-slate-50 transition-colors group", selectedBatches.has(batch.id) && "bg-indigo-50/40")}>
+                                                        <td className="pl-4 pr-1 py-3"><BatchCheckbox id={batch.id} /></td>
                                                         <td className="px-4 py-3 text-slate-500">{formatDate(batch.createdAt)}</td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">BTH-{batch.id.substring(0, 8).toUpperCase()}</td>
                                                         <td className="px-4 py-3">
@@ -1033,6 +1200,15 @@ export function PaymentQueue({
                                 </div>
                             </div>
 
+                            {authorizedPayments.length > 0 && (
+                                <BulkBar
+                                    batches={authorizedPayments}
+                                    actions={[
+                                        { action: 'DISBURSE', label: 'Pay', cls: 'bg-emerald-600 hover:bg-emerald-700' },
+                                    ]}
+                                />
+                            )}
+
                             {authorizedPayments.length === 0 ? (
  <div className="p-8 text-center border border-slate-300">
                                     <p className="font-mono text-xs font-semibold text-slate-900 tracking-widest uppercase">No Payments Ready for Payout</p>
@@ -1044,6 +1220,7 @@ export function PaymentQueue({
                                         <table className="w-full text-left text-[12px] whitespace-nowrap">
                                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-semibold">
                                                 <tr>
+                                                    <th className="pl-4 pr-1 py-3 w-8"></th>
                                                     <th className="px-4 py-3">Date</th>
                                                     <th className="px-4 py-3">Ref ID</th>
                                                     <th className="px-4 py-3">Beneficiary</th>
@@ -1053,7 +1230,8 @@ export function PaymentQueue({
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {authorizedPayments.map(batch => (
-                                                    <tr key={batch.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <tr key={batch.id} className={cn("hover:bg-slate-50 transition-colors group", selectedBatches.has(batch.id) && "bg-indigo-50/40")}>
+                                                        <td className="pl-4 pr-1 py-3"><BatchCheckbox id={batch.id} /></td>
                                                         <td className="px-4 py-3 text-slate-500">{formatDate(batch.createdAt)}</td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">BTH-{batch.id.substring(0, 8).toUpperCase()}</td>
                                                         <td className="px-4 py-3">
@@ -1109,6 +1287,15 @@ export function PaymentQueue({
                                 </div>
                             </div>
 
+                            {paidPayments.length > 0 && (
+                                <BulkBar
+                                    batches={paidPayments}
+                                    actions={[
+                                        { action: 'CLOSE', label: 'Close', cls: 'bg-[#6366F1] hover:bg-indigo-700' },
+                                    ]}
+                                />
+                            )}
+
                             {paidPayments.length === 0 ? (
  <div className="p-8 text-center border border-slate-300">
                                     <p className="font-mono text-xs font-semibold text-slate-900 tracking-widest uppercase">No Payments Pending Closure</p>
@@ -1120,6 +1307,7 @@ export function PaymentQueue({
                                         <table className="w-full text-left text-[12px] whitespace-nowrap">
                                             <thead className="bg-slate-50 border-b border-slate-200 text-slate-500 uppercase tracking-wider text-[10px] font-semibold">
                                                 <tr>
+                                                    <th className="pl-4 pr-1 py-3 w-8"></th>
                                                     <th className="px-4 py-3">Payment Date</th>
                                                     <th className="px-4 py-3">Ref ID</th>
                                                     <th className="px-4 py-3">Beneficiary</th>
@@ -1129,7 +1317,8 @@ export function PaymentQueue({
                                             </thead>
                                             <tbody className="divide-y divide-slate-100">
                                                 {paidPayments.map(batch => (
-                                                    <tr key={batch.id} className="hover:bg-slate-50 transition-colors group">
+                                                    <tr key={batch.id} className={cn("hover:bg-slate-50 transition-colors group", selectedBatches.has(batch.id) && "bg-indigo-50/40")}>
+                                                        <td className="pl-4 pr-1 py-3"><BatchCheckbox id={batch.id} /></td>
                                                         <td className="px-4 py-3 text-slate-500">{formatDate(batch.createdAt)}</td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">BTH-{batch.id.substring(0, 8).toUpperCase()}</td>
                                                         <td className="px-4 py-3">
@@ -1269,6 +1458,137 @@ export function PaymentQueue({
                         </div>
                     )}
             </div>
+
+            {/* Bulk confirmation */}
+            {mounted && bulkConfirm && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/30" onClick={() => !isBulkRunning && setBulkConfirm(null)} />
+                    <div className="relative bg-white rounded-[12px] w-full max-w-[440px] overflow-hidden z-[10000]"
+                        style={{ border: '1px solid rgba(0,0,0,0.09)', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+
+                        <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                            <h3 className="text-[14px] font-[600] text-slate-900">
+                                {bulkConfirm.action === 'AUTHORIZE' ? 'Authorize'
+                                    : bulkConfirm.action === 'REJECT' ? 'Reject'
+                                    : bulkConfirm.action === 'DISBURSE' ? 'Pay'
+                                    : 'Close'}{' '}
+                                {bulkConfirm.ids.length} batch{bulkConfirm.ids.length !== 1 ? 'es' : ''}
+                            </h3>
+                            <p className="text-[12px] text-slate-400 mt-1">
+                                {bulkConfirm.action === 'DISBURSE'
+                                    ? 'Processed one after another so the wallet balance stays accurate.'
+                                    : 'This action cannot be undone.'}
+                            </p>
+                        </div>
+
+                        <div className="px-5 py-4 space-y-3">
+                            <div className="flex items-center justify-between px-3 py-2.5 rounded-[7px] bg-slate-50"
+                                style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                                <span className="text-[12px] text-slate-500">Total value</span>
+                                <span className="text-[14px] font-[700] font-mono text-slate-900">
+                                    {formatAmount(bulkConfirm.total, bulkConfirm.currency)}
+                                </span>
+                            </div>
+
+                            {bulkConfirm.action === 'DISBURSE' && (
+                                <div className="rounded-[7px] px-3 py-2.5 bg-amber-50/70 flex items-start gap-2"
+                                    style={{ border: '1px solid rgba(245,158,11,0.25)' }}>
+                                    <PiWarningCircle className="text-amber-500 text-[14px] mt-[1px] shrink-0" />
+                                    <p className="text-[11.5px] text-slate-600 leading-snug">
+                                        Paying via <span className="font-[600]">{paymentMethod}</span>. If the balance runs
+                                        out partway, the remaining batches fail and are left untouched.
+                                    </p>
+                                </div>
+                            )}
+
+                            {bulkConfirm.action === 'AUTHORIZE' && (
+                                <p className="text-[11.5px] text-slate-400 leading-snug">
+                                    Any batch you created yourself will be skipped — a maker can't authorise their own payment.
+                                </p>
+                            )}
+                        </div>
+
+                        <div className="px-5 py-3.5 flex items-center justify-end gap-2 bg-slate-50/60"
+                            style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                            <button onClick={() => setBulkConfirm(null)} disabled={isBulkRunning}
+                                className="px-3 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-slate-500 hover:bg-slate-100 transition-colors disabled:opacity-50">
+                                Cancel
+                            </button>
+                            <button onClick={runBulk} disabled={isBulkRunning}
+                                className={cn(
+                                    "px-3.5 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-white transition-colors disabled:opacity-50",
+                                    bulkConfirm.action === 'REJECT' ? 'bg-orange-500 hover:bg-orange-600'
+                                        : bulkConfirm.action === 'CLOSE' ? 'bg-[#6366F1] hover:bg-indigo-700'
+                                        : 'bg-emerald-600 hover:bg-emerald-700'
+                                )}>
+                                {isBulkRunning
+                                    ? `Processing ${bulkConfirm.ids.length}…`
+                                    : `Confirm ${bulkConfirm.ids.length}`}
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
+
+            {/* Bulk results — shown when part of a batch failed */}
+            {mounted && bulkResult && createPortal(
+                <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
+                    <div className="absolute inset-0 bg-black/30" onClick={() => setBulkResult(null)} />
+                    <div className="relative bg-white rounded-[12px] w-full max-w-[560px] max-h-[80vh] overflow-hidden z-[10000] flex flex-col"
+                        style={{ border: '1px solid rgba(0,0,0,0.09)', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+
+                        <div className="px-5 py-4 flex items-start justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                            <div>
+                                <h3 className="text-[14px] font-[600] text-slate-900">Bulk result</h3>
+                                <p className="text-[12px] text-slate-400 mt-1">
+                                    {bulkResult.succeeded} of {bulkResult.requested} succeeded · {bulkResult.failed} failed
+                                </p>
+                            </div>
+                            <button onClick={() => setBulkResult(null)}
+                                className="p-1 text-slate-300 hover:text-slate-500 rounded-[5px] transition-colors">
+                                <PiX className="text-[15px]" />
+                            </button>
+                        </div>
+
+                        <div className="overflow-y-auto px-5 py-4 space-y-2">
+                            {(bulkResult.results || []).map((r: any) => (
+                                <div key={r.paymentId}
+                                    className={cn("flex items-start gap-2.5 px-3 py-2.5 rounded-[7px]",
+                                        r.ok ? "bg-emerald-50/50" : "bg-rose-50/50")}
+                                    style={{ border: `1px solid ${r.ok ? 'rgba(16,185,129,0.2)' : 'rgba(244,63,94,0.2)'}` }}>
+                                    {r.ok
+                                        ? <PiCheckCircle className="text-emerald-600 text-[14px] mt-[1px] shrink-0" />
+                                        : <PiWarningCircle className="text-rose-500 text-[14px] mt-[1px] shrink-0" />}
+                                    <div className="min-w-0 flex-1">
+                                        <p className="text-[12.5px] font-[500] text-slate-800">
+                                            BTH-{String(r.paymentId).substring(0, 8).toUpperCase()}
+                                            <span className="ml-2 font-mono text-[11.5px] text-slate-400">
+                                                {formatAmount(r.amount || 0, bulkResult.currency || 'KES')}
+                                            </span>
+                                        </p>
+                                        {r.error && <p className="text-[11.5px] text-rose-600 mt-0.5 break-words">{r.error}</p>}
+                                        {r.ok && r.summary && (
+                                            <p className="text-[11.5px] text-slate-400 mt-0.5">
+                                                {r.summary.success} item{r.summary.success !== 1 ? 's' : ''} paid
+                                                {r.summary.failed > 0 ? `, ${r.summary.failed} failed` : ''}
+                                            </p>
+                                        )}
+                                    </div>
+                                </div>
+                            ))}
+                        </div>
+
+                        <div className="px-5 py-3.5 flex justify-end bg-slate-50/60" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                            <button onClick={() => setBulkResult(null)}
+                                className="px-3.5 py-[7px] rounded-[6px] text-[12.5px] font-[500] text-white bg-slate-700 hover:bg-slate-800 transition-colors">
+                                Done
+                            </button>
+                        </div>
+                    </div>
+                </div>,
+                document.body
+            )}
 
             {/* Confirmation Modal */}
             {mounted && confirmationModal && confirmationModal.isOpen && createPortal(
