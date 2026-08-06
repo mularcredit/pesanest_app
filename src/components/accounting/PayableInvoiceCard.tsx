@@ -1,7 +1,7 @@
 "use client";
 
 import { useState } from "react";
-import { PiBuildings, PiCurrencyDollar } from "react-icons/pi";
+import { PiBuildings, PiCurrencyDollar, PiClock } from "react-icons/pi";
 import { cn } from "@/lib/utils";
 import { PayInvoiceModal } from "@/components/accounting/PayInvoiceModal";
 
@@ -30,6 +30,7 @@ const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' }
 export function PayableInvoiceCard({ invoice, variant = 'upcoming' }: PayableInvoiceCardProps) {
     const [showPayModal, setShowPayModal] = useState(false);
     const isOverdue = variant === 'overdue';
+    const canPay = invoice.status === 'APPROVED';
 
     return (
         <>
@@ -56,11 +57,19 @@ export function PayableInvoiceCard({ invoice, variant = 'upcoming' }: PayableInv
                             Due {new Date(invoice.dueDate).toLocaleDateString()}
                         </p>
                     </div>
-                    <button onClick={() => setShowPayModal(true)}
-                        className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[11.5px] font-[500] text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">
-                        <PiCurrencyDollar className="text-[13px]" />
-                        Pay Now
-                    </button>
+                    {canPay ? (
+                        <button onClick={() => setShowPayModal(true)}
+                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[11.5px] font-[500] text-white bg-emerald-600 hover:bg-emerald-700 transition-colors">
+                            <PiCurrencyDollar className="text-[13px]" />
+                            Pay Now
+                        </button>
+                    ) : (
+                        <span className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[11.5px] font-[500] text-amber-600 bg-amber-50"
+                            title="This invoice must be approved before it can be paid">
+                            <PiClock className="text-[13px]" />
+                            Awaiting Approval
+                        </span>
+                    )}
                 </div>
             </div>
 

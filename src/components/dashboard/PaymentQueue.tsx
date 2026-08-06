@@ -1491,14 +1491,54 @@ export function PaymentQueue({
                             </div>
 
                             {bulkConfirm.action === 'DISBURSE' && (
-                                <div className="rounded-[7px] px-3 py-2.5 bg-amber-50/70 flex items-start gap-2"
-                                    style={{ border: '1px solid rgba(245,158,11,0.25)' }}>
-                                    <PiWarningCircle className="text-amber-500 text-[14px] mt-[1px] shrink-0" />
-                                    <p className="text-[11.5px] text-slate-600 leading-snug">
-                                        Paying via <span className="font-[600]">{paymentMethod}</span>. If the balance runs
-                                        out partway, the remaining batches fail and are left untouched.
-                                    </p>
-                                </div>
+                                <>
+                                    <div>
+                                        <label className="block text-[11px] font-[500] uppercase tracking-[0.07em] text-gray-400 mb-2">Payment Route</label>
+                                        <div className="flex p-0.5 rounded-[7px] bg-gray-100" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                                            <button onClick={() => setPaymentMethod('WALLET')}
+                                                className={cn("flex-1 py-2 text-[11.5px] font-[600] rounded-[6px] transition-all",
+                                                    paymentMethod === 'WALLET' ? "bg-white text-[#6366F1] shadow-sm" : "text-gray-500 hover:text-gray-700")}>
+                                                Direct (Paystack)
+                                            </button>
+                                            <button onClick={() => setPaymentMethod('BRANCH_WALLET')}
+                                                className={cn("flex-1 py-2 text-[11.5px] font-[600] rounded-[6px] transition-all",
+                                                    paymentMethod === 'BRANCH_WALLET' ? "bg-white text-emerald-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}>
+                                                Branch Internal
+                                            </button>
+                                            <button onClick={() => setPaymentMethod('CASH')}
+                                                className={cn("flex-1 py-2 text-[11.5px] font-[600] rounded-[6px] transition-all",
+                                                    paymentMethod === 'CASH' ? "bg-white text-amber-600 shadow-sm" : "text-gray-500 hover:text-gray-700")}>
+                                                Cash / Already Paid
+                                            </button>
+                                        </div>
+                                        <p className="text-[11px] text-gray-400 mt-1.5">
+                                            {paymentMethod === 'WALLET'
+                                                ? "Sends funds directly to each recipient's personal account via Paystack."
+                                                : paymentMethod === 'BRANCH_WALLET'
+                                                ? "Funds each branch's local digital wallet. No external transfer."
+                                                : "Batches were already paid in cash or offline. They'll be marked paid immediately with no gateway transfer."}
+                                        </p>
+                                    </div>
+
+                                    {paymentMethod === 'CASH' ? (
+                                        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-amber-50" style={{ border: '1px solid rgba(217,119,6,0.2)' }}>
+                                            <PiInfo className="text-amber-500 text-[14px] mt-0.5 shrink-0" />
+                                            <p className="text-[11.5px] text-amber-700 leading-relaxed">
+                                                All items in every selected batch will be marked as <strong>Paid</strong> immediately.
+                                                No funds will be moved from your wallet.
+                                            </p>
+                                        </div>
+                                    ) : (
+                                        <div className="rounded-[7px] px-3 py-2.5 bg-amber-50/70 flex items-start gap-2"
+                                            style={{ border: '1px solid rgba(245,158,11,0.25)' }}>
+                                            <PiWarningCircle className="text-amber-500 text-[14px] mt-[1px] shrink-0" />
+                                            <p className="text-[11.5px] text-slate-600 leading-snug">
+                                                Paying via <span className="font-[600]">{paymentMethod === 'WALLET' ? 'Direct (Paystack)' : 'Branch Internal'}</span>. If the balance runs
+                                                out partway, the remaining batches fail and are left untouched.
+                                            </p>
+                                        </div>
+                                    )}
+                                </>
                             )}
 
                             {bulkConfirm.action === 'AUTHORIZE' && (

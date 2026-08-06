@@ -5,6 +5,7 @@ import {
     PiInvoice, PiClock, PiCheckCircle, PiWarning, PiCalendar
 } from "react-icons/pi";
 import { PayableInvoiceCard } from "@/components/accounting/PayableInvoiceCard";
+import { PayablesLedger } from "@/components/accounting/PayablesLedger";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 
@@ -23,22 +24,22 @@ export default async function AccountsPayablePage() {
         taxAmount: Number(inv.taxAmount)
     }));
 
-    const totalPayable = invoices
-        .filter(i => i.status !== 'PAID')
-        .reduce((sum, inv) => sum + inv.amount, 0);
+    // Outstanding = still owed and actionable here. DRAFT hasn't been submitted yet
+    // and REJECTED needs resubmission elsewhere, so neither belongs on this ledger.
+    const outstanding = invoices.filter(i => ['APPROVED', 'PENDING_APPROVAL'].includes(i.status));
 
-    const overdue = invoices.filter(i =>
-        new Date(i.dueDate) < new Date() && i.status !== 'PAID'
-    );
+    const totalPayable = outstanding.reduce((sum, inv) => sum + inv.amount, 0);
 
-    const dueThisWeek = invoices.filter(i => {
+    const overdue = outstanding.filter(i => new Date(i.dueDate) < new Date());
+
+    const dueThisWeek = outstanding.filter(i => {
         const due = new Date(i.dueDate);
         const weekFromNow = new Date();
         weekFromNow.setDate(weekFromNow.getDate() + 7);
-        return due <= weekFromNow && due >= new Date() && i.status !== 'PAID';
+        return due <= weekFromNow && due >= new Date();
     });
 
-    const pending = invoices.filter(i => i.status === 'PENDING_APPROVAL');
+    const pending = outstanding.filter(i => i.status === 'PENDING_APPROVAL');
 
     const fmt = (n: number) => `KES ${n.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
 
@@ -46,7 +47,7 @@ export default async function AccountsPayablePage() {
         {
             label: 'Total Outstanding',
             value: fmt(totalPayable),
-            sub: `${invoices.filter(i => i.status !== 'PAID').length} invoices`,
+            sub: `${outstanding.length} invoices`,
             iconCls: 'text-[#6366F1] bg-indigo-50',
             icon: PiInvoice,
         },
@@ -154,14 +155,22 @@ export default async function AccountsPayablePage() {
             )}
 
             {/* Empty state when no urgent items */}
-            {overdue.length === 0 && dueThisWeek.length === 0 && (
+            {overdue.length === 0 && dueThisWeek.length === 0 && outstanding.length === 0 && (
                 <div className="bg-white rounded-[8px] py-16 flex flex-col items-center" style={CARD_STYLE}>
                     <div className="w-10 h-10 rounded-[8px] bg-emerald-50 flex items-center justify-center mb-3"
                         style={{ border: '1px solid rgba(16,185,129,0.2)' }}>
                         <PiCheckCircle className="text-emerald-500 text-[20px]" />
                     </div>
                     <p className="text-[13px] font-[500] text-gray-700 mb-0.5">All caught up</p>
-                    <p className="text-[12px] text-gray-400">No overdue or upcoming payments this week</p>
+                    <p className="text-[12px] text-gray-400">No outstanding payables</p>
+                </div>
+            )}
+
+            {/* Full ledger — every outstanding invoice, regardless of due date */}
+            {outstanding.length > 0 && (
+                <div>
+                    <h2 className="text-[13px] font-[600] text-gray-900 mb-3">All Payables</h2>
+                    <PayablesLedger invoices={outstanding} />
                 </div>
             )}
         </div>
