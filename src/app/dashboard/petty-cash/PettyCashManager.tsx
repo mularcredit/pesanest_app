@@ -31,7 +31,8 @@ type Mode = 'REPLENISH' | 'SPEND' | 'RECONCILE' | 'LIMIT' | null;
 type LedgerRow = {
     id: string; type: string; amount: number; balanceAfter: number;
     description: string; voucherNumber: string | null; reference: string | null;
-    createdAt: string; createdBy: string | null;
+    occurredAt: string; createdAt: string; createdBy: string | null;
+    isBackdated: boolean;
 };
 
 type PendingExpense = {
@@ -73,6 +74,14 @@ export function PettyCashManager({
     const [countedAmount, setCountedAmount] = useState("");
     const [floatLimitInput, setFloatLimitInput] = useState(String(stats.floatLimit || ""));
 
+    // Local calendar day, not toISOString() — that shifts to UTC and can show
+    // yesterday for anyone east of Greenwich.
+    const isoDay = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const todayIso = isoDay(new Date());
+    const [occurredAt, setOccurredAt] = useState(todayIso);
+    const isBackdatedEntry = !!occurredAt && occurredAt < todayIso;
+
     useEffect(() => setMounted(true), []);
 
     const openMode = (m: Mode, prefill?: Partial<PendingExpense>) => {
@@ -83,6 +92,7 @@ export function PettyCashManager({
         setExpenseGlAccountId(expenseAccounts[0]?.id || "");
         setCountedAmount("");
         setFloatLimitInput(String(stats.floatLimit || ""));
+        setOccurredAt(todayIso);
         setMode(m);
     };
 
@@ -98,6 +108,7 @@ export function PettyCashManager({
                 fd.set("amount", amount);
                 fd.set("description", description);
                 fd.set("fundingGlAccountId", fundingGlAccountId);
+                fd.set("occurredAt", occurredAt);
                 result = await replenishPettyCash(fd);
             } else if (mode === 'SPEND') {
                 fd.set("amount", amount);
@@ -227,16 +238,32 @@ export function PettyCashManager({
                             </div>
 
                             {mode === 'REPLENISH' && (
-                                <div>
-                                    <label className={LABEL_CLASS}>Funded from</label>
-                                    <select value={fundingGlAccountId} onChange={e => setFundingGlAccountId(e.target.value)}
-                                        className={INPUT_CLASS} style={INPUT_STYLE}>
-                                        {fundingSources.length === 0 && <option value="">Cash on Hand (default)</option>}
-                                        {fundingSources.map(f => (
-                                            <option key={f.glAccountId} value={f.glAccountId}>{f.label}</option>
-                                        ))}
-                                    </select>
-                                </div>
+                                <>
+                                    <div>
+                                        <label className={LABEL_CLASS}>Funded from</label>
+                                        <select value={fundingGlAccountId} onChange={e => setFundingGlAccountId(e.target.value)}
+                                            className={INPUT_CLASS} style={INPUT_STYLE}>
+                                            {fundingSources.length === 0 && <option value="">Cash on Hand (default)</option>}
+                                            {fundingSources.map(f => (
+                                                <option key={f.glAccountId} value={f.glAccountId}>{f.label}</option>
+                                            ))}
+                                        </select>
+                                    </div>
+
+                                    <div>
+                                        <label className={LABEL_CLASS}>Date of replenishment</label>
+                                        <input type="date" value={occurredAt} max={todayIso}
+                                            onChange={e => setOccurredAt(e.target.value)}
+                                            className={INPUT_CLASS} style={INPUT_STYLE} />
+                                        {isBackdatedEntry && (
+                                            <p className="text-[11.5px] text-amber-600 mt-1.5">
+                                                Backdated — the ledger entry and journal post to{" "}
+                                                {new Date(`${occurredAt}T12:00:00`).toLocaleDateString(undefined,
+                                                    { day: 'numeric', month: 'long', year: 'numeric' })}.
+                                            </p>
+                                        )}
+                                    </div>
+                                </>
                             )}
 
                             {mode === 'SPEND' && (
@@ -373,7 +400,15 @@ export function PettyCashManager({
                                         return (
                                             <tr key={row.id} className="hover:bg-gray-50/50 transition-colors" style={ROW_BORDER}>
                                                 <td className="px-5 py-3 text-[12.5px] text-gray-400 whitespace-nowrap">
-                                                    {new Date(row.createdAt).toLocaleDateString()}
+                                                    {new Date(row.occurredAt).toLocaleDateString()}
+                                                    {row.isBackdated && (
+                                                        <span
+                                                            className="ml-1.5 inline-flex px-1.5 py-[1px] rounded-[4px] text-[9.5px] font-[600] text-amber-600 bg-amber-50 align-middle"
+                                                            style={{ border: '1px solid rgba(245,158,11,0.25)' }}
+                                                            title={`Entered on ${new Date(row.createdAt).toLocaleDateString()}. The balance column shows the float at that point, not on the date shown.`}>
+                                                            Backdated
+                                                        </span>
+                                                    )}
                                                 </td>
                                                 <td className="px-5 py-3 text-[12px] font-mono text-gray-500">{row.voucherNumber || '—'}</td>
                                                 <td className="px-5 py-3 text-[13px] text-gray-900 max-w-[280px] truncate" title={row.description}>

@@ -21,6 +21,29 @@ export const GL_CODES = {
     CASH_OVER_SHORT: '6110',
 } as const;
 
+/**
+ * Refuse to post into books that have been closed.
+ *
+ * Only matters once a date can be chosen by hand — entries stamped with "now"
+ * land in the open period by definition. Mirrors the check the accounting
+ * engine applies to journal entries.
+ */
+export async function assertPostingAllowed(tx: Tx, date: Date): Promise<void> {
+    const period = await (tx as any).accountingPeriod.findFirst({
+        where: { startDate: { lte: date }, endDate: { gte: date } },
+    });
+    if (!period) return; // no period defined for that date — nothing to enforce
+
+    if (period.isClosed) {
+        throw new Error(`Accounting period "${period.name}" is closed — pick a date inside an open period.`);
+    }
+
+    const fy = await (tx as any).fiscalYear.findUnique({ where: { id: period.fiscalYearId } });
+    if (fy?.isClosed) {
+        throw new Error(`Fiscal year "${fy.name}" is closed — pick a date inside an open year.`);
+    }
+}
+
 async function pettyCashAccount(tx: Tx, glAccountId?: string | null) {
     if (glAccountId) {
         const acct = await tx.account.findUnique({ where: { id: glAccountId } });
@@ -63,6 +86,8 @@ export async function postPettyCashReplenish(tx: Tx, params: {
     userId?: string;
     reference: string;
     description?: string;
+    /** Date the cash actually moved. Defaults to now; backdated for historical entries. */
+    date?: Date;
 }) {
     const petty = await pettyCashAccount(tx, params.pettyCashGlAccountId);
     const funding = params.fundingGlAccountId
@@ -72,7 +97,7 @@ export async function postPettyCashReplenish(tx: Tx, params: {
     if (!funding) throw new Error('Funding account not found');
 
     return postGL(tx, {
-        date: new Date(),
+        date: params.date ?? new Date(),
         description: params.description || `Petty cash replenishment — KSh ${params.amount}`,
         reference: params.reference,
         userId: params.userId,

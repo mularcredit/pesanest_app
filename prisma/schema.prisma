@@ -1153,10 +1153,15 @@ model PettyCashTransaction {
   requisitionId  String?
   journalEntryId String?
   createdBy      String?
+  /// When the money actually moved. Defaults to now, but can be backdated to
+  /// record a float movement that happened before it was keyed in.
+  occurredAt     DateTime        @default(now())
+  /// When the row was entered. Never backdated — this is the audit trail.
   createdAt      DateTime        @default(now())
   wallet         PettyCashWallet @relation(fields: [walletId], references: [id], onDelete: Cascade)
 
   @@index([walletId])
+  @@index([occurredAt])
   @@index([createdAt])
   @@index([requisitionId])
 }

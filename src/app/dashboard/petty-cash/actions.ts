@@ -7,6 +7,7 @@ import {
     postPettyCashReplenish,
     postPettyCashSpend,
     postPettyCashAdjustment,
+    assertPostingAllowed,
     GL_CODES,
 } from "@/lib/accounting/cash-movement-gl";
 
@@ -89,9 +90,11 @@ export async function getPettyCashLedger(limit = 200) {
     const wallet = await getPettyCashWallet();
     const rows = await prisma.pettyCashTransaction.findMany({
         where: { walletId: wallet.id },
-        orderBy: { createdAt: "desc" },
+        orderBy: [{ occurredAt: "desc" }, { createdAt: "desc" }],
         take: limit,
     });
+
+    const sameDay = (a: Date, b: Date) => a.toDateString() === b.toDateString();
 
     return rows.map((t) => ({
         id: t.id,
@@ -101,8 +104,12 @@ export async function getPettyCashLedger(limit = 200) {
         description: t.description,
         voucherNumber: t.voucherNumber,
         reference: t.reference,
+        occurredAt: t.occurredAt.toISOString(),
         createdAt: t.createdAt.toISOString(),
         createdBy: t.createdBy,
+        // Entered after the fact, so the running balance for this row reflects
+        // the float when it was keyed in, not on the date shown.
+        isBackdated: !sameDay(t.occurredAt, t.createdAt) && t.occurredAt < t.createdAt,
     }));
 }
 
@@ -110,18 +117,20 @@ export async function getPettyCashStats() {
     const wallet = await getPettyCashWallet();
     const rows = await prisma.pettyCashTransaction.findMany({
         where: { walletId: wallet.id },
-        select: { type: true, amount: true, createdAt: true },
+        select: { type: true, amount: true, occurredAt: true },
     });
 
     const monthStart = new Date();
     monthStart.setDate(1);
     monthStart.setHours(0, 0, 0, 0);
 
+    // Counted by when the money moved, so a backdated entry lands in the month
+    // it belongs to rather than the month it was typed in.
     const spentThisMonth = rows
-        .filter((r) => r.type === "EXPENSE" && r.createdAt >= monthStart)
+        .filter((r) => r.type === "EXPENSE" && r.occurredAt >= monthStart)
         .reduce((s, r) => s + num(r.amount), 0);
     const replenishedThisMonth = rows
-        .filter((r) => r.type === "REPLENISH" && r.createdAt >= monthStart)
+        .filter((r) => r.type === "REPLENISH" && r.occurredAt >= monthStart)
         .reduce((s, r) => s + num(r.amount), 0);
 
     const utilisation =
@@ -238,6 +247,33 @@ export async function setFloatLimit(formData: FormData) {
     }
 }
 
+/**
+ * Parse a yyyy-mm-dd from a date input into a local-noon Date.
+ *
+ * Noon rather than midnight so a shift into UTC can't roll the entry onto the
+ * previous day and land it in the wrong accounting period.
+ */
+function parseMovementDate(raw: string | null): { date: Date } | { error: string } {
+    if (!raw || !raw.trim()) return { date: new Date() };
+
+    const match = raw.trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+    if (!match) return { error: "Enter the date as YYYY-MM-DD" };
+
+    const [, y, m, d] = match;
+    const date = new Date(Number(y), Number(m) - 1, Number(d), 12, 0, 0, 0);
+    if (Number.isNaN(date.getTime()) || date.getMonth() !== Number(m) - 1) {
+        return { error: "That date doesn't exist" };
+    }
+
+    const endOfToday = new Date();
+    endOfToday.setHours(23, 59, 59, 999);
+    if (date > endOfToday) return { error: "The date can't be in the future" };
+
+    if (date.getFullYear() < 2000) return { error: "That date is too far in the past" };
+
+    return { date };
+}
+
 export async function replenishPettyCash(formData: FormData) {
     try {
         const user = await currentUser();
@@ -246,6 +282,10 @@ export async function replenishPettyCash(formData: FormData) {
         const amount = Number(formData.get("amount"));
         if (!Number.isFinite(amount) || amount <= 0) return { success: false, error: "Enter a valid amount" };
 
+        const parsed = parseMovementDate(formData.get("occurredAt") as string | null);
+        if ("error" in parsed) return { success: false, error: parsed.error };
+        const occurredAt = parsed.date;
+
         const fundingGlAccountId = (formData.get("fundingGlAccountId") as string) || null;
         const note = ((formData.get("description") as string) || "").trim();
         const wallet = await getPettyCashWallet();
@@ -253,6 +293,8 @@ export async function replenishPettyCash(formData: FormData) {
         const description = note || `Petty cash replenishment — ${wallet.currency} ${amount.toLocaleString()}`;
 
         await prisma.$transaction(async (tx) => {
+            await assertPostingAllowed(tx as any, occurredAt);
+
             const entry = await postPettyCashReplenish(tx as any, {
                 amount,
                 pettyCashGlAccountId: wallet.glAccountId,
@@ -260,6 +302,7 @@ export async function replenishPettyCash(formData: FormData) {
                 userId: user.id,
                 reference: voucher,
                 description,
+                date: occurredAt,
             });
 
             const updated = await tx.pettyCashWallet.update({
@@ -277,6 +320,7 @@ export async function replenishPettyCash(formData: FormData) {
                     voucherNumber: voucher,
                     journalEntryId: entry.id,
                     createdBy: user.name || user.id,
+                    occurredAt,
                 },
             });
         });
