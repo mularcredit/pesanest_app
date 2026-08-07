@@ -221,6 +221,41 @@ export class AccountingEngine {
     }
 
     /**
+     * Finalizes a DRAFT entry into the ledger in place — assigns its gapless
+     * entryNumber and flips it to POSTED, rather than creating a duplicate row.
+     */
+    static async postDraftEntry(entryId: string, userId: string) {
+        const draft = await (prisma as any).journalEntry.findUnique({ where: { id: entryId }, include: { lines: true } });
+        if (!draft) throw new Error(`Journal entry ${entryId} not found`);
+        if (draft.status !== 'DRAFT') throw new Error('Only draft entries can be posted');
+
+        await assertPostingAllowed(draft.date);
+
+        const totalDebit = draft.lines.reduce((s: number, l: any) => s + l.debit, 0);
+        const totalCredit = draft.lines.reduce((s: number, l: any) => s + l.credit, 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.01) {
+            throw new Error(`Double Entry Mismatch: Debits (${totalDebit}) != Credits (${totalCredit})`);
+        }
+
+        const entryNumber = await getNextEntryNumber();
+        const posted = await (prisma as any).journalEntry.update({
+            where: { id: entryId },
+            data: { status: 'POSTED', entryNumber },
+            include: { lines: true },
+        });
+
+        await writeAuditLog({
+            actorId: userId,
+            action: 'JOURNAL_POST_DRAFT',
+            entity: 'JournalEntry',
+            entityId: entryId,
+            after: { entryNumber },
+        });
+
+        return posted;
+    }
+
+    /**
      * Updates a DRAFT journal entry in place. Only drafts are mutable —
      * POSTED/VOID entries are append-only and must be corrected via a reversal.
      */

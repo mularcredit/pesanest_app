@@ -287,7 +287,7 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
         }
     };
 
-    const handleCreateJournal = async () => {
+    const handleCreateJournal = async (asDraft: boolean = false) => {
         setIsSubmitting(true);
         const { isBalanced, totalDebit, totalCredit } = getTotals();
         if (!isBalanced) {
@@ -299,14 +299,15 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
             const res = await fetch("/api/accounting/journal", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify(journalData)
+                body: JSON.stringify({ ...journalData, status: asDraft ? 'DRAFT' : undefined })
             });
-            if (!res.ok) throw new Error("Failed to post journal entry");
-            showToast("Journal entry posted successfully", "success");
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to post journal entry");
+            showToast(asDraft ? "Saved as draft" : "Journal entry posted successfully", "success");
             setIsOpen(false);
             router.refresh();
-        } catch (error) {
-            showToast("Error posting journal", "error");
+        } catch (error: any) {
+            showToast(error.message || "Error posting journal", "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -334,6 +335,27 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
             router.refresh();
         } catch (error: any) {
             showToast(error.message || "Error updating journal entry", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handlePostDraft = async () => {
+        if (!entryId) return;
+        setIsSubmitting(true);
+        try {
+            const res = await fetch("/api/accounting/journal", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "POST_DRAFT", entryId })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to post entry");
+            showToast("Draft posted to the ledger", "success");
+            setIsOpen(false);
+            router.refresh();
+        } catch (error: any) {
+            showToast(error.message || "Error posting draft", "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -634,12 +656,24 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
                                     {isSubmitting ? "Voiding..." : "Void Entry"}
                                 </Button>
                             ) : (
-                                <Button
-                                    onClick={type === "NEW_ACCOUNT" ? handleCreateAccount : type === "EDIT_ENTRY" ? handleUpdateJournal : handleCreateJournal}
-                                    disabled={isSubmitting}
-                                    className="bg-[#6366F1] text-white font-semibold">
-                                    {isSubmitting ? "Processing..." : type === "EDIT_ENTRY" ? "Save Changes" : "Submit"}
-                                </Button>
+                                <>
+                                    {type === "MANUAL_JOURNAL" && (
+                                        <Button variant="outline" onClick={() => handleCreateJournal(true)} disabled={isSubmitting}>
+                                            Save as Draft
+                                        </Button>
+                                    )}
+                                    {type === "EDIT_ENTRY" && (
+                                        <Button variant="outline" onClick={handlePostDraft} disabled={isSubmitting} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
+                                            Post to Ledger
+                                        </Button>
+                                    )}
+                                    <Button
+                                        onClick={type === "NEW_ACCOUNT" ? handleCreateAccount : type === "EDIT_ENTRY" ? handleUpdateJournal : () => handleCreateJournal(false)}
+                                        disabled={isSubmitting}
+                                        className="bg-[#6366F1] text-white font-semibold">
+                                        {isSubmitting ? "Processing..." : type === "EDIT_ENTRY" ? "Save Changes" : type === "MANUAL_JOURNAL" ? "Post Entry" : "Submit"}
+                                    </Button>
+                                </>
                             )}
                         </div>
                     </motion.div>

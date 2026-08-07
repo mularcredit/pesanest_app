@@ -60,6 +60,31 @@ export async function POST(req: Request) {
         }
     }
 
+    // Finalize a draft into the ledger: POST with { action: 'POST_DRAFT', entryId }
+    if (body.action === 'POST_DRAFT') {
+        const { entryId } = body;
+        if (!entryId) return NextResponse.json({ error: "entryId is required" }, { status: 400 });
+
+        const existing = await prisma.journalEntry.findUnique({ where: { id: entryId } });
+        if (!existing) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, customRole: { select: { isSystem: true } } }
+        });
+        const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.customRole?.isSystem;
+        if (!isAdmin && existing.createdBy !== session.user.id) {
+            return NextResponse.json({ error: "You can only post drafts you created" }, { status: 403 });
+        }
+
+        try {
+            const posted = await AccountingEngine.postDraftEntry(entryId, session.user.id!);
+            return NextResponse.json(posted);
+        } catch (error: any) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+    }
+
     // Manual journal entry creation
     try {
         const lines = body.lines;
