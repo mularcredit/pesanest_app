@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { PiPlus, PiX, PiBookOpenText, PiSpinner, PiBank, PiNotebook, PiTrash, PiArrowsClockwise, PiMagicWand, PiPencil, PiCheck } from "react-icons/pi";
+import { PiPlus, PiX, PiBookOpenText, PiSpinner, PiBank, PiNotebook, PiTrash, PiArrowsClockwise, PiMagicWand, PiPencil, PiCheck, PiWarningCircle } from "react-icons/pi";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -16,7 +16,9 @@ interface AccountingActionsProps {
     type: "NEW_ACCOUNT" | "MANUAL_JOURNAL" | "VOID_ENTRY" | "EDIT_ENTRY";
     entryId?: string;
     entryNumber?: string;
-    /** Only used by EDIT_ENTRY — seeds the form with the draft's current values */
+    /** Only used by EDIT_ENTRY — DRAFT edits are unrestricted, POSTED edits are admin-only and skip the Post-to-Ledger step */
+    entryStatus?: 'DRAFT' | 'POSTED';
+    /** Only used by EDIT_ENTRY — seeds the form with the entry's current values */
     initialEntry?: {
         date: string;
         description: string;
@@ -41,7 +43,7 @@ interface JournalLine {
     credit: number;
 }
 
-export function AccountingActions({ type, entryId, entryNumber, initialEntry, variant = 'primary' }: AccountingActionsProps) {
+export function AccountingActions({ type, entryId, entryNumber, entryStatus, initialEntry, variant = 'primary' }: AccountingActionsProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -429,13 +431,13 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
                                     <h3 className="text-base font-semibold text-gray-900 mb-0.5">
                                         {type === "NEW_ACCOUNT" ? "Create New Account"
                                             : type === "MANUAL_JOURNAL" ? "Post Journal Entry"
-                                            : type === "EDIT_ENTRY" ? "Edit Draft Entry"
+                                            : type === "EDIT_ENTRY" ? (entryStatus === 'POSTED' ? "Edit Posted Entry" : "Edit Draft Entry")
                                             : "Void Journal Entry"}
                                     </h3>
                                     {type !== "VOID_ENTRY" && (
                                         <p className="text-gray-500 text-xs font-medium">
                                             {type === "NEW_ACCOUNT" ? "Add a new GL code"
-                                                : type === "EDIT_ENTRY" ? "Only drafts can be edited before posting"
+                                                : type === "EDIT_ENTRY" ? (entryStatus === 'POSTED' ? "Admin only — changes the ledger directly, no reversal trail" : "Drafts can be edited freely before posting")
                                                 : "Record double-entry transaction"}
                                         </p>
                                     )}
@@ -591,6 +593,16 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
                                 </div>
                             ) : type === "MANUAL_JOURNAL" || type === "EDIT_ENTRY" ? (
                                 <div className="space-y-6">
+                                    {type === "EDIT_ENTRY" && entryStatus === 'POSTED' && (
+                                        <div className="flex items-start gap-2.5 px-4 py-3 rounded-xl bg-amber-50 border border-amber-200">
+                                            <PiWarningCircle className="text-amber-500 text-base mt-0.5 shrink-0" />
+                                            <p className="text-xs text-amber-800 leading-relaxed">
+                                                This entry is already posted. Saving changes updates it directly — there's no
+                                                reversal trail covering the change, only an audit log entry. If this entry is
+                                                already relied upon elsewhere, Void it instead.
+                                            </p>
+                                        </div>
+                                    )}
                                     <div className="grid grid-cols-3 gap-4">
                                         <Input type="date" value={journalData.date} onChange={e => setJournalData(p => ({ ...p, date: e.target.value }))} />
                                         <Input placeholder="Reference" value={journalData.reference} onChange={e => setJournalData(p => ({ ...p, reference: e.target.value }))} />
@@ -662,7 +674,7 @@ export function AccountingActions({ type, entryId, entryNumber, initialEntry, va
                                             Save as Draft
                                         </Button>
                                     )}
-                                    {type === "EDIT_ENTRY" && (
+                                    {type === "EDIT_ENTRY" && entryStatus !== 'POSTED' && (
                                         <Button variant="outline" onClick={handlePostDraft} disabled={isSubmitting} className="text-emerald-600 border-emerald-200 hover:bg-emerald-50">
                                             Post to Ledger
                                         </Button>

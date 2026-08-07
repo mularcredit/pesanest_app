@@ -139,10 +139,12 @@ export async function POST(req: Request) {
     }
 }
 
-// Posted/void journal entries are append-only — physical deletion is not permitted.
+// Voided journal entries are append-only — physical deletion is not permitted.
 // Use POST { action: 'REVERSE' | 'VOID', entryId, reason } to correct one instead.
 
-// Edit a DRAFT entry in place: PATCH { entryId, date, description, reference, lines }
+// Edit an entry in place: PATCH { entryId, date, description, reference, lines }
+// Drafts: creator or admin. Posted entries: admin only (see editPostedEntry's doc comment
+// for why this intentionally breaks the append-only rule).
 export async function PATCH(req: Request) {
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -157,27 +159,37 @@ export async function PATCH(req: Request) {
     const existing = await prisma.journalEntry.findUnique({ where: { id: entryId } });
     if (!existing) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
 
-    // Only the entry's creator or an admin may edit a draft
     const user = await prisma.user.findUnique({
         where: { id: session.user.id },
         select: { role: true, customRole: { select: { isSystem: true } } }
     });
     const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.customRole?.isSystem;
-    if (!isAdmin && existing.createdBy !== session.user.id) {
+
+    if (existing.status === 'DRAFT' && !isAdmin && existing.createdBy !== session.user.id) {
         return NextResponse.json({ error: "You can only edit drafts you created" }, { status: 403 });
     }
+    if (existing.status === 'POSTED' && !isAdmin) {
+        return NextResponse.json({ error: "Only System Admins can edit a posted entry" }, { status: 403 });
+    }
+    if (existing.status === 'VOID') {
+        return NextResponse.json({ error: "Voided entries cannot be edited" }, { status: 400 });
+    }
+
+    const normalized = {
+        date: new Date(date),
+        description,
+        reference: reference || undefined,
+        lines: lines.map((l: any) => ({
+            accountId: l.accountId,
+            debit: Number(l.debit || 0),
+            credit: Number(l.credit || 0),
+        })),
+    };
 
     try {
-        const updated = await AccountingEngine.updateDraftEntry(entryId, {
-            date: new Date(date),
-            description,
-            reference: reference || undefined,
-            lines: lines.map((l: any) => ({
-                accountId: l.accountId,
-                debit: Number(l.debit || 0),
-                credit: Number(l.credit || 0),
-            })),
-        });
+        const updated = existing.status === 'DRAFT'
+            ? await AccountingEngine.updateDraftEntry(entryId, normalized)
+            : await AccountingEngine.editPostedEntry(entryId, session.user.id!, normalized);
         return NextResponse.json(updated);
     } catch (error: any) {
         return NextResponse.json({ error: error.message }, { status: 400 });

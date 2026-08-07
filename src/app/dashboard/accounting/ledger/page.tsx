@@ -220,12 +220,13 @@ export default async function GeneralLedgerPage({
                                             {status}
                                         </span>
 
-                                        {/* Edit (drafts only) / Void (posted only) — shown on hover */}
-                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                            {status === 'DRAFT' && (
+                                        {/* Edit (drafts + posted) / Void (posted only) — shown on hover */}
+                                        <div className="opacity-0 group-hover:opacity-100 transition-opacity flex items-center gap-1.5">
+                                            {(status === 'DRAFT' || status === 'POSTED') && (
                                                 <AccountingActions
                                                     type="EDIT_ENTRY"
                                                     entryId={entry.id}
+                                                    entryStatus={status}
                                                     initialEntry={{
                                                         date: new Date(entry.date).toISOString().split('T')[0],
                                                         description: entry.description,

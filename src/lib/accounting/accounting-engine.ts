@@ -303,6 +303,78 @@ export class AccountingEngine {
     }
 
     /**
+     * Edits a POSTED entry in place — admin-only, and intentionally breaks the
+     * append-only rule (correcting via void+reversal is the safer default; this
+     * exists for admins who explicitly want a direct fix instead of two more
+     * entries in the ledger). Records a before/after audit log since there's no
+     * reversal trail covering the change. VOID entries stay untouchable.
+     */
+    static async editPostedEntry(
+        entryId: string,
+        userId: string,
+        data: {
+            date: Date;
+            description: string;
+            reference?: string;
+            lines: { accountId: string; debit: number; credit: number; description?: string }[];
+        }
+    ) {
+        const existing = await (prisma as any).journalEntry.findUnique({ where: { id: entryId }, include: { lines: true } });
+        if (!existing) throw new Error(`Journal entry ${entryId} not found`);
+        if (existing.status === 'VOID') throw new Error('Voided entries cannot be edited');
+
+        const totalDebit = data.lines.reduce((s, l) => s + l.debit, 0);
+        const totalCredit = data.lines.reduce((s, l) => s + l.credit, 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.01) {
+            throw new Error(`Journal does not balance: debits ${totalDebit} != credits ${totalCredit}`);
+        }
+
+        // The entry's original date and the new date both need an open period —
+        // otherwise this either edits into, or moves money out of, closed books.
+        await assertPostingAllowed(existing.date);
+        await assertPostingAllowed(data.date);
+
+        const before = {
+            date: existing.date,
+            description: existing.description,
+            reference: existing.reference,
+            lines: existing.lines.map((l: any) => ({ accountId: l.accountId, debit: l.debit, credit: l.credit, description: l.description })),
+        };
+
+        const updated = await (prisma as any).$transaction(async (tx: any) => {
+            await tx.journalLine.deleteMany({ where: { entryId } });
+            return tx.journalEntry.update({
+                where: { id: entryId },
+                data: {
+                    date: data.date,
+                    description: data.description,
+                    reference: data.reference,
+                    lines: {
+                        create: data.lines.map((line) => ({
+                            accountId: line.accountId,
+                            debit: line.debit,
+                            credit: line.credit,
+                            description: line.description || data.description,
+                        })),
+                    },
+                },
+                include: { lines: true },
+            });
+        });
+
+        await writeAuditLog({
+            actorId: userId,
+            action: 'JOURNAL_EDIT_POSTED',
+            entity: 'JournalEntry',
+            entityId: entryId,
+            before,
+            after: { date: data.date, description: data.description, reference: data.reference, lines: data.lines },
+        });
+
+        return updated;
+    }
+
+    /**
      * AUTOMATION: Post an Expense to the Ledger
      */
     static async postExpensePayment(expenseId: string, paidFromAccountId: string) {
