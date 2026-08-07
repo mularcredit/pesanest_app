@@ -37,12 +37,15 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { paymentIds, action, paymentMethod, proofUrl } = body as {
+        const { paymentIds, action, paymentMethod, proofUrl, settlementAccountId, settlementKind } = body as {
             paymentIds?: unknown;
             action?: PaymentAction;
             paymentMethod?: any;
             proofUrl?: string;
+            settlementAccountId?: string;
+            settlementKind?: 'BANK' | 'PAYBILL';
         };
+        const settlement = settlementAccountId || settlementKind ? { accountId: settlementAccountId, kind: settlementKind } : undefined;
 
         if (!action || !PAYMENT_ACTIONS.includes(action)) {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -88,6 +91,7 @@ export async function POST(req: NextRequest) {
                     paymentMethod,
                     proofUrl,
                     userId: session.user.id,
+                    settlement,
                 });
 
                 if (result.ok) {

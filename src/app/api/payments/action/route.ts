@@ -12,7 +12,7 @@ export async function POST(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { paymentId, action, paymentMethod, proofUrl } = body;
+        const { paymentId, action, paymentMethod, proofUrl, settlementAccountId, settlementKind } = body;
 
         if (!PAYMENT_ACTIONS.includes(action)) {
             return NextResponse.json({ error: 'Invalid action' }, { status: 400 });
@@ -24,6 +24,7 @@ export async function POST(req: NextRequest) {
             paymentMethod,
             proofUrl,
             userId: session.user.id,
+            settlement: settlementAccountId || settlementKind ? { accountId: settlementAccountId, kind: settlementKind } : undefined,
         });
 
         if (!result.ok) {

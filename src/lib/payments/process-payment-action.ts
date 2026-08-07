@@ -10,9 +10,24 @@
  */
 
 import prisma from "@/lib/prisma";
+import { resolveTransferLeg } from "@/lib/accounting/cash-movement-gl";
 
 export type PaymentAction = 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE';
 export type PaymentMethod = 'WALLET' | 'BRANCH_WALLET' | 'CASH';
+export type CashSettlement = { accountId?: string | null; kind?: 'BANK' | 'PAYBILL' };
+
+/**
+ * Where a CASH ("already paid") disbursement actually credits in the GL.
+ * Without a settlement pick, everything piles into the generic Cash & Bank
+ * (1000) account, making it impossible to reconcile a specific bank/paybill
+ * statement against money that really moved through it.
+ */
+async function resolveCashGlAccount(settlement?: CashSettlement) {
+    return resolveTransferLeg(prisma as any, {
+        bankAccountId: settlement?.kind === 'BANK' ? (settlement.accountId ?? null) : null,
+        kind: settlement?.kind === 'PAYBILL' ? 'PAYBILL' : 'BANK',
+    });
+}
 
 export type DisburseSummary = {
     success: number;
@@ -33,8 +48,10 @@ export async function processPaymentAction(params: {
     paymentMethod?: PaymentMethod;
     proofUrl?: string;
     userId: string;
+    /** Only used when paymentMethod === 'CASH' — which bank/paybill account the cash actually settled through. */
+    settlement?: CashSettlement;
 }): Promise<PaymentActionResult> {
-    const { paymentId, action, paymentMethod, userId } = params;
+    const { paymentId, action, paymentMethod, userId, settlement } = params;
 
     if (!PAYMENT_ACTIONS.includes(action)) {
         return { ok: false, error: 'Invalid action', status: 400 };
@@ -161,7 +178,7 @@ export async function processPaymentAction(params: {
 
     // CASH path: no gateway, no wallet movement — just mark everything paid
     if (paymentMethod === 'CASH') {
-        const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
+        const cashAccount = await resolveCashGlAccount(settlement);
 
         for (const req of p.requisitions) {
             await (prisma as any).requisition.update({ where: { id: req.id }, data: { status: 'PAID' } });

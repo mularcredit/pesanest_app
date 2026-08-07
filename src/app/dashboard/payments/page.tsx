@@ -11,6 +11,7 @@ import {
 } from "react-icons/pi";
 import { PaymentQueue } from "../../../components/dashboard/PaymentQueue";
 import { StatsCard } from "@/components/dashboard/StatsCard";
+import { getBankAccounts, getPaybillAccounts } from "@/app/dashboard/transfers/actions";
 
 export default async function PaymentsPage() {
     const session = await auth();
@@ -217,8 +218,15 @@ export default async function PaymentsPage() {
 
     let paystackStatus = userProfile?.paystackCustomerCode ? 'COMPLETED' : 'NOT_CONNECTED';
 
+    const [settlementBankAccounts, settlementPaybillAccounts] = await Promise.all([
+        getBankAccounts(),
+        getPaybillAccounts(),
+    ]);
+
     return (
         <PaymentQueue
+            settlementBankAccounts={settlementBankAccounts}
+            settlementPaybillAccounts={settlementPaybillAccounts}
             expenses={JSON.parse(JSON.stringify(approvedExpenses))}
             invoices={JSON.parse(JSON.stringify(approvedInvoices))}
             requisitions={JSON.parse(JSON.stringify(approvedRequisitions))}

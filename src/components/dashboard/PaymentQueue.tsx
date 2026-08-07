@@ -2,7 +2,7 @@
 
 
 import { createPortal } from "react-dom";
-import { useState, useEffect } from "react";
+import { useState, useEffect, useMemo } from "react";
 import { useToast } from "@/components/ui/ToastProvider";
 import {
     PiHandCoins,
@@ -148,6 +148,8 @@ interface PaymentQueueProps {
     userRole: string;
     paystackStatus?: string;
     isSystemAdmin?: boolean;
+    settlementBankAccounts?: { id: string; label: string; currency: string }[];
+    settlementPaybillAccounts?: { id: string; label: string; paybillNumber: string; accountNumber: string | null }[];
 }
 
 export function PaymentQueue({
@@ -161,7 +163,9 @@ export function PaymentQueue({
     history = [],
     userRole,
     paystackStatus = 'NOT_CONNECTED',
-    isSystemAdmin = false
+    isSystemAdmin = false,
+    settlementBankAccounts = [],
+    settlementPaybillAccounts = []
 }: PaymentQueueProps) {
     const { showToast } = useToast();
     const router = useRouter();
@@ -207,6 +211,14 @@ export function PaymentQueue({
     const [showBypassModal, setShowBypassModal] = useState(false);
     const [showHelp, setShowHelp] = useState(true);
     const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'BRANCH_WALLET' | 'CASH'>('WALLET');
+    // Only meaningful when paymentMethod === 'CASH' — which real account the cash settled
+    // through, so the GL credit lands on that account instead of the generic Cash & Bank.
+    const [settlementChoice, setSettlementChoice] = useState(''); // encoded as "BANK:<id>" | "PAYBILL:<id>" | ""
+    const settlement = useMemo(() => {
+        if (!settlementChoice) return null;
+        const [kind, accountId] = settlementChoice.split(':');
+        return { kind: kind as 'BANK' | 'PAYBILL', accountId };
+    }, [settlementChoice]);
     const [mounted, setMounted] = useState(false);
     // Default to list view for compact readability
     const [viewMode, setViewMode] = useState<'list' | 'grid'>('list');
@@ -362,6 +374,7 @@ export function PaymentQueue({
             total: chosen.reduce((s, b) => s + (b.amount || 0), 0),
             currency: chosen[0]?.currency || 'KES',
         });
+        setSettlementChoice('');
     };
 
     const runBulk = async () => {
@@ -373,7 +386,12 @@ export function PaymentQueue({
             const res = await fetch('/api/payments/bulk-action', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ paymentIds: ids, action, paymentMethod: paymentMethod || 'WALLET' }),
+                body: JSON.stringify({
+                    paymentIds: ids, action, paymentMethod: paymentMethod || 'WALLET',
+                    ...(paymentMethod === 'CASH' && settlement
+                        ? { settlementAccountId: settlement.accountId, settlementKind: settlement.kind }
+                        : {}),
+                }),
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error || 'Bulk action failed');
@@ -415,6 +433,36 @@ export function PaymentQueue({
                 ? <CheckSquare className="text-[#6366F1] text-[17px]" />
                 : <Square className="text-slate-300 text-[17px]" />}
         </button>
+    );
+
+    const SettlementPicker = () => (
+        <div>
+            <label className="block text-[11px] font-[500] uppercase tracking-[0.07em] text-gray-400 mb-2">
+                Settled via <span className="normal-case tracking-normal text-gray-300">(optional)</span>
+            </label>
+            <select value={settlementChoice} onChange={e => setSettlementChoice(e.target.value)}
+                className="w-full rounded-[6px] px-3 py-[10px] text-[13px] text-gray-900 outline-none focus:ring-1 focus:ring-[#6366F1] transition-colors bg-white"
+                style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                <option value="">Not specified — post to generic Cash &amp; Bank</option>
+                {settlementBankAccounts.length > 0 && (
+                    <optgroup label="Bank accounts">
+                        {settlementBankAccounts.map(b => (
+                            <option key={b.id} value={`BANK:${b.id}`}>{b.label}</option>
+                        ))}
+                    </optgroup>
+                )}
+                {settlementPaybillAccounts.length > 0 && (
+                    <optgroup label="Paybill accounts">
+                        {settlementPaybillAccounts.map(p => (
+                            <option key={p.id} value={`PAYBILL:${p.id}`}>{p.label}</option>
+                        ))}
+                    </optgroup>
+                )}
+            </select>
+            <p className="text-[11px] text-gray-400 mt-1.5">
+                Pick which account the cash actually moved through so this shows up when reconciling that account's statement.
+            </p>
+        </div>
     );
 
     const BulkBar = ({
@@ -477,6 +525,7 @@ export function PaymentQueue({
             itemCount: (batch?._count?.requisitions || 0) + (batch?._count?.expenses || 0) + (batch?._count?.invoices || 0) || 1
         });
         setSelectedFile(null); // Reset file selection
+        setSettlementChoice('');
     };
 
     const proceedAuthorization = async () => {
@@ -509,7 +558,10 @@ export function PaymentQueue({
                     paymentId,
                     action,
                     paymentMethod: paymentMethod || 'WALLET',
-                    proofUrl: noteAttachment ? noteAttachment.replace(' [Proof: ', '').replace(']', '') : undefined
+                    proofUrl: noteAttachment ? noteAttachment.replace(' [Proof: ', '').replace(']', '') : undefined,
+                    ...(paymentMethod === 'CASH' && settlement
+                        ? { settlementAccountId: settlement.accountId, settlementKind: settlement.kind }
+                        : {}),
                 })
             });
 
@@ -1521,13 +1573,16 @@ export function PaymentQueue({
                                     </div>
 
                                     {paymentMethod === 'CASH' ? (
-                                        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-amber-50" style={{ border: '1px solid rgba(217,119,6,0.2)' }}>
-                                            <PiInfo className="text-amber-500 text-[14px] mt-0.5 shrink-0" />
-                                            <p className="text-[11.5px] text-amber-700 leading-relaxed">
-                                                All items in every selected batch will be marked as <strong>Paid</strong> immediately.
-                                                No funds will be moved from your wallet.
-                                            </p>
-                                        </div>
+                                        <>
+                                            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-amber-50" style={{ border: '1px solid rgba(217,119,6,0.2)' }}>
+                                                <PiInfo className="text-amber-500 text-[14px] mt-0.5 shrink-0" />
+                                                <p className="text-[11.5px] text-amber-700 leading-relaxed">
+                                                    All items in every selected batch will be marked as <strong>Paid</strong> immediately.
+                                                    No funds will be moved from your wallet.
+                                                </p>
+                                            </div>
+                                            <SettlementPicker />
+                                        </>
                                     ) : (
                                         <div className="rounded-[7px] px-3 py-2.5 bg-amber-50/70 flex items-start gap-2"
                                             style={{ border: '1px solid rgba(245,158,11,0.25)' }}>
@@ -1724,14 +1779,17 @@ export function PaymentQueue({
 
                                     {/* Cash notice */}
                                     {paymentMethod === 'CASH' && (
-                                        <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-amber-50" style={{ border: '1px solid rgba(217,119,6,0.2)' }}>
-                                            <PiInfo className="text-amber-500 text-[14px] mt-0.5 shrink-0" />
-                                            <p className="text-[11.5px] text-amber-700 leading-relaxed">
-                                                All items in this batch will be marked as <strong>Paid</strong> immediately.
-                                                No funds will be moved from your wallet. Use this for cash payments or
-                                                settlements already completed outside the system.
-                                            </p>
-                                        </div>
+                                        <>
+                                            <div className="flex items-start gap-2.5 px-3.5 py-3 rounded-[8px] bg-amber-50" style={{ border: '1px solid rgba(217,119,6,0.2)' }}>
+                                                <PiInfo className="text-amber-500 text-[14px] mt-0.5 shrink-0" />
+                                                <p className="text-[11.5px] text-amber-700 leading-relaxed">
+                                                    All items in this batch will be marked as <strong>Paid</strong> immediately.
+                                                    No funds will be moved from your wallet. Use this for cash payments or
+                                                    settlements already completed outside the system.
+                                                </p>
+                                            </div>
+                                            <SettlementPicker />
+                                        </>
                                     )}
 
                                     {/* Proof of payment */}
