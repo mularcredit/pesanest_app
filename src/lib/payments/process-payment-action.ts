@@ -25,6 +25,7 @@ export type CashSettlement = { accountId?: string | null; kind?: 'BANK' | 'PAYBI
 async function resolveCashGlAccount(settlement?: CashSettlement) {
     return resolveTransferLeg(prisma as any, {
         bankAccountId: settlement?.kind === 'BANK' ? (settlement.accountId ?? null) : null,
+        paybillAccountId: settlement?.kind === 'PAYBILL' ? (settlement.accountId ?? null) : null,
         kind: settlement?.kind === 'PAYBILL' ? 'PAYBILL' : 'BANK',
     });
 }

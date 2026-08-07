@@ -55,7 +55,7 @@ async function pettyCashAccount(tx: Tx, glAccountId?: string | null) {
 /** Resolve the GL account for one leg of a transfer. */
 export async function resolveTransferLeg(
     tx: Tx,
-    leg: { bankAccountId?: string | null; kind: 'BANK' | 'MOBILE' | 'PAYBILL' }
+    leg: { bankAccountId?: string | null; paybillAccountId?: string | null; kind: 'BANK' | 'MOBILE' | 'PAYBILL' }
 ) {
     if (leg.bankAccountId) {
         const bank = await tx.bankAccount.findUnique({
@@ -64,10 +64,18 @@ export async function resolveTransferLeg(
         });
         if (bank?.glAccount) return bank.glAccount;
     }
+    if (leg.paybillAccountId) {
+        const paybill = await tx.paybillAccount.findUnique({
+            where: { id: leg.paybillAccountId },
+            include: { glAccount: true },
+        });
+        if (paybill?.glAccount) return paybill.glAccount;
+    }
     if (leg.kind === 'MOBILE') {
         return findOrCreate(tx, GL_CODES.MOBILE_MONEY, 'Mobile Money Float', 'ASSET', 'CURRENT_ASSET');
     }
     if (leg.kind === 'PAYBILL') {
+        // No saved paybill was picked — fall back to the shared clearing bucket.
         return findOrCreate(tx, GL_CODES.PAYBILL_CLEARING, 'Paybill Clearing', 'ASSET', 'CURRENT_ASSET');
     }
     return findOrCreate(tx, GL_CODES.CASH_ON_HAND, 'Cash on Hand', 'ASSET', 'CURRENT_ASSET');

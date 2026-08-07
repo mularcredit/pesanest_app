@@ -142,7 +142,7 @@ export async function getPaybillAccounts() {
  * phone) has no GL account of ours, so those transfers are recorded for
  * monitoring only and left unposted.
  */
-function glPlan(type: string, fromBankAccountId?: string | null, toBankAccountId?: string | null) {
+function glPlan(type: string, fromBankAccountId?: string | null, toBankAccountId?: string | null, paybillAccountId?: string | null) {
     switch (type) {
         case 'BANK_TO_BANK':
             return fromBankAccountId && toBankAccountId
@@ -154,11 +154,11 @@ function glPlan(type: string, fromBankAccountId?: string | null, toBankAccountId
                 : null;
         case 'TO_PAYBILL':
             return fromBankAccountId
-                ? { from: { bankAccountId: fromBankAccountId, kind: 'BANK' as const }, to: { bankAccountId: null, kind: 'PAYBILL' as const } }
+                ? { from: { bankAccountId: fromBankAccountId, kind: 'BANK' as const }, to: { bankAccountId: null, paybillAccountId, kind: 'PAYBILL' as const } }
                 : null;
         case 'FROM_PAYBILL':
             return toBankAccountId
-                ? { from: { bankAccountId: null, kind: 'PAYBILL' as const }, to: { bankAccountId: toBankAccountId, kind: 'BANK' as const } }
+                ? { from: { bankAccountId: null, paybillAccountId, kind: 'PAYBILL' as const }, to: { bankAccountId: toBankAccountId, kind: 'BANK' as const } }
                 : null;
         default:
             return null;
@@ -219,7 +219,7 @@ export async function createTransfer(formData: FormData) {
             return { success: false, error: "Source and destination cannot be the same account" };
 
         const reference = await nextTransferRef();
-        const plan = status === 'COMPLETED' ? glPlan(type, fromBankAccountId, toBankAccountId) : null;
+        const plan = status === 'COMPLETED' ? glPlan(type, fromBankAccountId, toBankAccountId, paybillAccountId) : null;
         const description = narration || `${type.replace(/_/g, ' ').toLowerCase()} — ${currency} ${amount.toLocaleString()}`;
 
         const created = await prisma.$transaction(async (tx) => {
@@ -274,7 +274,7 @@ export async function updateTransferStatus(id: string, status: string) {
 
         // Completing a previously pending transfer posts it to the ledger now.
         if (status === 'COMPLETED' && !existing.journalEntryId) {
-            const plan = glPlan(existing.type, existing.fromBankAccountId, existing.toBankAccountId);
+            const plan = glPlan(existing.type, existing.fromBankAccountId, existing.toBankAccountId, existing.paybillAccountId);
             if (plan) {
                 await prisma.$transaction(async (tx) => {
                     const fromAcct = await resolveTransferLeg(tx as any, plan.from);

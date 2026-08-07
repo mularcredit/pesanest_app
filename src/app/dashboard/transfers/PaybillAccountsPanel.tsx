@@ -16,7 +16,7 @@ const LABEL_CLASS = "block text-[11.5px] font-[500] text-gray-400 mb-1.5";
 
 export type PaybillAccountRow = {
     id: string; name: string; paybillNumber: string; accountNumber: string | null;
-    isActive: boolean; transfersUsed: number;
+    isActive: boolean; transfersUsed: number; glCode: string | null; glName: string | null;
 };
 
 export function PaybillAccountsPanel({
@@ -53,7 +53,10 @@ export function PaybillAccountsPanel({
             fd.set("accountNumber", accountNumber);
             const result = await createPaybillAccount(fd);
             if (result?.success) {
-                showToast(`${name} added`, "success");
+                showToast(
+                    `${name} added${result.glCode ? ` — GL account ${result.glCode} created` : ""}`,
+                    "success"
+                );
                 reset();
                 router.refresh();
             } else {
@@ -93,7 +96,7 @@ export function PaybillAccountsPanel({
                     <div>
                         <h2 className="text-[14px] font-[600] text-gray-900 leading-none">Paybill accounts</h2>
                         <p className="text-[12px] text-gray-400 mt-1">
-                            Save frequently used paybills so they can be picked instead of retyped each time.
+                            Each paybill gets its own GL sub-account, just like bank accounts, so transfers can post to the ledger.
                         </p>
                     </div>
                     <button onClick={close} className="p-1 text-gray-300 hover:text-gray-500 rounded-[5px] transition-colors shrink-0">
@@ -108,6 +111,7 @@ export function PaybillAccountsPanel({
                                 <thead>
                                     <tr className="bg-gray-50/70" style={ROW_BORDER}>
                                         <th className="px-3.5 py-2.5 text-left text-[11px] font-[500] text-gray-400 uppercase tracking-wide">Paybill</th>
+                                        <th className="px-3.5 py-2.5 text-left text-[11px] font-[500] text-gray-400 uppercase tracking-wide">GL</th>
                                         <th className="px-3.5 py-2.5 text-left text-[11px] font-[500] text-gray-400 uppercase tracking-wide">Status</th>
                                         {isAdmin && <th className="px-3.5 py-2.5 text-right text-[11px] font-[500] text-gray-400 uppercase tracking-wide">Action</th>}
                                     </tr>
@@ -121,6 +125,9 @@ export function PaybillAccountsPanel({
                                                     {a.paybillNumber}
                                                     {a.accountNumber ? ` · ${a.accountNumber}` : ''}
                                                 </p>
+                                            </td>
+                                            <td className="px-3.5 py-3">
+                                                <span className="text-[12px] font-mono text-gray-600">{a.glCode || '—'}</span>
                                             </td>
                                             <td className="px-3.5 py-3">
                                                 {a.isActive ? (

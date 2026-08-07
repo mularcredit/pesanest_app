@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { revalidatePath } from "next/cache";
 import { auth } from "@/auth";
+import { provisionPaybillAccount } from "@/lib/accounting/paybill-accounts";
 
 const PATH = "/dashboard/transfers";
 
@@ -20,6 +21,7 @@ async function requireAdmin() {
 
 export async function getPaybillAccountsDetailed() {
     const rows = await prisma.paybillAccount.findMany({
+        include: { glAccount: { select: { code: true, name: true } } },
         orderBy: [{ isActive: "desc" }, { name: "asc" }],
     });
 
@@ -39,6 +41,8 @@ export async function getPaybillAccountsDetailed() {
         paybillNumber: p.paybillNumber,
         accountNumber: p.accountNumber,
         isActive: p.isActive,
+        glCode: p.glAccount?.code ?? null,
+        glName: p.glAccount?.name ?? null,
         transfersUsed: used.get(p.id) ?? 0,
     }));
 }
@@ -71,9 +75,7 @@ export async function createPaybillAccount(formData: FormData) {
             };
         }
 
-        const created = await prisma.paybillAccount.create({
-            data: { name, paybillNumber, accountNumber },
-        });
+        const created = await provisionPaybillAccount({ name, paybillNumber, accountNumber });
 
         await (prisma as any).auditLog.create({
             data: {
@@ -81,12 +83,12 @@ export async function createPaybillAccount(formData: FormData) {
                 action: "PAYBILL_ACCOUNT_CREATE",
                 entity: "PaybillAccount",
                 entityId: created.id,
-                after: { name, paybillNumber, accountNumber },
+                after: { name, paybillNumber, accountNumber, glCode: created.glAccount?.code },
             },
         }).catch(() => {});
 
         revalidatePath(PATH);
-        return { success: true };
+        return { success: true, glCode: created.glAccount?.code as string | undefined };
     } catch (e: any) {
         return { success: false, error: e?.message || "Could not create the paybill account" };
     }
