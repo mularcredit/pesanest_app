@@ -114,6 +114,7 @@ export default async function BankReconciliationPage({
                         date: l.transactionDate.toISOString(),
                         description: l.description,
                         amount: credit > 0 ? credit : -debit,
+                        statementId: l.statementId,
                     };
                 })}
             />

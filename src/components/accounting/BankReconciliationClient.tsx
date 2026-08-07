@@ -5,7 +5,7 @@ import { read, utils } from 'xlsx'
 import {
     PiUploadSimple, PiCheckCircle, PiWarning, PiX, PiPlus,
     PiBank, PiArrowsLeftRight,
-    PiFileText, PiLightning, PiInfo, PiSpinner
+    PiFileText, PiLightning, PiInfo, PiSpinner, PiTrash
 } from 'react-icons/pi'
 import { cn } from '@/lib/utils'
 import { useToast } from '@/components/ui/ToastProvider'
@@ -16,7 +16,7 @@ interface JournalLine {
 }
 
 interface BankTransaction {
-    id: string; date: string; description: string; amount: number;
+    id: string; date: string; description: string; amount: number; statementId: string;
 }
 
 interface Props {
@@ -163,6 +163,7 @@ export function BankReconciliationClient({
     const [closingBalance, setClosingBalance] = useState('0')
     const [isUploading, setIsUploading] = useState(false)
     const [isMatching, setIsMatching] = useState(false)
+    const [revertingId, setRevertingId] = useState<string | null>(null)
     const [searchBank, setSearchBank] = useState('')
     const [searchBooks, setSearchBooks] = useState('')
     const [selectedBankTx, setSelectedBankTx] = useState<string | null>(null)
@@ -221,6 +222,7 @@ export function BankReconciliationClient({
                 date: l.transactionDate,
                 description: l.description,
                 amount: l.credit > 0 ? l.credit : -l.debit,
+                statementId: l.statementId,
             }))
 
             setBankTransactions(prev => [...prev, ...imported])
@@ -244,7 +246,7 @@ export function BankReconciliationClient({
         if (!res.ok) throw new Error(data.error || 'Could not refresh')
         setBankTransactions((data.unmatchedStatementLines || []).map((l: any) => ({
             id: l.id, date: l.transactionDate, description: l.description,
-            amount: l.credit > 0 ? l.credit : -l.debit,
+            amount: l.credit > 0 ? l.credit : -l.debit, statementId: l.statementId,
         })))
         setBookLines((data.unmatchedGlLines || []).map((l: any) => ({
             id: l.id, entryId: l.entryId, date: l.date, description: l.description,
@@ -314,6 +316,39 @@ export function BankReconciliationClient({
             showToast(err.message || 'Could not unmatch', 'error')
         } finally {
             setIsMatching(false)
+        }
+    }
+
+    const importGroups = useMemo(() => {
+        const byStatement = new Map<string, BankTransaction[]>()
+        for (const tx of bankTransactions) {
+            if (!byStatement.has(tx.statementId)) byStatement.set(tx.statementId, [])
+            byStatement.get(tx.statementId)!.push(tx)
+        }
+        return Array.from(byStatement.entries()).map(([statementId, txs]) => {
+            const dates = txs.map(t => new Date(t.date).getTime()).filter(t => !Number.isNaN(t))
+            return {
+                statementId,
+                count: txs.length,
+                from: dates.length ? new Date(Math.min(...dates)) : null,
+                to: dates.length ? new Date(Math.max(...dates)) : null,
+            }
+        })
+    }, [bankTransactions])
+
+    const revertImport = async (statementId: string) => {
+        if (!confirm('Revert this import? All its unmatched transactions will be removed. This only works if none of them have been matched yet.')) return
+        setRevertingId(statementId)
+        try {
+            const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/statements/${statementId}`, { method: 'DELETE' })
+            const data = await res.json().catch(() => ({}))
+            if (!res.ok) throw new Error(data.error || 'Could not revert that import')
+            setBankTransactions(prev => prev.filter(t => t.statementId !== statementId))
+            showToast('Import reverted', 'success')
+        } catch (err: any) {
+            showToast(err.message || 'Could not revert that import', 'error')
+        } finally {
+            setRevertingId(null)
         }
     }
 
@@ -492,6 +527,39 @@ export function BankReconciliationClient({
                             </button>
                         </div>
                     </div>
+
+                    {/* Recent imports — revert a bad or duplicate one */}
+                    {importGroups.length > 0 && (
+                        <div className="bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                            <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                                <h3 className="text-[12.5px] font-[600] text-gray-900">Imports still open</h3>
+                                <p className="text-[11px] text-gray-400 mt-0.5">
+                                    Each is reverted independently — only possible while none of its transactions have been matched yet.
+                                </p>
+                            </div>
+                            <div className="divide-y" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
+                                {importGroups.map(g => (
+                                    <div key={g.statementId} className="flex items-center justify-between px-5 py-3">
+                                        <div>
+                                            <p className="text-[12.5px] font-[500] text-gray-800">
+                                                {g.count} transaction{g.count !== 1 ? 's' : ''}
+                                                {g.from && g.to && (
+                                                    <span className="text-gray-400 font-[400]">
+                                                        {' '}· {g.from.toLocaleDateString()} – {g.to.toLocaleDateString()}
+                                                    </span>
+                                                )}
+                                            </p>
+                                        </div>
+                                        <button onClick={() => revertImport(g.statementId)} disabled={revertingId === g.statementId}
+                                            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[6px] text-[11.5px] font-[500] text-rose-600 hover:bg-rose-50 transition-colors disabled:opacity-50">
+                                            {revertingId === g.statementId ? <PiSpinner className="text-[12px] animate-spin" /> : <PiTrash className="text-[12px]" />}
+                                            Revert
+                                        </button>
+                                    </div>
+                                ))}
+                            </div>
+                        </div>
+                    )}
 
                     {/* Matching Interface */}
                     <div className="grid grid-cols-12 gap-4">
