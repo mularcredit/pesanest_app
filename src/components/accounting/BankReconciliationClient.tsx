@@ -511,7 +511,13 @@ export function BankReconciliationClient({
                             </div>
                             <div className="h-[420px] overflow-y-auto p-3 space-y-2">
                                 {filteredBankTx.length === 0 && (
-                                    <p className="text-[12px] text-gray-400 text-center py-8">Nothing unmatched here</p>
+                                    <p className="text-[12px] text-gray-400 text-center py-8 px-4 leading-relaxed">
+                                        {searchBank.trim()
+                                            ? 'No bank transactions match your search'
+                                            : bankTransactions.length === 0
+                                                ? 'No unmatched bank transactions — every imported item has been matched'
+                                                : 'Nothing unmatched here'}
+                                    </p>
                                 )}
                                 {filteredBankTx.map(tx => {
                                     const isSelected = selectedBankTx === tx.id
@@ -591,7 +597,11 @@ export function BankReconciliationClient({
                             </div>
                             <div className="h-[420px] overflow-y-auto p-3 space-y-2">
                                 {filteredBookLines.length === 0 && (
-                                    <p className="text-[12px] text-gray-400 text-center py-8">Nothing unmatched here</p>
+                                    <p className="text-[12px] text-gray-400 text-center py-8 px-4 leading-relaxed">
+                                        {searchBooks.trim()
+                                            ? 'No book entries match your search'
+                                            : "No unmatched journal entries for this account — either nothing's been posted to the ledger yet, or everything posted is already matched. Any bank transactions on the left have nothing to match against until an entry exists in the books."}
+                                    </p>
                                 )}
                                 {filteredBookLines.map(line => {
                                     const isSelected = selectedBookLine === line.id
