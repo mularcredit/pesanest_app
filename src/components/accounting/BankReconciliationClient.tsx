@@ -35,6 +35,122 @@ function readAsBinaryString(file: File): Promise<string> {
     });
 }
 
+// Statement exports rarely agree on column names — M-Pesa paybill statements
+// use "Completion Time" / "Details" / "Paid In" / "Withdrawn"; bank exports
+// tend to use "Date" / "Description" / "Amount" or split "Debit"/"Credit".
+const HEADER_ALIASES = {
+    date: ['completion time', 'transaction date', 'trans date', 'date', 'value date', 'posting date'],
+    description: ['details', 'description', 'narration', 'particulars', 'transaction details'],
+    amount: ['amount'],
+    credit: ['paid in', 'credit', 'money in', 'cr'],
+    debit: ['withdrawn', 'debit', 'money out', 'dr'],
+};
+
+const normalizeHeader = (h: unknown) => String(h ?? '').trim().toLowerCase();
+
+/** M-Pesa/bank exports often prefix a few metadata rows before the real header row. */
+function findHeaderRow(rows: any[][]): number {
+    for (let i = 0; i < Math.min(rows.length, 30); i++) {
+        const cells = (rows[i] || []).map(normalizeHeader);
+        const hasDate = HEADER_ALIASES.date.some(a => cells.includes(a));
+        const hasAmount = HEADER_ALIASES.amount.some(a => cells.includes(a));
+        const hasCredit = HEADER_ALIASES.credit.some(a => cells.includes(a));
+        const hasDebit = HEADER_ALIASES.debit.some(a => cells.includes(a));
+        if (hasDate && (hasAmount || hasCredit || hasDebit)) return i;
+    }
+    return -1;
+}
+
+function findCol(headerCells: string[], aliases: string[]): number {
+    for (const a of aliases) {
+        const idx = headerCells.indexOf(a);
+        if (idx !== -1) return idx;
+    }
+    return -1;
+}
+
+const toNum = (v: unknown) => {
+    const n = parseFloat(String(v ?? '').replace(/,/g, ''));
+    return Number.isNaN(n) ? 0 : n;
+};
+
+/** Handles ISO strings, native Date cells, and the DD-MM-YYYY[ HH:mm:ss] format M-Pesa exports use. */
+function parseStatementDate(raw: unknown): Date | null {
+    if (raw == null || raw === '') return null;
+    if (raw instanceof Date) return Number.isNaN(raw.getTime()) ? null : raw;
+
+    const s = String(raw).trim();
+    if (/^\d{4}-\d{2}-\d{2}/.test(s)) {
+        const d = new Date(s);
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const m = s.match(/^(\d{1,2})[\/\-](\d{1,2})[\/\-](\d{4})(?:[ T](\d{1,2}):(\d{2})(?::(\d{2}))?)?$/);
+    if (m) {
+        const [, dd, mm, yyyy, hh = '0', min = '0', ss = '0'] = m;
+        const d = new Date(Number(yyyy), Number(mm) - 1, Number(dd), Number(hh), Number(min), Number(ss));
+        return Number.isNaN(d.getTime()) ? null : d;
+    }
+
+    const fallback = new Date(s);
+    return Number.isNaN(fallback.getTime()) ? null : fallback;
+}
+
+/** Finds the real header row, resolves aliased columns, and normalizes rows into {date, description, amount}. */
+function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; description: string; amount: number }[]; skipped: number; headerRowIdx: number } {
+    const headerRowIdx = findHeaderRow(rawRows);
+    if (headerRowIdx === -1) {
+        throw new Error("Couldn't find a header row with recognizable date/amount columns in this file");
+    }
+
+    const headerCells = rawRows[headerRowIdx].map(normalizeHeader);
+    const dateCol = findCol(headerCells, HEADER_ALIASES.date);
+    const descCol = findCol(headerCells, HEADER_ALIASES.description);
+    const amountCol = findCol(headerCells, HEADER_ALIASES.amount);
+    const creditCol = findCol(headerCells, HEADER_ALIASES.credit);
+    const debitCol = findCol(headerCells, HEADER_ALIASES.debit);
+
+    if (dateCol === -1) throw new Error("Couldn't find a date column in this file");
+    if (amountCol === -1 && creditCol === -1 && debitCol === -1) {
+        throw new Error("Couldn't find an amount, or paid-in/withdrawn columns in this file");
+    }
+
+    const parsed: { date: Date; description: string; amount: number }[] = [];
+    let skipped = 0;
+
+    for (let i = headerRowIdx + 1; i < rawRows.length; i++) {
+        const row = rawRows[i] || [];
+        if (row.length === 0 || row.every((c: any) => c === undefined || c === null || c === '')) continue;
+
+        const date = parseStatementDate(row[dateCol]);
+        if (!date) { skipped++; continue; }
+
+        const description = descCol !== -1 ? String(row[descCol] ?? '').trim() : '';
+        const amount = amountCol !== -1
+            ? toNum(row[amountCol])
+            : (creditCol !== -1 ? toNum(row[creditCol]) : 0) - Math.abs(debitCol !== -1 ? toNum(row[debitCol]) : 0);
+
+        parsed.push({ date, description: description || 'Unknown', amount });
+    }
+
+    return { parsed, skipped, headerRowIdx };
+}
+
+/** Scans the rows above the header for "Opening/Closing Balance:" labels, e.g. M-Pesa's preamble. */
+function detectBalances(rawRows: any[][], headerRowIdx: number): { opening: number | null; closing: number | null } {
+    let opening: number | null = null;
+    let closing: number | null = null;
+    for (let i = 0; i < headerRowIdx; i++) {
+        const row = rawRows[i] || [];
+        row.forEach((cell: any, idx: number) => {
+            const label = normalizeHeader(cell);
+            if (label.includes('opening balance') && row[idx + 1] != null) opening = toNum(row[idx + 1]);
+            if (label.includes('closing balance') && row[idx + 1] != null) closing = toNum(row[idx + 1]);
+        });
+    }
+    return { opening, closing };
+}
+
 export function BankReconciliationClient({
     bankAccountId, glBalance, journalLines, currency = 'KES', initialStatementLines = [],
 }: Props) {
@@ -62,21 +178,16 @@ export function BankReconciliationClient({
         setIsUploading(true)
         try {
             const bstr = await readAsBinaryString(file)
-            const wb = read(bstr, { type: 'binary' })
+            const wb = read(bstr, { type: 'binary', cellDates: true })
             const ws = wb.Sheets[wb.SheetNames[0]]
-            const rows = utils.sheet_to_json(ws) as any[]
+            const rawRows = utils.sheet_to_json(ws, { header: 1 }) as any[][]
 
-            if (rows.length === 0) throw new Error('That file has no rows we could read')
+            if (rawRows.length === 0) throw new Error('That file has no rows we could read')
 
-            const parsed = rows.map(row => {
-                const rawDate = row.Date || row.date || new Date().toISOString()
-                const rawAmount = row.Amount ?? row.amount ?? row.Credit ?? row.credit ?? row.Debit ?? row.debit ?? 0
-                return {
-                    date: new Date(rawDate),
-                    description: row.Description || row.description || row.Narration || row.narration || 'Unknown',
-                    amount: parseFloat(rawAmount) || 0,
-                }
-            })
+            const { parsed, skipped, headerRowIdx } = parseStatementRows(rawRows)
+            if (parsed.length === 0) throw new Error('No usable transaction rows were found in that file')
+
+            const { opening, closing } = detectBalances(rawRows, headerRowIdx)
 
             const validDates = parsed.map(p => p.date.getTime()).filter(t => !Number.isNaN(t))
             const periodStart = validDates.length ? new Date(Math.min(...validDates)) : new Date()
@@ -88,8 +199,8 @@ export function BankReconciliationClient({
                 body: JSON.stringify({
                     periodStart: periodStart.toISOString().slice(0, 10),
                     periodEnd: periodEnd.toISOString().slice(0, 10),
-                    openingBalance: parseFloat(openingBalance) || 0,
-                    closingBalance: parseFloat(closingBalance) || 0,
+                    openingBalance: opening ?? (parseFloat(openingBalance) || 0),
+                    closingBalance: closing ?? (parseFloat(closingBalance) || 0),
                     lines: parsed.map(p => ({
                         transactionDate: p.date.toISOString(),
                         description: p.description,
@@ -114,7 +225,11 @@ export function BankReconciliationClient({
 
             setBankTransactions(prev => [...prev, ...imported])
             setStep('match')
-            showToast(`Imported ${imported.length} transaction${imported.length !== 1 ? 's' : ''}`, 'success')
+            showToast(
+                `Imported ${imported.length} transaction${imported.length !== 1 ? 's' : ''}` +
+                (skipped > 0 ? ` — ${skipped} row${skipped !== 1 ? 's' : ''} skipped (no recognizable date)` : ''),
+                'success'
+            )
         } catch (err: any) {
             showToast(err.message || 'Could not import that file', 'error')
         } finally {
