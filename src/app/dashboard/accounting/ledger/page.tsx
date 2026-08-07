@@ -220,9 +220,27 @@ export default async function GeneralLedgerPage({
                                             {status}
                                         </span>
 
-                                        {/* Delete — shown on hover */}
+                                        {/* Edit (drafts only) / Void (posted only) — shown on hover */}
                                         <div className="opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <AccountingActions type="DELETE_ENTRY" entryId={entry.id} />
+                                            {status === 'DRAFT' && (
+                                                <AccountingActions
+                                                    type="EDIT_ENTRY"
+                                                    entryId={entry.id}
+                                                    initialEntry={{
+                                                        date: new Date(entry.date).toISOString().split('T')[0],
+                                                        description: entry.description,
+                                                        reference: entry.reference || '',
+                                                        lines: entry.lines.map((l: any) => ({
+                                                            accountId: l.accountId,
+                                                            debit: l.debit,
+                                                            credit: l.credit,
+                                                        })),
+                                                    }}
+                                                />
+                                            )}
+                                            {status === 'POSTED' && (
+                                                <AccountingActions type="VOID_ENTRY" entryId={entry.id} entryNumber={entry.entryNumber} />
+                                            )}
                                         </div>
                                     </div>
                                 </div>

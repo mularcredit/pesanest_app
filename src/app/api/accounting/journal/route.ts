@@ -35,6 +35,31 @@ export async function POST(req: Request) {
         }
     }
 
+    // Void a posted entry: POST with { action: 'VOID', entryId, reason }
+    if (body.action === 'VOID') {
+        const { entryId, reason } = body;
+        if (!entryId || !reason?.trim()) {
+            return NextResponse.json({ error: "entryId and reason are required" }, { status: 400 });
+        }
+
+        // Only admins may void posted entries
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { role: true, customRole: { select: { isSystem: true } } }
+        });
+        const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.customRole?.isSystem;
+        if (!isAdmin) {
+            return NextResponse.json({ error: "Only System Admins can void journal entries" }, { status: 403 });
+        }
+
+        try {
+            const reversal = await AccountingEngine.voidJournalEntry(entryId, session.user.id!, reason);
+            return NextResponse.json(reversal);
+        } catch (error: any) {
+            return NextResponse.json({ error: error.message }, { status: 400 });
+        }
+    }
+
     // Manual journal entry creation
     try {
         const lines = body.lines;
@@ -89,5 +114,47 @@ export async function POST(req: Request) {
     }
 }
 
-// Journal entries are append-only — physical deletion is not permitted.
-// Use POST { action: 'REVERSE', entryId, reason } to create a contra-entry.
+// Posted/void journal entries are append-only — physical deletion is not permitted.
+// Use POST { action: 'REVERSE' | 'VOID', entryId, reason } to correct one instead.
+
+// Edit a DRAFT entry in place: PATCH { entryId, date, description, reference, lines }
+export async function PATCH(req: Request) {
+    const session = await auth();
+    if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+
+    const body = await req.json();
+    const { entryId, date, description, reference, lines } = body;
+    if (!entryId) return NextResponse.json({ error: "entryId is required" }, { status: 400 });
+    if (!Array.isArray(lines) || lines.length < 2) {
+        return NextResponse.json({ error: "At least 2 lines are required" }, { status: 400 });
+    }
+
+    const existing = await prisma.journalEntry.findUnique({ where: { id: entryId } });
+    if (!existing) return NextResponse.json({ error: "Entry not found" }, { status: 404 });
+
+    // Only the entry's creator or an admin may edit a draft
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true, customRole: { select: { isSystem: true } } }
+    });
+    const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.customRole?.isSystem;
+    if (!isAdmin && existing.createdBy !== session.user.id) {
+        return NextResponse.json({ error: "You can only edit drafts you created" }, { status: 403 });
+    }
+
+    try {
+        const updated = await AccountingEngine.updateDraftEntry(entryId, {
+            date: new Date(date),
+            description,
+            reference: reference || undefined,
+            lines: lines.map((l: any) => ({
+                accountId: l.accountId,
+                debit: Number(l.debit || 0),
+                credit: Number(l.credit || 0),
+            })),
+        });
+        return NextResponse.json(updated);
+    } catch (error: any) {
+        return NextResponse.json({ error: error.message }, { status: 400 });
+    }
+}

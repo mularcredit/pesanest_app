@@ -192,6 +192,82 @@ export class AccountingEngine {
     }
 
     /**
+     * Voids a posted journal entry: posts the reversing contra-entry (via
+     * createReversal) and additionally flags the original VOID, so the ledger
+     * clearly shows it was cancelled rather than leaving it looking like an
+     * active, uncorrected POSTED entry.
+     */
+    static async voidJournalEntry(entryId: string, userId: string, reason: string) {
+        const original = await (prisma as any).journalEntry.findUnique({ where: { id: entryId } });
+        if (!original) throw new Error(`Journal entry ${entryId} not found`);
+        if (original.status === 'VOID') throw new Error('This entry has already been voided');
+
+        const reversal = await this.createReversal(entryId, userId, reason);
+
+        await (prisma as any).journalEntry.update({
+            where: { id: entryId },
+            data: { status: 'VOID' },
+        });
+
+        await writeAuditLog({
+            actorId: userId,
+            action: 'JOURNAL_VOID',
+            entity: 'JournalEntry',
+            entityId: entryId,
+            after: { reason, reversalEntryId: reversal.id },
+        });
+
+        return reversal;
+    }
+
+    /**
+     * Updates a DRAFT journal entry in place. Only drafts are mutable —
+     * POSTED/VOID entries are append-only and must be corrected via a reversal.
+     */
+    static async updateDraftEntry(
+        entryId: string,
+        data: {
+            date: Date;
+            description: string;
+            reference?: string;
+            lines: { accountId: string; debit: number; credit: number; description?: string }[];
+        }
+    ) {
+        const existing = await (prisma as any).journalEntry.findUnique({ where: { id: entryId } });
+        if (!existing) throw new Error(`Journal entry ${entryId} not found`);
+        if (existing.status !== 'DRAFT') {
+            throw new Error('Only draft entries can be edited — posted entries are append-only');
+        }
+
+        const totalDebit = data.lines.reduce((s, l) => s + l.debit, 0);
+        const totalCredit = data.lines.reduce((s, l) => s + l.credit, 0);
+        if (Math.abs(totalDebit - totalCredit) > 0.01) {
+            throw new Error(`Journal does not balance: debits ${totalDebit} != credits ${totalCredit}`);
+        }
+
+        return (prisma as any).$transaction(async (tx: any) => {
+            await tx.journalLine.deleteMany({ where: { entryId } });
+            return tx.journalEntry.update({
+                where: { id: entryId },
+                data: {
+                    date: data.date,
+                    description: data.description,
+                    reference: data.reference,
+                    lines: {
+                        create: data.lines.map(line => ({
+                            accountId: line.accountId,
+                            debit: line.debit,
+                            credit: line.credit,
+                            description: line.description || data.description,
+                        })),
+                    },
+                },
+                include: { lines: true },
+            });
+        });
+    }
+
+    /**
      * AUTOMATION: Post an Expense to the Ledger
      */
     static async postExpensePayment(expenseId: string, paidFromAccountId: string) {

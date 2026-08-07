@@ -13,8 +13,16 @@ import { Input } from "@/components/ui/Input";
 import { CustomSelect } from "@/components/ui/CustomSelect";
 
 interface AccountingActionsProps {
-    type: "NEW_ACCOUNT" | "MANUAL_JOURNAL" | "DELETE_ENTRY";
+    type: "NEW_ACCOUNT" | "MANUAL_JOURNAL" | "VOID_ENTRY" | "EDIT_ENTRY";
     entryId?: string;
+    entryNumber?: string;
+    /** Only used by EDIT_ENTRY — seeds the form with the draft's current values */
+    initialEntry?: {
+        date: string;
+        description: string;
+        reference?: string;
+        lines: { accountId: string; debit: number; credit: number }[];
+    };
     /** 'primary' = indigo filled (default for CoA page), 'secondary' = subtle outlined (for inline use) */
     variant?: 'primary' | 'secondary';
 }
@@ -33,7 +41,7 @@ interface JournalLine {
     credit: number;
 }
 
-export function AccountingActions({ type, entryId, variant = 'primary' }: AccountingActionsProps) {
+export function AccountingActions({ type, entryId, entryNumber, initialEntry, variant = 'primary' }: AccountingActionsProps) {
     const [isOpen, setIsOpen] = useState(false);
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [mounted, setMounted] = useState(false);
@@ -47,7 +55,7 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
 
     // Fetch Chart of Accounts
     useEffect(() => {
-        if (isOpen && type === "MANUAL_JOURNAL") {
+        if (isOpen && (type === "MANUAL_JOURNAL" || type === "EDIT_ENTRY")) {
             fetchAccounts();
         }
     }, [isOpen, type]);
@@ -181,16 +189,29 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
         setShowSuggestions(false);
     };
 
-    // JOURNAL FORM STATE
-    const [journalData, setJournalData] = useState({
-        date: new Date().toISOString().split('T')[0],
-        description: "",
-        reference: "",
-        lines: [
-            { id: 1, accountId: "", debit: 0, credit: 0 },
-            { id: 2, accountId: "", debit: 0, credit: 0 }
-        ] as JournalLine[]
+    // JOURNAL FORM STATE — for EDIT_ENTRY this seeds from the draft's current values
+    const [journalData, setJournalData] = useState(() => {
+        if (initialEntry) {
+            return {
+                date: initialEntry.date,
+                description: initialEntry.description,
+                reference: initialEntry.reference || "",
+                lines: initialEntry.lines.map((l, i) => ({ id: i + 1, ...l })) as JournalLine[]
+            };
+        }
+        return {
+            date: new Date().toISOString().split('T')[0],
+            description: "",
+            reference: "",
+            lines: [
+                { id: 1, accountId: "", debit: 0, credit: 0 },
+                { id: 2, accountId: "", debit: 0, credit: 0 }
+            ] as JournalLine[]
+        };
     });
+
+    // VOID FORM STATE
+    const [voidReason, setVoidReason] = useState("");
 
     const addLine = () => {
         const newId = Math.max(...journalData.lines.map(l => l.id), 0) + 1;
@@ -291,19 +312,54 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
         }
     };
 
-    const handleDeleteEntry = async () => {
+    const handleUpdateJournal = async () => {
         if (!entryId) return;
         setIsSubmitting(true);
+        const { isBalanced, totalDebit, totalCredit } = getTotals();
+        if (!isBalanced) {
+            showToast(`Entry not balanced! Debits: ${totalDebit.toFixed(2)}, Credits: ${totalCredit.toFixed(2)}`, "error");
+            setIsSubmitting(false);
+            return;
+        }
         try {
-            const res = await fetch(`/api/accounting/journal?id=${entryId}`, {
-                method: "DELETE"
+            const res = await fetch("/api/accounting/journal", {
+                method: "PATCH",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ entryId, ...journalData })
             });
-            if (!res.ok) throw new Error("Failed to delete entry");
-            showToast("Journal entry deleted successfully", "success");
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to update entry");
+            showToast("Draft updated successfully", "success");
             setIsOpen(false);
             router.refresh();
-        } catch (error) {
-            showToast("Error deleting journal entry", "error");
+        } catch (error: any) {
+            showToast(error.message || "Error updating journal entry", "error");
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    const handleVoidEntry = async () => {
+        if (!entryId) return;
+        if (!voidReason.trim()) {
+            showToast("A reason is required to void an entry", "error");
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const res = await fetch("/api/accounting/journal", {
+                method: "POST",
+                headers: { "Content-Type": "application/json" },
+                body: JSON.stringify({ action: "VOID", entryId, reason: voidReason })
+            });
+            const data = await res.json().catch(() => ({}));
+            if (!res.ok) throw new Error(data.error || "Failed to void entry");
+            showToast("Journal entry voided — a reversing entry has been posted", "success");
+            setIsOpen(false);
+            setVoidReason("");
+            router.refresh();
+        } catch (error: any) {
+            showToast(error.message || "Error voiding journal entry", "error");
         } finally {
             setIsSubmitting(false);
         }
@@ -330,28 +386,35 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
                         className={cn(
                             "relative bg-white border border-gray-200 w-full rounded-xl shadow-2xl overflow-hidden max-h-[90vh] flex flex-col",
-                            type === "DELETE_ENTRY" ? "max-w-md" : "max-w-4xl"
+                            type === "VOID_ENTRY" ? "max-w-md" : "max-w-4xl"
                         )}
                     >
                         {/* Header */}
                         <div className={cn(
                             "px-8 flex justify-between items-center bg-white border-b border-gray-100 shrink-0",
-                            type === "DELETE_ENTRY" ? "h-16" : "h-[88px]"
+                            type === "VOID_ENTRY" ? "h-16" : "h-[88px]"
                         )}>
                             <div className="flex items-center gap-4">
                                 <div className={cn(
                                     "p-3 rounded-xl",
-                                    type === "DELETE_ENTRY" ? "bg-red-50 text-red-600 p-2" : "bg-[#F6F6F6] text-[#6366F1]"
+                                    type === "VOID_ENTRY" ? "bg-rose-50 text-rose-600 p-2" : "bg-[#F6F6F6] text-[#6366F1]"
                                 )}>
-                                    {type === "NEW_ACCOUNT" ? <PiBank className="text-2xl" /> : type === "MANUAL_JOURNAL" ? <PiNotebook className="text-2xl" /> : <PiTrash className="text-xl" />}
+                                    {type === "NEW_ACCOUNT" ? <PiBank className="text-2xl" />
+                                        : type === "MANUAL_JOURNAL" || type === "EDIT_ENTRY" ? <PiNotebook className="text-2xl" />
+                                        : <PiArrowsClockwise className="text-xl" />}
                                 </div>
                                 <div>
                                     <h3 className="text-base font-semibold text-gray-900 mb-0.5">
-                                        {type === "NEW_ACCOUNT" ? "Create New Account" : type === "MANUAL_JOURNAL" ? "Post Journal Entry" : "Delete Journal Entry"}
+                                        {type === "NEW_ACCOUNT" ? "Create New Account"
+                                            : type === "MANUAL_JOURNAL" ? "Post Journal Entry"
+                                            : type === "EDIT_ENTRY" ? "Edit Draft Entry"
+                                            : "Void Journal Entry"}
                                     </h3>
-                                    {type !== "DELETE_ENTRY" && (
+                                    {type !== "VOID_ENTRY" && (
                                         <p className="text-gray-500 text-xs font-medium">
-                                            {type === "NEW_ACCOUNT" ? "Add a new GL code" : "Record double-entry transaction"}
+                                            {type === "NEW_ACCOUNT" ? "Add a new GL code"
+                                                : type === "EDIT_ENTRY" ? "Only drafts can be edited before posting"
+                                                : "Record double-entry transaction"}
                                         </p>
                                     )}
                                 </div>
@@ -364,7 +427,7 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                         {/* Content */}
                         <div className={cn(
                             "flex-1 overflow-y-auto custom-scrollbar bg-[#F6F6F6] space-y-6",
-                            type === "DELETE_ENTRY" ? "p-6" : "p-8"
+                            type === "VOID_ENTRY" ? "p-6" : "p-8"
                         )}>
                             {type === "NEW_ACCOUNT" ? (
                                 <div className="space-y-5">
@@ -504,7 +567,7 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                                         </datalist>
                                     </div>
                                 </div>
-                            ) : type === "MANUAL_JOURNAL" ? (
+                            ) : type === "MANUAL_JOURNAL" || type === "EDIT_ENTRY" ? (
                                 <div className="space-y-6">
                                     <div className="grid grid-cols-3 gap-4">
                                         <Input type="date" value={journalData.date} onChange={e => setJournalData(p => ({ ...p, date: e.target.value }))} />
@@ -531,12 +594,31 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                                             </div>
                                         ))}
                                     </div>
+                                    <Button variant="outline" onClick={addLine} className="text-[#6366F1]">
+                                        <PiPlus className="mr-2" /> Add line
+                                    </Button>
                                 </div>
 
                             ) : (
-                                <div className="py-2 text-center">
-                                    <h3 className="text-lg font-semibold">Confirm Deletion</h3>
-                                    <p className="text-gray-500 text-sm mt-1 px-4">This will permanently remove this journal entry from the ledger.</p>
+                                <div className="space-y-4">
+                                    <div className="text-center">
+                                        <h3 className="text-lg font-semibold">Void {entryNumber || 'this entry'}?</h3>
+                                        <p className="text-gray-500 text-sm mt-1 px-2">
+                                            The entry is append-only and can't be deleted. Voiding posts a reversing
+                                            entry that cancels it out and flags the original as VOID.
+                                        </p>
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-1.5">Reason <span className="text-red-500">*</span></label>
+                                        <textarea
+                                            value={voidReason}
+                                            onChange={e => setVoidReason(e.target.value)}
+                                            placeholder="Why is this entry being voided?"
+                                            rows={3}
+                                            className="w-full rounded-xl px-4 py-2.5 bg-white text-sm outline-none focus:ring-2 focus:ring-[#6366F1]/20 resize-none"
+                                            style={{ border: '1px solid rgba(0,0,0,0.12)' }}
+                                        />
+                                    </div>
                                 </div>
                             )}
                         </div>
@@ -544,16 +626,19 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                         {/* Footer */}
                         <div className={cn(
                             "px-8 bg-white border-t border-gray-100 flex items-center justify-end gap-3 shrink-0",
-                            type === "DELETE_ENTRY" ? "h-16" : "h-[88px]"
+                            type === "VOID_ENTRY" ? "h-16" : "h-[88px]"
                         )}>
                             <Button variant="outline" onClick={() => setIsOpen(false)}>Cancel</Button>
-                            {type === "DELETE_ENTRY" ? (
-                                <Button onClick={handleDeleteEntry} disabled={isSubmitting} className="bg-red-600 hover:bg-red-700 text-white font-semibold">
-                                    {isSubmitting ? "Deleting..." : "Confirm Delete"}
+                            {type === "VOID_ENTRY" ? (
+                                <Button onClick={handleVoidEntry} disabled={isSubmitting || !voidReason.trim()} className="bg-rose-600 hover:bg-rose-700 text-white font-semibold">
+                                    {isSubmitting ? "Voiding..." : "Void Entry"}
                                 </Button>
                             ) : (
-                                <Button onClick={type === "NEW_ACCOUNT" ? handleCreateAccount : handleCreateJournal} disabled={isSubmitting} className="bg-[#6366F1] text-white font-semibold">
-                                    {isSubmitting ? "Processing..." : "Submit"}
+                                <Button
+                                    onClick={type === "NEW_ACCOUNT" ? handleCreateAccount : type === "EDIT_ENTRY" ? handleUpdateJournal : handleCreateJournal}
+                                    disabled={isSubmitting}
+                                    className="bg-[#6366F1] text-white font-semibold">
+                                    {isSubmitting ? "Processing..." : type === "EDIT_ENTRY" ? "Save Changes" : "Submit"}
                                 </Button>
                             )}
                         </div>
@@ -581,10 +666,18 @@ export function AccountingActions({ type, entryId, variant = 'primary' }: Accoun
                 <Button onClick={() => setIsOpen(true)} className="bg-[#6366F1] text-white">
                     <PiBookOpenText className="mr-2" /> Manual Journal
                 </Button>
-                            ) : (
-                <Button onClick={() => setIsOpen(true)} variant="ghost" size="icon" className="text-gray-400 hover:text-red-600">
-                    <PiTrash />
-                </Button>
+            ) : type === "EDIT_ENTRY" ? (
+                <button onClick={() => setIsOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] bg-white text-gray-500 text-[11px] font-[500] hover:bg-indigo-50 hover:text-[#6366F1] transition-colors"
+                    style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                    <PiPencil className="text-[12px]" /> Edit
+                </button>
+            ) : (
+                <button onClick={() => setIsOpen(true)}
+                    className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-[6px] bg-white text-gray-500 text-[11px] font-[500] hover:bg-rose-50 hover:text-rose-600 transition-colors"
+                    style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                    <PiArrowsClockwise className="text-[12px]" /> Void
+                </button>
             )}
             {mounted && createPortal(modalContent, document.body)}
         </>
