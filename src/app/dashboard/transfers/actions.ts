@@ -122,6 +122,20 @@ export async function getBankAccounts() {
     return banks.map(b => ({ id: b.id, label: `${b.name} — ${b.bankName}`, currency: b.currency }));
 }
 
+export async function getPaybillAccounts() {
+    const paybills = await prisma.paybillAccount.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, paybillNumber: true, accountNumber: true },
+        orderBy: { name: 'asc' },
+    });
+    return paybills.map(p => ({
+        id: p.id,
+        label: `${p.name} — ${p.paybillNumber}`,
+        paybillNumber: p.paybillNumber,
+        accountNumber: p.accountNumber,
+    }));
+}
+
 /**
  * Which legs of each transfer type map onto a GL account we can post to.
  * A leg that is an outside party (a customer paying our paybill, a payee's
@@ -173,8 +187,18 @@ export async function createTransfer(formData: FormData) {
         const fromBankAccountId = ((formData.get("fromBankAccountId") as string) || "").trim() || null;
         const toBankAccountId = ((formData.get("toBankAccountId") as string) || "").trim() || null;
         const toPhone = ((formData.get("toPhone") as string) || "").trim() || null;
-        const paybillNumber = ((formData.get("paybillNumber") as string) || "").trim() || null;
-        const paybillAccount = ((formData.get("paybillAccount") as string) || "").trim() || null;
+        const paybillAccountId = ((formData.get("paybillAccountId") as string) || "").trim() || null;
+        let paybillNumber = ((formData.get("paybillNumber") as string) || "").trim() || null;
+        let paybillAccount = ((formData.get("paybillAccount") as string) || "").trim() || null;
+
+        // A saved paybill is the source of truth for its own number/account —
+        // re-resolve server-side rather than trusting whatever the client sent.
+        if (paybillAccountId) {
+            const saved = await prisma.paybillAccount.findUnique({ where: { id: paybillAccountId } });
+            if (!saved) return { success: false, error: "Selected paybill account not found" };
+            paybillNumber = saved.paybillNumber;
+            paybillAccount = paybillAccount || saved.accountNumber;
+        }
         const fromLabel = ((formData.get("fromLabel") as string) || "").trim() || null;
         const toLabel = ((formData.get("toLabel") as string) || "").trim() || null;
         const narration = ((formData.get("narration") as string) || "").trim() || null;
@@ -223,7 +247,7 @@ export async function createTransfer(formData: FormData) {
                 data: {
                     reference, type, status, amount, charges, currency, transferDate,
                     fromBankAccountId, toBankAccountId, fromLabel, toLabel,
-                    toPhone, paybillNumber, paybillAccount, narration, externalRef,
+                    toPhone, paybillNumber, paybillAccount, paybillAccountId, narration, externalRef,
                     journalEntryId,
                     createdBy: user.name || user.id,
                 },

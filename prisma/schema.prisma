@@ -1186,18 +1186,39 @@ model Transfer {
   toPhone           String?
   paybillNumber     String?
   paybillAccount    String?
+  paybillAccountId  String?
   narration         String?
   externalRef       String?
   journalEntryId    String?
   createdBy         String?
-  createdAt         DateTime     @default(now())
-  updatedAt         DateTime     @updatedAt
-  fromBankAccount   BankAccount? @relation("TransferFrom", fields: [fromBankAccountId], references: [id])
-  toBankAccount     BankAccount? @relation("TransferTo", fields: [toBankAccountId], references: [id])
+  createdAt         DateTime        @default(now())
+  updatedAt         DateTime        @updatedAt
+  fromBankAccount   BankAccount?    @relation("TransferFrom", fields: [fromBankAccountId], references: [id])
+  toBankAccount     BankAccount?    @relation("TransferTo", fields: [toBankAccountId], references: [id])
+  paybillAccountRef PaybillAccount? @relation(fields: [paybillAccountId], references: [id])
 
   @@index([type])
   @@index([status])
   @@index([transferDate])
   @@index([fromBankAccountId])
   @@index([toBankAccountId])
+  @@index([paybillAccountId])
+}
+
+/// A saved paybill "address book" entry so users pick a known paybill instead of
+/// retyping its number/account each time. Unlike BankAccount, this has no GL
+/// sub-account of its own — all paybill movements clear through the single
+/// shared PAYBILL_CLEARING GL code (see cash-movement-gl.ts), since the paybill
+/// belongs to a third party, not one of our own accounts.
+model PaybillAccount {
+  id            String     @id @default(cuid())
+  name          String
+  paybillNumber String
+  accountNumber String?
+  isActive      Boolean    @default(true)
+  createdAt     DateTime   @default(now())
+  updatedAt     DateTime   @updatedAt
+  transfers     Transfer[]
+
+  @@index([isActive])
 }

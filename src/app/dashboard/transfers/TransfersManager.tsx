@@ -12,6 +12,7 @@ import {
 import { createTransfer, updateTransferStatus, deleteTransfer } from "./actions";
 import { TRANSFER_TYPES, TRANSFER_STATUSES } from "./constants";
 import { BankAccountsPanel, type BankAccountRow } from "./BankAccountsPanel";
+import { PaybillAccountsPanel, type PaybillAccountRow } from "./PaybillAccountsPanel";
 import { useToast } from "@/components/ui/ToastProvider";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
@@ -56,18 +57,20 @@ const BLANK = {
     type: 'BANK_TO_BANK',
     amount: '', charges: '', currency: 'KES', transferDate: today(),
     fromBankAccountId: '', toBankAccountId: '',
-    toPhone: '', paybillNumber: '', paybillAccount: '',
+    toPhone: '', paybillAccountId: '', paybillNumber: '', paybillAccount: '',
     fromLabel: '', toLabel: '', narration: '', externalRef: '',
     status: 'COMPLETED',
 };
 
 export function TransfersManager({
-    transfers, stats, bankAccounts, bankAccountRows = [], isAdmin,
+    transfers, stats, bankAccounts, bankAccountRows = [], paybillAccounts = [], paybillAccountRows = [], isAdmin,
 }: {
     transfers: TransferRow[];
     stats: Stats;
     bankAccounts: { id: string; label: string; currency: string }[];
     bankAccountRows?: BankAccountRow[];
+    paybillAccounts?: { id: string; label: string; paybillNumber: string; accountNumber: string | null }[];
+    paybillAccountRows?: PaybillAccountRow[];
     isAdmin: boolean;
 }) {
     const router = useRouter();
@@ -267,16 +270,42 @@ export function TransfersManager({
                     )}
 
                     {needsPaybill && (
-                        <div className="grid grid-cols-2 gap-3">
+                        <div className="space-y-3">
                             <div>
-                                <label className={LABEL_CLASS}>Paybill number</label>
-                                <input type="text" value={form.paybillNumber} onChange={e => set('paybillNumber', e.target.value)}
-                                    placeholder="e.g. 247247" className={INPUT_CLASS} style={INPUT_STYLE} />
+                                <label className={LABEL_CLASS}>Paybill</label>
+                                <select value={form.paybillAccountId} onChange={e => {
+                                    const id = e.target.value;
+                                    const picked = paybillAccounts.find(p => p.id === id);
+                                    setForm(f => ({
+                                        ...f,
+                                        paybillAccountId: id,
+                                        paybillNumber: picked ? picked.paybillNumber : f.paybillNumber,
+                                        paybillAccount: picked ? (picked.accountNumber || '') : f.paybillAccount,
+                                    }));
+                                }} className={INPUT_CLASS} style={INPUT_STYLE}>
+                                    <option value="">— Enter manually —</option>
+                                    {paybillAccounts.map(p => <option key={p.id} value={p.id}>{p.label}</option>)}
+                                </select>
+                                {paybillAccounts.length === 0 && (
+                                    <p className="text-[11px] text-gray-400 mt-1.5">
+                                        No saved paybills yet — use “Paybill accounts” below to save one for next time, or just type it in below.
+                                    </p>
+                                )}
                             </div>
-                            <div>
-                                <label className={LABEL_CLASS}>Account number <span className="text-gray-300 font-[400]">(optional)</span></label>
-                                <input type="text" value={form.paybillAccount} onChange={e => set('paybillAccount', e.target.value)}
-                                    placeholder="e.g. 12345678" className={INPUT_CLASS} style={INPUT_STYLE} />
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className={LABEL_CLASS}>Paybill number</label>
+                                    <input type="text" value={form.paybillNumber}
+                                        onChange={e => set('paybillNumber', e.target.value)}
+                                        disabled={!!form.paybillAccountId}
+                                        placeholder="e.g. 247247" className={cn(INPUT_CLASS, form.paybillAccountId && "opacity-60 cursor-not-allowed")} style={INPUT_STYLE} />
+                                </div>
+                                <div>
+                                    <label className={LABEL_CLASS}>Account number <span className="text-gray-300 font-[400]">(optional)</span></label>
+                                    <input type="text" value={form.paybillAccount}
+                                        onChange={e => set('paybillAccount', e.target.value)}
+                                        placeholder="e.g. 12345678" className={INPUT_CLASS} style={INPUT_STYLE} />
+                                </div>
                             </div>
                         </div>
                     )}
@@ -379,6 +408,7 @@ export function TransfersManager({
                 <div className="ml-auto flex items-center gap-2">
                     <p className="text-[12px] text-gray-400">{visible.length} of {transfers.length}</p>
                     <BankAccountsPanel accounts={bankAccountRows} isAdmin={isAdmin} />
+                    <PaybillAccountsPanel accounts={paybillAccountRows} isAdmin={isAdmin} />
                 </div>
             </div>
 
