@@ -19,6 +19,26 @@ const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const MAX_TOOL_ITERATIONS = 5;
 const MAX_ROWS = 50;
 
+/**
+ * Where things live in the sidebar, kept in sync with src/components/layout/Sidebar.tsx by hand.
+ * Lets Nuri answer "where is X" / "how do I do X" navigation questions directly, with no tool call —
+ * those aren't data questions, so the "never guess" rule doesn't apply to them.
+ */
+const NAVIGATION_GUIDE = `
+Sidebar map (section → page → path):
+- Overview: Dashboard (/dashboard) · Branches (/dashboard/branches) · Regions (/dashboard/regions) · Analytics (/dashboard/reports) · Workflow Analytics (/dashboard/workflow-analytics)
+- Expenses: Expenses/requisitions (/dashboard/requisitions) · Approvals (/dashboard/approvals) · Payments (/dashboard/payments)
+- Financial: Corporate wallet (/dashboard/wallet) · Petty cash (/dashboard/petty-cash) · Transfers (/dashboard/transfers) · Budgets (/dashboard/budgets) · Forecasting (/dashboard/forecasting) · Audit trail (/dashboard/audit)
+- Accounting: Trial Balance (/dashboard/accounting/reports/trial-balance) · Income Statement (/dashboard/accounting/reports/income-statement) · Balance Sheet (/dashboard/accounting/reports/balance-sheet) · Comparative Reports (/dashboard/accounting/reports/comparative) · Cash Flow Statement (/dashboard/accounting/reports/cash-flow) · AR/AP Aging (/dashboard/accounting/aging) · General Ledger (/dashboard/accounting/ledger) · Journal Approvals (/dashboard/accounting/journal-approvals) · Accrual Schedules (/dashboard/accounting/accruals) · Recurring Journals (/dashboard/accounting/recurring-journals) · Close Binder (/dashboard/accounting/close-binder) · Cost Centres (/dashboard/accounting/cost-centres) · Cost Centre Report (/dashboard/accounting/reports/by-dimension) · Customers (/dashboard/accounting/customers) · Sales & Income (/dashboard/accounting/sales) · Accounts Payable (/dashboard/accounting/payables) · Period Management (/dashboard/accounting/periods) · Tax Rates (/dashboard/accounting/tax-rates) · Chart of Accounts (/dashboard/accounting/chart-of-accounts) · Bank Reconciliation (/dashboard/accounting/reconciliation, history at /dashboard/accounting/reconciliation/history)
+- Operations: Vendors (/dashboard/vendors) · Invoices (/dashboard/invoices) · Contracts (/dashboard/contracts) · Assets (/dashboard/assets) · Schedules (/dashboard/schedules)
+- Administration: Team management (/dashboard/team) · Account Requests (/dashboard/users) · Roles & Permissions (/dashboard/roles) · Policies (/dashboard/policies) · Data Import (/dashboard/settings/import) · Account Security (/dashboard/settings/security) · System config (/dashboard/settings) · SMS Notifications (/dashboard/sms)
+
+How key multi-step workflows work, when asked "how do I...":
+- Bank reconciliation: go to Accounting → Bank Reconciliation, pick a bank or paybill account, import a statement (CSV/Excel). Select one or more bank transactions and one or more book (journal) entries on each side, then match them — many-to-one and one-to-many splits are supported as long as the selected sums agree. Mid-way through, "Save as Draft" preserves your selections so you can resume later. Past imports and what each line matched to are under Bank Reconciliation → history.
+- Accounts Payable: go to Accounting → Accounts Payable and use "Record Payable" to log a vendor invoice/bill; it flows into the payables ledger and can later be paid via Payments.
+- Expense/requisition approval flow: an employee submits a request under Expenses → Expenses, it routes to their approver under Approvals, and once approved it's settled via Expenses → Payments (bank transfer, paybill, cash, or Paystack).
+`.trim();
+
 async function isAdmin(userId: string) {
     const user = await prisma.user.findUnique({
         where: { id: userId },
@@ -101,6 +121,17 @@ const TOOLS = [
                     query: { type: 'string' },
                     limit: { type: 'number' },
                 },
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
+            name: 'listExpenseCategories',
+            description: 'Spend breakdown by expense category — total amount and number of claims per category, across requisitions and expense claims, sorted by total spend descending.',
+            parameters: {
+                type: 'object',
+                properties: { limit: { type: 'number', description: `Max categories, default 15, capped at ${MAX_ROWS}` } },
             },
         },
     },
@@ -231,6 +262,24 @@ async function runTool(name: string, args: any): Promise<unknown> {
             }));
         }
 
+        case 'listExpenseCategories': {
+            const [reqCats, expCats] = await Promise.all([
+                prisma.requisition.groupBy({ by: ['category'], _sum: { amount: true }, _count: true }),
+                prisma.expense.groupBy({ by: ['category'], _sum: { amount: true }, _count: true }),
+            ]);
+            const totals = new Map<string, { totalAmount: number; claimCount: number }>();
+            for (const row of [...reqCats, ...expCats]) {
+                const existing = totals.get(row.category) || { totalAmount: 0, claimCount: 0 };
+                existing.totalAmount += row._sum.amount || 0;
+                existing.claimCount += row._count;
+                totals.set(row.category, existing);
+            }
+            return Array.from(totals.entries())
+                .map(([category, v]) => ({ category, ...v }))
+                .sort((a, b) => b.totalAmount - a.totalAmount)
+                .slice(0, limit(args?.limit, 15));
+        }
+
         case 'getVendorInfo': {
             const vendor = await prisma.vendor.findFirst({
                 where: { name: { contains: String(args?.name || ''), mode: 'insensitive' } },
@@ -305,7 +354,11 @@ export async function POST(req: Request) {
                 "Answer questions about the company's live financial data using the tools provided — never guess or " +
                 "invent numbers. If a question needs data you have no tool for, say so plainly rather than making " +
                 "something up. Be concise, format amounts as KES with thousands separators, and cite specific figures " +
-                "from tool results rather than vague summaries.",
+                "from tool results rather than vague summaries.\n\n" +
+                "Separately, you also know your way around the app itself. When someone asks where something is or how " +
+                "to do something (e.g. \"where is bank reconciliation\", \"how do I record a payable\"), answer directly " +
+                "from the navigation map below — that's not a data question, so answer it from memory, don't call a tool " +
+                "or say you can't help.\n\n" + NAVIGATION_GUIDE,
         },
         ...history,
     ];

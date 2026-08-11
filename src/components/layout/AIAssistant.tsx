@@ -35,11 +35,20 @@ const EASE = [0.16, 1, 0.3, 1] as const;
 /** Nuri's replies come back with light markdown (**bold**, "- " bullets) — render it instead of showing raw asterisks. */
 function renderMarkdown(content: string) {
     const renderInline = (text: string) =>
-        text.split(/(\*\*[^*]+\*\*)/g).map((chunk, i) =>
-            chunk.startsWith('**') && chunk.endsWith('**')
-                ? <strong key={i} className="font-[600] text-gray-800">{chunk.slice(2, -2)}</strong>
-                : chunk
-        );
+        text.split(/(\*\*[^*]+\*\*|`[^`]+`)/g).map((chunk, i) => {
+            if (chunk.startsWith('**') && chunk.endsWith('**')) {
+                return <strong key={i} className="font-[600] text-gray-800">{chunk.slice(2, -2)}</strong>;
+            }
+            if (chunk.startsWith('`') && chunk.endsWith('`')) {
+                return (
+                    <code key={i} className="px-1 py-0.5 rounded-[4px] text-[11.5px] font-mono"
+                        style={{ background: 'rgba(17,24,39,0.055)' }}>
+                        {chunk.slice(1, -1)}
+                    </code>
+                );
+            }
+            return chunk;
+        });
 
     const lines = content.split('\n');
     const blocks: React.ReactNode[] = [];
