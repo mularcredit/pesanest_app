@@ -124,6 +124,11 @@ export default async function BankReconciliationPage({
                 </div>
                 <div className="flex items-center gap-3">
                     <BankAccountPicker accounts={accounts} value={account.id} />
+                    <Link href={`/dashboard/accounting/reconciliation/history?bankAccountId=${account.id}`}
+                        className="flex items-center gap-1.5 px-3 py-[9px] rounded-[6px] text-[12.5px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors shrink-0"
+                        style={CARD_STYLE}>
+                        History
+                    </Link>
                     <div className="bg-white rounded-[8px] px-5 py-3 text-right shrink-0" style={CARD_STYLE}>
                         <p className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1">GL Balance</p>
                         <p className="text-[20px] font-[600] text-gray-900">
