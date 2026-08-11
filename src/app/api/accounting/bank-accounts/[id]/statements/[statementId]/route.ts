@@ -35,7 +35,7 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
         where: { id: params.statementId },
         include: { lines: { select: { id: true, isMatched: true } } },
     });
-    if (!statement || statement.bankAccountId !== params.id) {
+    if (!statement || (statement.bankAccountId !== params.id && statement.paybillAccountId !== params.id)) {
         return NextResponse.json({ error: "Statement not found" }, { status: 404 });
     }
 

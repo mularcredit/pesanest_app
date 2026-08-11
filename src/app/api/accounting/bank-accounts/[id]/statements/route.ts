@@ -28,6 +28,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { resolveReconcilableAccount, statementOwnerFilter } from "@/lib/accounting/reconcilable-accounts";
 
 async function requireAdmin(session: any) {
     if (!session?.user?.id) return false;
@@ -46,8 +47,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         return NextResponse.json({ error: "Only System Admins can import statements" }, { status: 403 });
     }
 
-    const bankAccount = await (prisma as any).bankAccount.findUnique({ where: { id: params.id } });
-    if (!bankAccount) return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
+    const account = await resolveReconcilableAccount(params.id);
+    if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
     const body = await req.json();
     const { periodStart, periodEnd, openingBalance, closingBalance, lines } = body;
@@ -63,7 +64,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
     try {
         const statement = await (prisma as any).bankStatement.create({
             data: {
-                bankAccountId: params.id,
+                bankAccountId: account.kind === 'BANK' ? account.id : null,
+                paybillAccountId: account.kind === 'PAYBILL' ? account.id : null,
                 periodStart: new Date(periodStart),
                 periodEnd: new Date(periodEnd),
                 openingBalance: openingBalance ?? 0,
@@ -91,7 +93,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
                 entity: 'BankStatement',
                 entityId: statement.id,
                 after: {
-                    bankAccountId: params.id,
+                    accountId: params.id,
+                    accountKind: account.kind,
                     periodStart,
                     periodEnd,
                     lineCount: lines.length
@@ -112,7 +115,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
 
     try {
         const statements = await (prisma as any).bankStatement.findMany({
-            where: { bankAccountId: params.id },
+            where: statementOwnerFilter(params.id),
             include: {
                 lines: {
                     orderBy: { transactionDate: 'asc' },

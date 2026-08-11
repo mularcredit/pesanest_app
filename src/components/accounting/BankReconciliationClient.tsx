@@ -20,6 +20,7 @@ interface BankTransaction {
 }
 
 interface Props {
+    /** A BankAccount or PaybillAccount id — both are reconcilable accounts, see reconcilable-accounts.ts */
     bankAccountId: string; glBalance: number; journalLines: JournalLine[]; currency?: string;
     initialStatementLines?: BankTransaction[];
 }

@@ -1,9 +1,9 @@
 /**
- * Reconciliation API for a bank account.
+ * Reconciliation API for a bank or paybill account (see reconcilable-accounts.ts).
  *
  * GET  /api/accounting/bank-accounts/[id]/reconciliation
  *   Returns unmatched statement lines and unmatched GL journal lines for
- *   the bank account's GL account, grouped for side-by-side matching.
+ *   the account's GL account, grouped for side-by-side matching.
  *
  * POST /api/accounting/bank-accounts/[id]/reconciliation
  *   body: { action: 'MATCH', statementLineId, journalEntryId, matchType, notes? }
@@ -21,6 +21,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { resolveReconcilableAccount, statementOwnerFilter } from "@/lib/accounting/reconcilable-accounts";
 
 async function requireAdmin(session: any) {
     if (!session?.user?.id) return false;
@@ -36,11 +37,8 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
-    const bankAccount = await (prisma as any).bankAccount.findUnique({
-        where: { id: params.id },
-        select: { id: true, name: true, glAccountId: true }
-    });
-    if (!bankAccount) return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
+    const account = await resolveReconcilableAccount(params.id);
+    if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
     const { searchParams } = new URL(req.url);
     const statementId = searchParams.get('statementId');
@@ -48,7 +46,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     // Fetch unmatched statement lines
     const lineFilter: any = {
         isMatched: false,
-        statement: { bankAccountId: params.id }
+        statement: statementOwnerFilter(params.id)
     };
     if (statementId) lineFilter.statementId = statementId;
 
@@ -58,10 +56,10 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         orderBy: { transactionDate: 'asc' }
     });
 
-    // Fetch GL journal lines on this bank account's GL account that have no ReconciliationMatch
+    // Fetch GL journal lines on this account's GL account that have no ReconciliationMatch
     const glLines = await prisma.journalLine.findMany({
         where: {
-            accountId: bankAccount.glAccountId,
+            accountId: account.glAccountId,
             entry: { status: 'POSTED' }
         },
         include: {
@@ -88,7 +86,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     const unmatchedGlLines = glLines.filter(l => !matchedEntryIds.has(l.entryId));
 
     return NextResponse.json({
-        bankAccount,
+        account,
         unmatchedStatementLines: unmatchedLines,
         unmatchedGlLines: unmatchedGlLines.map(l => ({
             id: l.id,
@@ -112,11 +110,8 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         return NextResponse.json({ error: "Only System Admins can perform reconciliation" }, { status: 403 });
     }
 
-    const bankAccount = await (prisma as any).bankAccount.findUnique({
-        where: { id: params.id },
-        select: { id: true, glAccountId: true }
-    });
-    if (!bankAccount) return NextResponse.json({ error: "Bank account not found" }, { status: 404 });
+    const account = await resolveReconcilableAccount(params.id);
+    if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
     const body = await req.json();
     const { action } = body;
@@ -168,7 +163,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
 
     if (action === 'AUTO_MATCH') {
         const glLines = await prisma.journalLine.findMany({
-            where: { accountId: bankAccount.glAccountId, entry: { status: 'POSTED' } },
+            where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
             include: { entry: { select: { id: true, date: true } } }
         });
 
@@ -181,7 +176,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         const availableGlLines = glLines.filter(l => !matchedEntryIds.has(l.entryId));
 
         const unmatchedLines = await (prisma as any).bankStatementLine.findMany({
-            where: { isMatched: false, statement: { bankAccountId: params.id } },
+            where: { isMatched: false, statement: statementOwnerFilter(params.id) },
             orderBy: { transactionDate: 'asc' }
         });
 

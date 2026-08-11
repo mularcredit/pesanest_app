@@ -17,22 +17,34 @@ export default async function BankReconciliationPage({
 
     const { bankAccountId: requestedId } = await searchParams;
 
-    const bankAccounts = await prisma.bankAccount.findMany({
-        where: { isActive: true },
-        select: { id: true, name: true, bankName: true, currency: true, glAccountId: true },
-        orderBy: { name: 'asc' },
-    });
+    const [bankRows, paybillRows] = await Promise.all([
+        prisma.bankAccount.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, bankName: true, currency: true, glAccountId: true },
+            orderBy: { name: 'asc' },
+        }),
+        prisma.paybillAccount.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, paybillNumber: true, glAccountId: true },
+            orderBy: { name: 'asc' },
+        }),
+    ]);
 
-    if (bankAccounts.length === 0) {
+    const accounts = [
+        ...bankRows.map(b => ({ id: b.id, kind: 'BANK' as const, label: `${b.name} — ${b.bankName}`, currency: b.currency, glAccountId: b.glAccountId })),
+        ...paybillRows.map(p => ({ id: p.id, kind: 'PAYBILL' as const, label: `${p.name} — ${p.paybillNumber}`, currency: 'KES', glAccountId: p.glAccountId })),
+    ];
+
+    if (accounts.length === 0) {
         return (
             <div className="space-y-6 pb-24">
                 <div>
                     <h1 className="text-[20px] font-[600] text-gray-900 tracking-tight">Bank Reconciliation</h1>
                 </div>
                 <div className="bg-white rounded-[8px] py-16 flex flex-col items-center text-center gap-2" style={CARD_STYLE}>
-                    <p className="text-[13px] font-[500] text-gray-900">No bank accounts set up yet</p>
+                    <p className="text-[13px] font-[500] text-gray-900">No bank or paybill accounts set up yet</p>
                     <p className="text-[12px] text-gray-400 max-w-sm">
-                        Reconciliation runs against a specific bank account's ledger. Add one from Transfers first.
+                        Reconciliation runs against a specific account's ledger. Add one from Transfers first.
                     </p>
                     <Link href="/dashboard/transfers"
                         className="mt-2 px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-[#6366F1] hover:bg-indigo-600 transition-colors">
@@ -43,10 +55,10 @@ export default async function BankReconciliationPage({
         );
     }
 
-    const bankAccount = bankAccounts.find(b => b.id === requestedId) || bankAccounts[0];
+    const account = accounts.find(a => a.id === requestedId) || accounts[0];
 
     const glBalanceAgg = await prisma.journalLine.aggregate({
-        where: { accountId: bankAccount.glAccountId, entry: { status: 'POSTED' } },
+        where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
         _sum: { debit: true, credit: true },
     });
     const glBalance = (glBalanceAgg._sum.debit || 0) - (glBalanceAgg._sum.credit || 0);
@@ -55,14 +67,14 @@ export default async function BankReconciliationPage({
     // entry has no ReconciliationMatch yet.
     const [glLines, matchedEntryIds, unmatchedStatementLines] = await Promise.all([
         prisma.journalLine.findMany({
-            where: { accountId: bankAccount.glAccountId, entry: { status: 'POSTED' } },
+            where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
             include: { entry: { select: { id: true, entryNumber: true, date: true, description: true, reference: true } } },
             orderBy: { entry: { date: 'desc' } },
             take: 300,
         }),
         prisma.reconciliationMatch.findMany({ select: { journalEntryId: true } }),
         prisma.bankStatementLine.findMany({
-            where: { isMatched: false, statement: { bankAccountId: bankAccount.id } },
+            where: { isMatched: false, statement: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] } },
             orderBy: { transactionDate: 'asc' },
         }),
     ]);
@@ -81,21 +93,21 @@ export default async function BankReconciliationPage({
                     </p>
                 </div>
                 <div className="flex items-center gap-3">
-                    <BankAccountPicker accounts={bankAccounts} value={bankAccount.id} />
+                    <BankAccountPicker accounts={accounts} value={account.id} />
                     <div className="bg-white rounded-[8px] px-5 py-3 text-right shrink-0" style={CARD_STYLE}>
                         <p className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1">GL Balance</p>
                         <p className="text-[20px] font-[600] text-gray-900">
-                            {bankAccount.currency} {glBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
+                            {account.currency} {glBalance.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
                         </p>
                     </div>
                 </div>
             </div>
 
             <BankReconciliationClient
-                key={bankAccount.id}
-                bankAccountId={bankAccount.id}
+                key={account.id}
+                bankAccountId={account.id}
                 glBalance={glBalance}
-                currency={bankAccount.currency}
+                currency={account.currency}
                 journalLines={unmatchedGlLines.map(line => ({
                     id: line.id,
                     entryId: line.entryId,

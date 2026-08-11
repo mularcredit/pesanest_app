@@ -941,19 +941,25 @@ model BankAccount {
   @@index([isActive])
 }
 
+/// Belongs to either a BankAccount or a PaybillAccount — never both — now that
+/// paybills are reconcilable accounts in their own right, not just a shared
+/// clearing bucket.
 model BankStatement {
-  id             String              @id @default(cuid())
-  bankAccountId  String
-  periodStart    DateTime
-  periodEnd      DateTime
-  openingBalance Decimal             @db.Decimal(18, 2)
-  closingBalance Decimal             @db.Decimal(18, 2)
-  importedAt     DateTime            @default(now())
-  importedBy     String?
-  bankAccount    BankAccount         @relation(fields: [bankAccountId], references: [id])
-  lines          BankStatementLine[]
+  id               String              @id @default(cuid())
+  bankAccountId    String?
+  paybillAccountId String?
+  periodStart      DateTime
+  periodEnd        DateTime
+  openingBalance   Decimal             @db.Decimal(18, 2)
+  closingBalance   Decimal             @db.Decimal(18, 2)
+  importedAt       DateTime            @default(now())
+  importedBy       String?
+  bankAccount      BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  paybillAccount   PaybillAccount?     @relation(fields: [paybillAccountId], references: [id])
+  lines            BankStatementLine[]
 
   @@index([bankAccountId])
+  @@index([paybillAccountId])
 }
 
 model BankStatementLine {
@@ -1206,23 +1212,22 @@ model Transfer {
   @@index([paybillAccountId])
 }
 
-/// A saved paybill "address book" entry so users pick a known paybill instead of
-/// retyping its number/account each time. Unlike BankAccount, this has no GL
-/// It's one of our own M-Pesa business (paybill/till) accounts, so — like
-/// BankAccount — it gets its own GL sub-account in the Chart of Accounts.
-/// Movements against a paybill with no GL account yet (or none picked) fall
-/// back to the shared PAYBILL_CLEARING code (see cash-movement-gl.ts).
+/// A saved paybill "address book" entry so users pick a known paybill instead
+/// of retyping its number/account each time. It's one of our own M-Pesa
+/// business (paybill/till) accounts, so — like BankAccount — it gets its own
+/// GL sub-account and can be reconciled against a statement of its own.
 model PaybillAccount {
-  id            String     @id @default(cuid())
+  id            String          @id @default(cuid())
   name          String
   paybillNumber String
   accountNumber String?
-  glAccountId   String     @unique
-  glAccount     Account    @relation(fields: [glAccountId], references: [id])
-  isActive      Boolean    @default(true)
-  createdAt     DateTime   @default(now())
-  updatedAt     DateTime   @updatedAt
+  glAccountId   String          @unique
+  glAccount     Account         @relation(fields: [glAccountId], references: [id])
+  isActive      Boolean         @default(true)
+  createdAt     DateTime        @default(now())
+  updatedAt     DateTime        @updatedAt
   transfers     Transfer[]
+  statements    BankStatement[]
 
   @@index([isActive])
 }
