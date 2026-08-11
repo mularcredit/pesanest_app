@@ -23,13 +23,15 @@ const SUGGESTED_PROMPTS = [
 ];
 
 const NURI_AVATAR_SRC = '/Nuri%20Avatar.png';
+/** Shown on the floater while it's at rest (unopened) — a different pose/crop from the chat avatar. */
+const NURI_REST_AVATAR_SRC = '/Nuri-2.png';
 
-function NuriAvatar({ size = 28 }: { size?: number }) {
+function NuriAvatar({ size = 28, src = NURI_AVATAR_SRC }: { size?: number; src?: string }) {
     return (
         <div className="rounded-full overflow-hidden shrink-0"
             style={{ width: size, height: size, background: 'linear-gradient(135deg, #6366F1, #4f46e5)' }}>
             {/* eslint-disable-next-line @next/next/no-img-element */}
-            <img src={NURI_AVATAR_SRC} alt="Nuri" className="w-full h-full object-cover"
+            <img src={src} alt="Nuri" className="w-full h-full object-cover"
                 style={{ objectPosition: 'top center' }} />
         </div>
     );
@@ -218,15 +220,17 @@ export function AIAssistant() {
 
     return (
         <>
-            {/* Floater button */}
-            <button
-                onClick={() => setOpen(true)}
-                className="fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 px-4 py-3 rounded-full text-white text-[13px] font-[600] shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:scale-95"
-                style={{ background: 'linear-gradient(135deg, #6366F1, #4f46e5)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}
-            >
-                <PiSparkle className="text-[14px]" />
-                Nuri
-            </button>
+            {/* Floater button — shown only at rest; the avatar swaps once the panel is open */}
+            {!open && (
+                <button
+                    onClick={() => setOpen(true)}
+                    className="fixed bottom-6 right-6 z-[999] flex items-center gap-2.5 pl-1.5 pr-4 py-1.5 rounded-full text-white text-[13px] font-[600] shadow-lg hover:shadow-xl transition-all hover:-translate-y-0.5 active:scale-95"
+                    style={{ background: 'linear-gradient(135deg, #6366F1, #4f46e5)', boxShadow: '0 8px 24px rgba(99,102,241,0.35)' }}
+                >
+                    <NuriAvatar size={36} src={NURI_REST_AVATAR_SRC} />
+                    Nuri
+                </button>
+            )}
 
             {/* Panel */}
             <AnimatePresence>
