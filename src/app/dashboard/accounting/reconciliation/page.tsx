@@ -82,6 +82,36 @@ export default async function BankReconciliationPage({
     const matchedSet = new Set(matchedEntryIds.map(m => m.journalEntryId));
     const unmatchedGlLines = glLines.filter(l => !matchedSet.has(l.entryId));
 
+    const rawDrafts = await prisma.reconciliationDraft.findMany({
+        where: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] },
+        orderBy: { updatedAt: 'desc' },
+    });
+    const draftLineIds = Array.from(new Set(rawDrafts.flatMap(d => d.statementLineIds)));
+    const draftLines = draftLineIds.length
+        ? await prisma.bankStatementLine.findMany({ where: { id: { in: draftLineIds }, isMatched: false } })
+        : [];
+    const draftLineMap = new Map(draftLines.map(l => [l.id, l]));
+    const initialDrafts = rawDrafts.map(d => ({
+        id: d.id,
+        label: d.label,
+        createdAt: d.createdAt.toISOString(),
+        originalCount: d.statementLineIds.length,
+        lines: d.statementLineIds
+            .map(id => draftLineMap.get(id))
+            .filter((l): l is NonNullable<typeof l> => !!l)
+            .map(l => {
+                const credit = Number(l.credit);
+                const debit = Number(l.debit);
+                return {
+                    id: l.id,
+                    date: l.transactionDate.toISOString(),
+                    description: l.description,
+                    amount: credit > 0 ? credit : -debit,
+                    statementId: l.statementId,
+                };
+            }),
+    }));
+
     return (
         <div className="space-y-6 pb-24">
             <div className="flex items-start justify-between pb-5 flex-wrap gap-3"
@@ -129,6 +159,7 @@ export default async function BankReconciliationPage({
                         statementId: l.statementId,
                     };
                 })}
+                initialDrafts={initialDrafts}
             />
         </div>
     );

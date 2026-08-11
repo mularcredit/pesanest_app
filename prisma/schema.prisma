@@ -994,6 +994,26 @@ model ReconciliationMatch {
   @@index([journalEntryId])
 }
 
+/// A saved, not-yet-confirmed group of statement lines earmarked for a future
+/// match — typically because the corresponding entry hasn't been recorded in
+/// the books yet. Lets a reconciliation session be paused and resumed without
+/// losing an in-progress selection. Plain string fields, not relations: a
+/// draft outliving its statement/account (reverted import, etc.) should just
+/// silently become irrelevant, not cascade-delete or block deletion elsewhere.
+model ReconciliationDraft {
+  id               String   @id @default(cuid())
+  bankAccountId    String?
+  paybillAccountId String?
+  label            String?
+  statementLineIds String[]
+  createdBy        String?
+  createdAt        DateTime @default(now())
+  updatedAt        DateTime @updatedAt
+
+  @@index([bankAccountId])
+  @@index([paybillAccountId])
+}
+
 model AccrualSchedule {
   id              String               @id @default(cuid())
   name            String

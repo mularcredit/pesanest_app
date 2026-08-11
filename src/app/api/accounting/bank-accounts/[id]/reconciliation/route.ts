@@ -6,14 +6,15 @@
  *   the account's GL account, grouped for side-by-side matching.
  *
  * POST /api/accounting/bank-accounts/[id]/reconciliation
- *   body: { action: 'MATCH', statementLineIds: string[], journalEntryId, matchType, notes? }
- *     Persists one ReconciliationMatch per statement line, all against the same
- *     journal entry, and marks each statementLine as matched. Several lines can
- *     be split-matched against a single entry (e.g. a lump-sum salary paid out
- *     as 3 separate transactions) — when more than one is given, their combined
- *     net amount must equal the entry's amount exactly. A single line has no
- *     such check, since matching one-to-one is already a human judgment call.
- *     (statementLineId singular is still accepted for one line.)
+ *   body: { action: 'MATCH', statementLineIds: string[], journalEntryIds: string[], matchType, notes? }
+ *     Persists one ReconciliationMatch per (statementLine, journalEntry) pair —
+ *     the full cross-product of both sides — and marks each statementLine as
+ *     matched. Either side (or both) can have more than one item, e.g. 3 bank
+ *     transactions against 1 lump-sum entry, or 1 bank transaction against 2
+ *     entries. Whenever either side has more than one item, their combined net
+ *     amounts must be exactly equal. A single-to-single match has no such
+ *     check, since that pairing is already a human judgment call.
+ *     (statementLineId/journalEntryId singular still accepted for one item.)
  *
  *   body: { action: 'AUTO_MATCH' }
  *     Iterates all unmatched statement lines and attempts to find a unique
@@ -124,59 +125,70 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
     const { action } = body;
 
     if (action === 'MATCH') {
-        const { journalEntryId, matchType, notes } = body;
-        const ids: string[] = Array.isArray(body.statementLineIds)
+        const { matchType, notes } = body;
+        const statementLineIds: string[] = Array.isArray(body.statementLineIds)
             ? body.statementLineIds
             : (body.statementLineId ? [body.statementLineId] : []);
-        if (ids.length === 0 || !journalEntryId || !matchType) {
-            return NextResponse.json({ error: "statementLineIds, journalEntryId, and matchType are required" }, { status: 400 });
+        const journalEntryIds: string[] = Array.isArray(body.journalEntryIds)
+            ? body.journalEntryIds
+            : (body.journalEntryId ? [body.journalEntryId] : []);
+
+        if (statementLineIds.length === 0 || journalEntryIds.length === 0 || !matchType) {
+            return NextResponse.json({ error: "statementLineIds, journalEntryIds, and matchType are required" }, { status: 400 });
         }
 
-        const lines = await (prisma as any).bankStatementLine.findMany({ where: { id: { in: ids } } });
-        if (lines.length !== ids.length) {
+        const lines = await (prisma as any).bankStatementLine.findMany({ where: { id: { in: statementLineIds } } });
+        if (lines.length !== statementLineIds.length) {
             return NextResponse.json({ error: "One or more statement lines not found" }, { status: 404 });
         }
         if (lines.some((l: any) => l.isMatched)) {
             return NextResponse.json({ error: "One or more statement lines are already matched" }, { status: 409 });
         }
 
-        // Splitting several bank lines across one entry (e.g. a lump-sum salary
-        // paid out as 3 separate M-Pesa transactions) only makes sense if they
-        // actually add up — a single line has no such requirement, since a
-        // human already eyeballed that one before matching it.
-        if (ids.length > 1) {
-            const glLine = await prisma.journalLine.findFirst({
-                where: { entryId: journalEntryId, accountId: account.glAccountId },
+        // Splitting several items on either side only makes sense if the two
+        // sides actually add up to the same total — a single-to-single match
+        // has no such requirement, since a human already eyeballed that pair.
+        if (statementLineIds.length > 1 || journalEntryIds.length > 1) {
+            const glLines = await prisma.journalLine.findMany({
+                where: { entryId: { in: journalEntryIds }, accountId: account.glAccountId },
             });
-            if (!glLine) return NextResponse.json({ error: "Journal line not found on this account" }, { status: 404 });
+            const netByEntry = new Map<string, number>();
+            for (const l of glLines) netByEntry.set(l.entryId, (netByEntry.get(l.entryId) || 0) + (l.debit - l.credit));
 
-            const entryNet = glLine.debit - glLine.credit;
+            const missingEntry = journalEntryIds.find(id => !netByEntry.has(id));
+            if (missingEntry) return NextResponse.json({ error: "One or more journal entries not found on this account" }, { status: 404 });
+
+            const entryNetSum = journalEntryIds.reduce((s, id) => s + (netByEntry.get(id) || 0), 0);
             const selectedSum = lines.reduce((s: number, l: any) => s + (Number(l.credit) - Number(l.debit)), 0);
-            if (Math.abs(selectedSum - entryNet) > 0.01) {
+            if (Math.abs(selectedSum - entryNetSum) > 0.01) {
                 return NextResponse.json({
-                    error: `Selected total (${selectedSum.toFixed(2)}) doesn't match this entry's amount (${entryNet.toFixed(2)})`,
+                    error: `Selected totals don't match — bank side is ${selectedSum.toFixed(2)}, books side is ${entryNetSum.toFixed(2)}`,
                 }, { status: 400 });
             }
         }
 
+        // Every statement line is matched against every journal entry in the
+        // group — with no per-pair concept in a many-to-many split, what's
+        // actually verified is that the GROUP balances, not any one pairing.
         const matches = await prisma.$transaction(async (tx) => {
             const created = [];
-            for (const id of ids) {
-                const m = await (tx as any).reconciliationMatch.create({
-                    data: {
-                        statementLineId: id,
-                        journalEntryId,
-                        matchedBy: session.user!.id,
-                        matchType,
-                        notes: notes || null
-                    }
-                });
-                await (tx as any).bankStatementLine.update({
-                    where: { id },
-                    data: { isMatched: true }
-                });
-                created.push(m);
+            for (const slId of statementLineIds) {
+                for (const jeId of journalEntryIds) {
+                    created.push(await (tx as any).reconciliationMatch.create({
+                        data: {
+                            statementLineId: slId,
+                            journalEntryId: jeId,
+                            matchedBy: session.user!.id,
+                            matchType,
+                            notes: notes || null
+                        }
+                    }));
+                }
             }
+            await (tx as any).bankStatementLine.updateMany({
+                where: { id: { in: statementLineIds } },
+                data: { isMatched: true }
+            });
             return created;
         });
 
