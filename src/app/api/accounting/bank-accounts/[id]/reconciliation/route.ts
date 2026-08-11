@@ -6,16 +6,23 @@
  *   the account's GL account, grouped for side-by-side matching.
  *
  * POST /api/accounting/bank-accounts/[id]/reconciliation
- *   body: { action: 'MATCH', statementLineId, journalEntryId, matchType, notes? }
- *     Persists a ReconciliationMatch and marks the statementLine as matched.
+ *   body: { action: 'MATCH', statementLineIds: string[], journalEntryId, matchType, notes? }
+ *     Persists one ReconciliationMatch per statement line, all against the same
+ *     journal entry, and marks each statementLine as matched. Several lines can
+ *     be split-matched against a single entry (e.g. a lump-sum salary paid out
+ *     as 3 separate transactions) — when more than one is given, their combined
+ *     net amount must equal the entry's amount exactly. A single line has no
+ *     such check, since matching one-to-one is already a human judgment call.
+ *     (statementLineId singular is still accepted for one line.)
  *
  *   body: { action: 'AUTO_MATCH' }
  *     Iterates all unmatched statement lines and attempts to find a unique
  *     GL journal line with the same net amount (debit–credit) and a date
- *     within ±3 days.
+ *     within ±3 days. One-to-one only — it doesn't search for combinations.
  *
- *   body: { action: 'UNMATCH', statementLineId }
- *     Deletes the ReconciliationMatch and marks the line unmatched.
+ *   body: { action: 'UNMATCH', statementLineIds: string[] }
+ *     Deletes the ReconciliationMatch(es) and marks the lines unmatched.
+ *     (statementLineId singular is still accepted for one line.)
  */
 
 import { auth } from "@/auth";
@@ -117,43 +124,75 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
     const { action } = body;
 
     if (action === 'MATCH') {
-        const { statementLineId, journalEntryId, matchType, notes } = body;
-        if (!statementLineId || !journalEntryId || !matchType) {
-            return NextResponse.json({ error: "statementLineId, journalEntryId, and matchType are required" }, { status: 400 });
+        const { journalEntryId, matchType, notes } = body;
+        const ids: string[] = Array.isArray(body.statementLineIds)
+            ? body.statementLineIds
+            : (body.statementLineId ? [body.statementLineId] : []);
+        if (ids.length === 0 || !journalEntryId || !matchType) {
+            return NextResponse.json({ error: "statementLineIds, journalEntryId, and matchType are required" }, { status: 400 });
         }
 
-        const line = await (prisma as any).bankStatementLine.findUnique({ where: { id: statementLineId } });
-        if (!line) return NextResponse.json({ error: "Statement line not found" }, { status: 404 });
-        if (line.isMatched) return NextResponse.json({ error: "Statement line is already matched" }, { status: 409 });
+        const lines = await (prisma as any).bankStatementLine.findMany({ where: { id: { in: ids } } });
+        if (lines.length !== ids.length) {
+            return NextResponse.json({ error: "One or more statement lines not found" }, { status: 404 });
+        }
+        if (lines.some((l: any) => l.isMatched)) {
+            return NextResponse.json({ error: "One or more statement lines are already matched" }, { status: 409 });
+        }
 
-        const match = await prisma.$transaction(async (tx) => {
-            const m = await (tx as any).reconciliationMatch.create({
-                data: {
-                    statementLineId,
-                    journalEntryId,
-                    matchedBy: session.user!.id,
-                    matchType,
-                    notes: notes || null
-                }
+        // Splitting several bank lines across one entry (e.g. a lump-sum salary
+        // paid out as 3 separate M-Pesa transactions) only makes sense if they
+        // actually add up — a single line has no such requirement, since a
+        // human already eyeballed that one before matching it.
+        if (ids.length > 1) {
+            const glLine = await prisma.journalLine.findFirst({
+                where: { entryId: journalEntryId, accountId: account.glAccountId },
             });
-            await (tx as any).bankStatementLine.update({
-                where: { id: statementLineId },
-                data: { isMatched: true }
-            });
-            return m;
+            if (!glLine) return NextResponse.json({ error: "Journal line not found on this account" }, { status: 404 });
+
+            const entryNet = glLine.debit - glLine.credit;
+            const selectedSum = lines.reduce((s: number, l: any) => s + (Number(l.credit) - Number(l.debit)), 0);
+            if (Math.abs(selectedSum - entryNet) > 0.01) {
+                return NextResponse.json({
+                    error: `Selected total (${selectedSum.toFixed(2)}) doesn't match this entry's amount (${entryNet.toFixed(2)})`,
+                }, { status: 400 });
+            }
+        }
+
+        const matches = await prisma.$transaction(async (tx) => {
+            const created = [];
+            for (const id of ids) {
+                const m = await (tx as any).reconciliationMatch.create({
+                    data: {
+                        statementLineId: id,
+                        journalEntryId,
+                        matchedBy: session.user!.id,
+                        matchType,
+                        notes: notes || null
+                    }
+                });
+                await (tx as any).bankStatementLine.update({
+                    where: { id },
+                    data: { isMatched: true }
+                });
+                created.push(m);
+            }
+            return created;
         });
 
-        return NextResponse.json(match, { status: 201 });
+        return NextResponse.json(matches, { status: 201 });
     }
 
     if (action === 'UNMATCH') {
-        const { statementLineId } = body;
-        if (!statementLineId) return NextResponse.json({ error: "statementLineId is required" }, { status: 400 });
+        const ids: string[] = Array.isArray(body.statementLineIds)
+            ? body.statementLineIds
+            : (body.statementLineId ? [body.statementLineId] : []);
+        if (ids.length === 0) return NextResponse.json({ error: "statementLineIds is required" }, { status: 400 });
 
         await prisma.$transaction(async (tx) => {
-            await (tx as any).reconciliationMatch.deleteMany({ where: { statementLineId } });
-            await (tx as any).bankStatementLine.update({
-                where: { id: statementLineId },
+            await (tx as any).reconciliationMatch.deleteMany({ where: { statementLineId: { in: ids } } });
+            await (tx as any).bankStatementLine.updateMany({
+                where: { id: { in: ids } },
                 data: { isMatched: false }
             });
         });

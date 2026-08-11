@@ -159,7 +159,7 @@ export function BankReconciliationClient({
     const [step, setStep] = useState<'upload' | 'match' | 'review'>(initialStatementLines.length > 0 ? 'match' : 'upload')
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(initialStatementLines)
     const [bookLines, setBookLines] = useState<JournalLine[]>(journalLines)
-    const [sessionMatches, setSessionMatches] = useState<{ bankTx: BankTransaction; bookLine: JournalLine }[]>([])
+    const [sessionMatches, setSessionMatches] = useState<{ bankTxs: BankTransaction[]; bookLine: JournalLine }[]>([])
     const [openingBalance, setOpeningBalance] = useState('0')
     const [closingBalance, setClosingBalance] = useState('0')
     const [isUploading, setIsUploading] = useState(false)
@@ -167,8 +167,16 @@ export function BankReconciliationClient({
     const [revertingId, setRevertingId] = useState<string | null>(null)
     const [searchBank, setSearchBank] = useState('')
     const [searchBooks, setSearchBooks] = useState('')
-    const [selectedBankTx, setSelectedBankTx] = useState<string | null>(null)
+    const [selectedBankTxIds, setSelectedBankTxIds] = useState<Set<string>>(new Set())
     const [selectedBookLine, setSelectedBookLine] = useState<string | null>(null)
+
+    const toggleBankTx = (id: string) => {
+        setSelectedBankTxIds(prev => {
+            const next = new Set(prev)
+            next.has(id) ? next.delete(id) : next.add(id)
+            return next
+        })
+    }
     const fileInputRef = useRef<HTMLInputElement>(null)
 
     const fmt = (amount: number) =>
@@ -275,22 +283,27 @@ export function BankReconciliationClient({
     }
 
     const createMatch = async () => {
-        const bankTx = bankTransactions.find(t => t.id === selectedBankTx)
+        const bankTxs = bankTransactions.filter(t => selectedBankTxIds.has(t.id))
         const bookLine = bookLines.find(l => l.id === selectedBookLine)
-        if (!bankTx || !bookLine) return
+        if (bankTxs.length === 0 || !bookLine) return
         setIsMatching(true)
         try {
             const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/reconciliation`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'MATCH', statementLineId: bankTx.id, journalEntryId: bookLine.entryId, matchType: 'MANUAL' }),
+                body: JSON.stringify({
+                    action: 'MATCH',
+                    statementLineIds: bankTxs.map(t => t.id),
+                    journalEntryId: bookLine.entryId,
+                    matchType: bankTxs.length > 1 ? 'MANUAL_SPLIT' : 'MANUAL',
+                }),
             })
             const data = await res.json()
             if (!res.ok) throw new Error(data.error || 'Could not match those')
-            setBankTransactions(prev => prev.filter(t => t.id !== bankTx.id))
+            setBankTransactions(prev => prev.filter(t => !selectedBankTxIds.has(t.id)))
             setBookLines(prev => prev.filter(l => l.id !== bookLine.id))
-            setSessionMatches(prev => [...prev, { bankTx, bookLine }])
-            setSelectedBankTx(null)
+            setSessionMatches(prev => [...prev, { bankTxs, bookLine }])
+            setSelectedBankTxIds(new Set())
             setSelectedBookLine(null)
         } catch (err: any) {
             showToast(err.message || 'Could not match those', 'error')
@@ -299,20 +312,20 @@ export function BankReconciliationClient({
         }
     }
 
-    const unmatch = async (bankTxId: string) => {
-        const entry = sessionMatches.find(m => m.bankTx.id === bankTxId)
+    const unmatch = async (bookLineId: string) => {
+        const entry = sessionMatches.find(m => m.bookLine.id === bookLineId)
         if (!entry) return
         setIsMatching(true)
         try {
             const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/reconciliation`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action: 'UNMATCH', statementLineId: bankTxId }),
+                body: JSON.stringify({ action: 'UNMATCH', statementLineIds: entry.bankTxs.map(t => t.id) }),
             })
             if (!res.ok) { const data = await res.json().catch(() => ({})); throw new Error(data.error || 'Could not unmatch') }
-            setBankTransactions(prev => [...prev, entry.bankTx])
+            setBankTransactions(prev => [...prev, ...entry.bankTxs])
             setBookLines(prev => [...prev, entry.bookLine])
-            setSessionMatches(prev => prev.filter(m => m.bankTx.id !== bankTxId))
+            setSessionMatches(prev => prev.filter(m => m.bookLine.id !== bookLineId))
         } catch (err: any) {
             showToast(err.message || 'Could not unmatch', 'error')
         } finally {
@@ -370,6 +383,13 @@ export function BankReconciliationClient({
         }
     }
 
+    const selectedBankSum = useMemo(() =>
+        bankTransactions.filter(t => selectedBankTxIds.has(t.id)).reduce((s, t) => s + t.amount, 0),
+        [bankTransactions, selectedBankTxIds])
+    const targetBookLine = bookLines.find(l => l.id === selectedBookLine) || null
+    const sumMatches = targetBookLine ? Math.abs(selectedBankSum - targetBookLine.amount) < 0.01 : false
+    const canMatch = selectedBankTxIds.size > 0 && !!targetBookLine && sumMatches
+
     const filteredBankTx = useMemo(() =>
         bankTransactions.filter(tx => tx.description.toLowerCase().includes(searchBank.toLowerCase())),
         [bankTransactions, searchBank])
@@ -378,7 +398,7 @@ export function BankReconciliationClient({
         bookLines.filter(line => line.description.toLowerCase().includes(searchBooks.toLowerCase())),
         [bookLines, searchBooks])
 
-    const matchedCount = sessionMatches.length
+    const matchedCount = sessionMatches.reduce((s, m) => s + m.bankTxs.length, 0)
     const unmatchedBankCount = bankTransactions.length
     const unmatchedBookCount = bookLines.length
     const unmatchedBankTotal = bankTransactions.reduce((s, tx) => s + tx.amount, 0)
@@ -391,7 +411,7 @@ export function BankReconciliationClient({
     const finishSession = () => {
         setStep('upload')
         setSessionMatches([])
-        setSelectedBankTx(null)
+        setSelectedBankTxIds(new Set())
         setSelectedBookLine(null)
         showToast('All matches for this session are saved', 'success')
     }
@@ -606,17 +626,20 @@ export function BankReconciliationClient({
                                     </p>
                                 )}
                                 {filteredBankTx.map(tx => {
-                                    const isSelected = selectedBankTx === tx.id
+                                    const isSelected = selectedBankTxIds.has(tx.id)
                                     return (
                                         <div key={tx.id}
-                                            className="p-3 rounded-[6px] cursor-pointer transition-colors hover:bg-gray-50"
+                                            className="p-3 rounded-[6px] cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-2.5"
                                             style={{
                                                 border: isSelected ? '1px solid rgba(99,102,241,0.4)' : '1px solid rgba(0,0,0,0.09)',
                                                 background: isSelected ? 'rgba(238,242,255,0.6)' : 'white'
                                             }}
-                                            onClick={() => setSelectedBankTx(isSelected ? null : tx.id)}
+                                            onClick={() => toggleBankTx(tx.id)}
                                         >
-                                            <div className="flex justify-between items-start gap-2">
+                                            {isSelected
+                                                ? <PiCheckCircle className="text-[#6366F1] text-[15px] mt-[1px] shrink-0" />
+                                                : <span className="w-[15px] h-[15px] rounded-full mt-[1px] shrink-0" style={{ border: '1.5px solid rgba(0,0,0,0.15)' }} />}
+                                            <div className="flex justify-between items-start gap-2 flex-1 min-w-0">
                                                 <div className="min-w-0">
                                                     <p className="text-[12.5px] font-[500] text-gray-900 truncate">{tx.description}</p>
                                                     <p className="text-[11px] text-gray-400 mt-0.5">
@@ -637,22 +660,35 @@ export function BankReconciliationClient({
                         <div className="col-span-2 flex flex-col justify-center">
                             <div className="bg-white rounded-[8px] p-5 text-center" style={CARD_STYLE}>
                                 <PiArrowsLeftRight className="text-gray-300 text-[28px] mx-auto mb-4" />
-                                <p className="text-[10px] font-[500] text-gray-400 uppercase tracking-[0.07em] mb-4">Select & Match</p>
-                                {selectedBankTx && selectedBookLine ? (
+                                <p className="text-[10px] font-[500] text-gray-400 uppercase tracking-[0.07em] mb-3">Select & Match</p>
+
+                                {selectedBankTxIds.size > 0 && (
+                                    <div className="mb-3 px-2.5 py-2 rounded-[6px] bg-gray-50" style={{ border: '1px solid rgba(0,0,0,0.06)' }}>
+                                        <p className="text-[10.5px] text-gray-400">{selectedBankTxIds.size} bank tx selected</p>
+                                        <p className="text-[13px] font-[600] font-mono text-gray-900">{fmt(selectedBankSum)}</p>
+                                        {targetBookLine && (
+                                            <p className={cn('text-[10.5px] font-[500] mt-0.5', sumMatches ? 'text-emerald-600' : 'text-amber-600')}>
+                                                {sumMatches ? '✓ Matches target' : `Target ${fmt(targetBookLine.amount)} · diff ${fmt(Math.abs(selectedBankSum - targetBookLine.amount))}`}
+                                            </p>
+                                        )}
+                                    </div>
+                                )}
+
+                                {canMatch ? (
                                     <button onClick={createMatch} disabled={isMatching}
                                         className="w-full flex items-center justify-center gap-1.5 px-3 py-2 rounded-[6px] text-[12px] font-[500] text-white bg-emerald-600 hover:bg-emerald-700 transition-colors disabled:opacity-50">
                                         {isMatching ? <PiSpinner className="text-[13px] animate-spin" /> : <PiCheckCircle className="text-[13px]" />}
-                                        Match
+                                        Match{selectedBankTxIds.size > 1 ? ` (${selectedBankTxIds.size})` : ''}
                                     </button>
                                 ) : (
                                     <div className="space-y-2">
                                         <div className={cn('px-3 py-2 rounded-[6px] text-[11px] font-[500] text-center')}
                                             style={{
-                                                border: selectedBankTx ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(0,0,0,0.09)',
-                                                background: selectedBankTx ? 'rgba(238,242,255,0.6)' : 'white',
-                                                color: selectedBankTx ? '#6366F1' : '#9ca3af'
+                                                border: selectedBankTxIds.size > 0 ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(0,0,0,0.09)',
+                                                background: selectedBankTxIds.size > 0 ? 'rgba(238,242,255,0.6)' : 'white',
+                                                color: selectedBankTxIds.size > 0 ? '#6366F1' : '#9ca3af'
                                             }}>
-                                            {selectedBankTx ? '✓ Bank' : 'Pick from bank'}
+                                            {selectedBankTxIds.size > 0 ? `✓ ${selectedBankTxIds.size} from bank` : 'Pick from bank — select as many as needed'}
                                         </div>
                                         <div className={cn('px-3 py-2 rounded-[6px] text-[11px] font-[500] text-center')}
                                             style={{
@@ -728,13 +764,18 @@ export function BankReconciliationClient({
                             </div>
                             <div className="p-3 space-y-1.5 max-h-[180px] overflow-y-auto">
                                 {sessionMatches.map(m => (
-                                    <div key={m.bankTx.id} className="flex items-center justify-between px-3 py-2 rounded-[5px] bg-emerald-50/40">
+                                    <div key={m.bookLine.id} className="flex items-center justify-between px-3 py-2 rounded-[5px] bg-emerald-50/40">
                                         <p className="text-[11.5px] text-gray-700 truncate">
-                                            {m.bankTx.description} <span className="text-gray-400">↔</span> {m.bookLine.description}
+                                            {m.bankTxs.length > 1
+                                                ? `${m.bankTxs.length} transactions (${m.bankTxs.map(t => t.description).join(', ')})`
+                                                : m.bankTxs[0].description}
+                                            {' '}<span className="text-gray-400">↔</span> {m.bookLine.description}
                                         </p>
                                         <div className="flex items-center gap-3 shrink-0">
-                                            <span className="text-[11.5px] font-mono text-gray-600">{fmt(m.bankTx.amount)}</span>
-                                            <button onClick={() => unmatch(m.bankTx.id)} disabled={isMatching}
+                                            <span className="text-[11.5px] font-mono text-gray-600">
+                                                {fmt(m.bankTxs.reduce((s, t) => s + t.amount, 0))}
+                                            </span>
+                                            <button onClick={() => unmatch(m.bookLine.id)} disabled={isMatching}
                                                 className="text-[11px] font-[500] text-rose-500 hover:underline disabled:opacity-50">
                                                 Unmatch
                                             </button>
