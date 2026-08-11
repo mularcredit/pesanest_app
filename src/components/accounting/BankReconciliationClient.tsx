@@ -336,15 +336,32 @@ export function BankReconciliationClient({
         })
     }, [bankTransactions])
 
-    const revertImport = async (statementId: string) => {
-        if (!confirm('Revert this import? All its unmatched transactions will be removed. This only works if none of them have been matched yet.')) return
+    const revertImport = async (statementId: string, force: boolean = false) => {
+        if (!force && !confirm('Revert this import? All its unmatched transactions will be removed.')) return
         setRevertingId(statementId)
         try {
-            const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/statements/${statementId}`, { method: 'DELETE' })
+            const url = `/api/accounting/bank-accounts/${bankAccountId}/statements/${statementId}${force ? '?force=true' : ''}`
+            const res = await fetch(url, { method: 'DELETE' })
             const data = await res.json().catch(() => ({}))
+
+            if (res.status === 409 && data.matchedCount) {
+                setRevertingId(null)
+                const wantsForce = confirm(
+                    `${data.matchedCount} transaction${data.matchedCount !== 1 ? 's' : ''} in this import ${data.matchedCount !== 1 ? 'are' : 'is'} already matched to a journal entry. ` +
+                    `Reverting anyway will unmatch ${data.matchedCount !== 1 ? 'them' : 'it'} (the journal entries themselves are untouched) and then delete the import. Continue?`
+                )
+                if (wantsForce) await revertImport(statementId, true)
+                return
+            }
+
             if (!res.ok) throw new Error(data.error || 'Could not revert that import')
+
             setBankTransactions(prev => prev.filter(t => t.statementId !== statementId))
-            showToast('Import reverted', 'success')
+            if (data.matchesDropped > 0) await refreshUnmatched()
+            showToast(
+                data.matchesDropped > 0 ? `Import reverted — ${data.matchesDropped} match${data.matchesDropped !== 1 ? 'es' : ''} undone` : 'Import reverted',
+                'success'
+            )
         } catch (err: any) {
             showToast(err.message || 'Could not revert that import', 'error')
         } finally {
@@ -534,7 +551,7 @@ export function BankReconciliationClient({
                             <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 <h3 className="text-[12.5px] font-[600] text-gray-900">Imports still open</h3>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
-                                    Each is reverted independently — only possible while none of its transactions have been matched yet.
+                                    Each is reverted independently. If any of its transactions are already matched, you'll be asked to confirm unmatching them first.
                                 </p>
                             </div>
                             <div className="divide-y" style={{ borderColor: 'rgba(0,0,0,0.06)' }}>
