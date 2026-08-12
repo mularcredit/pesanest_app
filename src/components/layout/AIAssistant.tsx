@@ -50,6 +50,11 @@ function renderMarkdown(content: string) {
             return chunk;
         });
 
+    const isTableRow = (line: string) => /^\s*\|.*\|\s*$/.test(line);
+    const isTableSeparator = (line: string) => /^\s*\|?\s*:?-{2,}:?\s*(\|\s*:?-{2,}:?\s*)*\|?\s*$/.test(line);
+    const splitCells = (line: string) => line.trim().replace(/^\|/, '').replace(/\|$/, '').split('|').map(c => c.trim());
+    const isNumeric = (v: string) => /^[+-]?[\d,]+(\.\d+)?%?$/.test(v.trim()) && v.trim() !== '';
+
     const lines = content.split('\n');
     const blocks: React.ReactNode[] = [];
     let bullets: string[] = [];
@@ -64,16 +69,61 @@ function renderMarkdown(content: string) {
         }
     };
 
-    lines.forEach((line, i) => {
+    let i = 0;
+    while (i < lines.length) {
+        const line = lines[i];
+
+        if (isTableRow(line) && isTableSeparator(lines[i + 1] || '')) {
+            flushBullets();
+            const header = splitCells(line);
+            const rows: string[][] = [];
+            let j = i + 2;
+            while (j < lines.length && isTableRow(lines[j])) {
+                rows.push(splitCells(lines[j]));
+                j++;
+            }
+            const numericCol = header.map((_, c) => rows.every(r => isNumeric(r[c] ?? '')));
+            blocks.push(
+                <div key={`table-${i}`} className="overflow-x-auto rounded-[10px] max-w-full" style={{ border: '1px solid rgba(17,24,39,0.08)' }}>
+                    <table className="w-full text-[11.5px]" style={{ borderCollapse: 'collapse', tableLayout: 'auto' }}>
+                        <thead>
+                            <tr style={{ background: 'rgba(139,110,255,0.06)', borderBottom: '1px solid rgba(17,24,39,0.08)' }}>
+                                {header.map((h, c) => (
+                                    <th key={c} className={cn('px-2.5 py-1.5 font-[600] text-gray-700', numericCol[c] ? 'text-right whitespace-nowrap' : 'text-left max-w-[140px]')}>
+                                        {renderInline(h)}
+                                    </th>
+                                ))}
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((r, ri) => (
+                                <tr key={ri} style={ri < rows.length - 1 ? { borderBottom: '1px solid rgba(17,24,39,0.05)' } : undefined}>
+                                    {header.map((_, c) => (
+                                        <td key={c} className={cn('px-2.5 py-1 text-gray-600', numericCol[c] ? 'text-right tabular-nums whitespace-nowrap' : 'break-words max-w-[140px]')}>
+                                            {renderInline(r[c] ?? '')}
+                                        </td>
+                                    ))}
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </div>
+            );
+            i = j;
+            continue;
+        }
+
         const bullet = line.match(/^\s*-\s+(.*)/);
         if (bullet) {
             bullets.push(bullet[1]);
-            return;
+            i++;
+            continue;
         }
         flushBullets();
         if (line.trim()) blocks.push(<p key={i}>{renderInline(line)}</p>);
         else blocks.push(<div key={i} className="h-2" />);
-    });
+        i++;
+    }
     flushBullets();
 
     return blocks;
@@ -289,8 +339,8 @@ export function AIAssistant() {
                                             className={cn('flex gap-2.5', m.role === 'user' && 'flex-row-reverse')}>
                                             {m.role === 'assistant' && <NuriAvatar size={26} />}
                                             <div className={cn(
-                                                'rounded-[16px] px-4 py-3 text-[12.5px] leading-[1.6] max-w-[82%] space-y-1',
-                                                m.role === 'user' ? 'text-[#372f8f]' : 'text-gray-600'
+                                                'rounded-[16px] px-4 py-3 text-[12.5px] leading-[1.6] space-y-1 min-w-0',
+                                                m.role === 'user' ? 'max-w-[82%] text-[#372f8f]' : 'max-w-[92%] text-gray-600'
                                             )}
                                                 style={m.role === 'user'
                                                     ? { background: 'linear-gradient(135deg, rgba(139,110,255,0.14), rgba(139,110,255,0.08))', border: '1px solid rgba(139,110,255,0.16)' }
