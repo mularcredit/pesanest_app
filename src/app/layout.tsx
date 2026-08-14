@@ -1,5 +1,5 @@
 import type { Metadata } from "next";
-import { Lexend, Outfit } from "next/font/google";
+import { Lexend, Poppins } from "next/font/google";
 import { GeistSans } from "geist/font/sans";
 import "./globals.css";
 import { Providers } from "@/components/Providers";
@@ -9,8 +9,13 @@ const lexend = Lexend({
   variable: "--font-lexend",
 });
 
-const outfit = Outfit({
+// Trying Poppins as the app's primary typeface. Bound to the same --font-outfit
+// variable that globals.css already references everywhere (body, .font-sans,
+// .font-heading, .dash-main, .font-mono) so this is a one-line swap to try —
+// revert by changing this back to next/font/google's Outfit.
+const outfit = Poppins({
   subsets: ["latin"],
+  weight: ["300", "400", "500", "600", "700"],
   variable: "--font-outfit",
   display: "swap",
 });
