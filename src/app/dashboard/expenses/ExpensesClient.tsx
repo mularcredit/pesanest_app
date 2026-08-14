@@ -319,6 +319,12 @@ export function ExpensesClient({
                                                 <p className="font-semibold text-slate-900 text-sm">{exp.title}</p>
                                                 <div className="flex items-center gap-2 mt-1.5 flex-wrap">
                                                     <span className="text-[10px] font-semibold text-slate-500 uppercase tracking-wider bg-slate-100 px-2 py-0.5 rounded border border-slate-200">{exp.category}</span>
+                                                    {exp.expenseDate && (
+                                                        <span className="text-[10.5px] text-slate-400">
+                                                            {new Date(exp.expenseDate).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}
+                                                        </span>
+                                                    )}
+                                                    {exp.merchant && <span className="text-[10.5px] text-slate-500">· {exp.merchant}</span>}
                                                     {exp.receiptUrl && <span className="text-[10px] text-emerald-600 bg-emerald-50 border border-emerald-100 flex items-center gap-1 font-semibold px-2 py-0.5 rounded"><PiCheckCircle /> Receipt</span>}
                                                     {exp.etrNumber && (
                                                         <span className={`text-[10px] flex items-center gap-1 font-semibold px-2 py-0.5 rounded border font-mono ${exp.etrVerified ? 'text-indigo-700 bg-indigo-50 border-indigo-100' : 'text-amber-700 bg-amber-50 border-amber-100'}`}>
@@ -327,6 +333,9 @@ export function ExpensesClient({
                                                         </span>
                                                     )}
                                                 </div>
+                                                {exp.description && (
+                                                    <p className="text-[11.5px] text-slate-500 mt-1.5 max-w-md truncate" title={exp.description}>{exp.description}</p>
+                                                )}
                                             </td>
                                             <td className="py-4 px-4 align-top">
                                                 {exp.costCenter ? (
@@ -395,9 +404,15 @@ export function ExpensesClient({
                                             <td className="py-4 px-4 align-top">
                                                 <p className="font-semibold text-slate-900 text-sm">{exp.title}</p>
                                                 <div className="text-xs text-slate-500 mt-1 flex items-center gap-1.5 flex-wrap">
-                                                    <span>{new Date(exp.expenseDate).toLocaleDateString()}</span>
+                                                    <span>{new Date(exp.expenseDate).toLocaleString(undefined, { year: 'numeric', month: 'short', day: 'numeric', hour: 'numeric', minute: '2-digit' })}</span>
                                                     <span className="text-slate-300">•</span>
                                                     <span>{exp.category}</span>
+                                                    {exp.merchant && (
+                                                        <>
+                                                            <span className="text-slate-300">•</span>
+                                                            <span>{exp.merchant}</span>
+                                                        </>
+                                                    )}
                                                     {exp.costCenter && (
                                                         <>
                                                             <span className="text-slate-300">•</span>
@@ -405,6 +420,9 @@ export function ExpensesClient({
                                                         </>
                                                     )}
                                                 </div>
+                                                {exp.description && (
+                                                    <p className="text-[11.5px] text-slate-500 mt-1.5 max-w-md truncate" title={exp.description}>{exp.description}</p>
+                                                )}
                                                 {exp.approvals && exp.approvals.length > 0 && exp.approvals[0].comments && (
                                                     <div className="mt-2 p-2 bg-orange-50 border border-orange-100 rounded text-[11px] text-orange-700 italic max-w-lg">
                                                         <strong className="font-semibold">Note:</strong> {exp.approvals[0].comments}

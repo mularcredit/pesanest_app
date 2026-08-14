@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { BiX, BiReceipt } from "react-icons/bi";
-import { PiCaretRight, PiCheckCircle, PiUploadSimple, PiBuilding, PiTag, PiCalendar, PiCurrencyDollar, PiFileText, PiPlus, PiPencil, PiWarning } from "react-icons/pi";
+import { PiCaretRight, PiCheckCircle, PiUploadSimple, PiBuilding, PiTag, PiCalendar, PiCurrencyDollar, PiFileText, PiPlus, PiPencil, PiWarning, PiEye } from "react-icons/pi";
 import { fulfillRequisition, updateRequisition } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { EtrReceiptInput } from "@/components/accounting/EtrReceiptInput";
@@ -264,7 +264,7 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                         </div>
                                     </td>
                                     <td className="px-4 py-3 text-slate-500 align-top">
-                                        {new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {new Date(req.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                                     </td>
                                     <td className="px-4 py-3 font-semibold text-slate-900 border-r-0 align-top">
                                         {formatCurrency(req.amount, req.currency)}
@@ -365,10 +365,17 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                             ) : null}
 
                                             <div className="flex items-center gap-0.5 ml-0.5 border-l border-slate-100 pl-0.5">
+                                                <button
+                                                    onClick={() => setViewingReq(req)}
+                                                    className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
+                                                    title="Quick view"
+                                                >
+                                                    <PiEye className="text-[15px]" />
+                                                </button>
                                                 <Link
                                                     href={`/dashboard/requisitions/${req.id}`}
                                                     className="p-1.5 rounded-md hover:bg-slate-100 text-slate-400 hover:text-slate-900 transition-all"
-                                                    title="View Details"
+                                                    title="Full detail page"
                                                 >
                                                     <PiCaretRight className="text-[15px]" />
                                                 </Link>
@@ -601,7 +608,7 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                         <span className="text-[9px] font-semibold text-gray-400 uppercase tracking-widest">Submitted</span>
                                     </div>
                                     <p className="text-sm font-semibold text-gray-800">
-                                        {new Date(viewingReq.createdAt).toLocaleDateString(undefined, { month: 'short', day: 'numeric', year: 'numeric' })}
+                                        {new Date(viewingReq.createdAt).toLocaleString(undefined, { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' })}
                                     </p>
                                 </div>
                             </div>

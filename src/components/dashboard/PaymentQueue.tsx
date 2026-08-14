@@ -107,6 +107,19 @@ interface Budget {
     user: UserBasic;
 }
 
+/** Lightweight shape shared by whichever item type a batch line covers — just enough to say what it's for. */
+interface BatchItemSummary {
+    id: string;
+    title?: string;
+    invoiceNumber?: string;
+    description?: string | null;
+    amount: number;
+    currency?: string;
+    category?: string;
+    vendor?: { name: string };
+    user?: { name: string | null };
+}
+
 interface PaymentBatch {
     id: string;
     amount: number;
@@ -115,25 +128,26 @@ interface PaymentBatch {
     method: string;
     notes: string | null;
     createdAt: Date;
+    updatedAt?: Date;
+    authorizedAt?: Date | null;
+    processedAt?: Date | null;
     maker: UserBasic;
+    checker?: { name: string | null } | null;
     _count?: {
         invoices: number;
         expenses: number;
         requisitions?: number;
         monthlyBudgets?: number;
     };
-    expenses?: Expense[];
-    requisitions?: {
-        id: string;
-        title: string;
-        amount: number;
-        currency: string;
-        category: string;
-        receiptUrl: string | null;
-        etrNumber: string | null;
-        etrVerified: boolean;
+    invoices?: BatchItemSummary[];
+    expenses?: (Expense & BatchItemSummary)[];
+    requisitions?: (BatchItemSummary & {
+        receiptUrl?: string | null;
+        etrNumber?: string | null;
+        etrVerified?: boolean;
         user: { name: string | null; email: string | null };
-    }[];
+    })[];
+    monthlyBudgets?: { id: string; month: number; year: number; totalAmount: number; department: string; branch: string }[];
 }
 
 interface PaymentQueueProps {
@@ -624,11 +638,24 @@ export function PaymentQueue({
     };
 
     const formatDate = (date: Date | string) => {
-        return new Date(date).toLocaleDateString("en-US", {
+        return new Date(date).toLocaleString("en-US", {
             year: 'numeric',
             month: '2-digit',
-            day: '2-digit'
+            day: '2-digit',
+            hour: 'numeric',
+            minute: '2-digit',
         });
+    };
+
+    /** What a batch is actually for — the specific item titles, not just a per-type count. */
+    const batchItemsSummary = (batch: PaymentBatch): string => {
+        const titles = [
+            ...(batch.requisitions || []).map(r => r.title),
+            ...(batch.expenses || []).map(e => e.title),
+            ...(batch.invoices || []).map(i => i.description || `Invoice #${i.invoiceNumber}`),
+            ...(batch.monthlyBudgets || []).map(b => `${b.department} budget ${b.month}/${b.year}`),
+        ].filter(Boolean);
+        return titles.join(', ') || 'No items linked';
     };
 
     return (<>
@@ -1179,6 +1206,9 @@ export function PaymentQueue({
                                                         </span>
                                                     ))}
                                                 </div>
+                                                <p className="text-[10.5px] text-slate-500 mt-2.5 pt-2.5 border-t border-slate-200/60 truncate" title={batchItemsSummary(batch)}>
+                                                    For: {batchItemsSummary(batch)}
+                                                </p>
                                             </div>
 
                                             <div className="mt-auto grid grid-cols-3 gap-2">
@@ -1222,6 +1252,9 @@ export function PaymentQueue({
                                                             </div>
                                                             <p className="text-[10px] text-slate-400 tracking-wider mt-1 ml-8">
                                                                 {[batch._count?.invoices && `${batch._count.invoices} INV`, batch._count?.expenses && `${batch._count.expenses} EXP`, batch._count?.requisitions && `${batch._count.requisitions} REQ`, batch._count?.monthlyBudgets && `${batch._count.monthlyBudgets} BUD`].filter(Boolean).join(' · ')}
+                                                            </p>
+                                                            <p className="text-[10.5px] text-slate-400 mt-0.5 ml-8 truncate max-w-[260px]" title={batchItemsSummary(batch)}>
+                                                                {batchItemsSummary(batch)}
                                                             </p>
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-mono font-semibold text-slate-900">{formatAmount(batch.amount, batch.currency)}</td>
@@ -1284,7 +1317,12 @@ export function PaymentQueue({
                                                 {authorizedPayments.map(batch => (
                                                     <tr key={batch.id} className={cn("hover:bg-slate-50 transition-colors group", selectedBatches.has(batch.id) && "bg-indigo-50/40")}>
                                                         <td className="pl-4 pr-1 py-3"><BatchCheckbox id={batch.id} /></td>
-                                                        <td className="px-4 py-3 text-slate-500">{formatDate(batch.createdAt)}</td>
+                                                        <td className="px-4 py-3 text-slate-500">
+                                                            {formatDate(batch.createdAt)}
+                                                            {batch.authorizedAt && (
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">Authorized {formatDate(batch.authorizedAt)}{batch.checker?.name ? ` by ${batch.checker.name}` : ''}</p>
+                                                            )}
+                                                        </td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">BTH-{batch.id.substring(0, 8).toUpperCase()}</td>
                                                         <td className="px-4 py-3">
                                                             <div className="flex items-center gap-2">
@@ -1293,6 +1331,9 @@ export function PaymentQueue({
                                                             </div>
                                                             <p className="text-[10px] text-slate-400 tracking-wider mt-1 ml-8">
                                                                 {[batch._count?.invoices && `${batch._count.invoices} INV`, batch._count?.expenses && `${batch._count.expenses} EXP`, batch._count?.requisitions && `${batch._count.requisitions} REQ`, batch._count?.monthlyBudgets && `${batch._count.monthlyBudgets} BUD`].filter(Boolean).join(' · ')}
+                                                            </p>
+                                                            <p className="text-[10.5px] text-slate-400 mt-0.5 ml-8 truncate max-w-[260px]" title={batchItemsSummary(batch)}>
+                                                                {batchItemsSummary(batch)}
                                                             </p>
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatAmount(batch.amount, batch.currency)}</td>
@@ -1371,7 +1412,12 @@ export function PaymentQueue({
                                                 {paidPayments.map(batch => (
                                                     <tr key={batch.id} className={cn("hover:bg-slate-50 transition-colors group", selectedBatches.has(batch.id) && "bg-indigo-50/40")}>
                                                         <td className="pl-4 pr-1 py-3"><BatchCheckbox id={batch.id} /></td>
-                                                        <td className="px-4 py-3 text-slate-500">{formatDate(batch.createdAt)}</td>
+                                                        <td className="px-4 py-3 text-slate-500">
+                                                            {formatDate(batch.processedAt || batch.createdAt)}
+                                                            {batch.checker?.name && (
+                                                                <p className="text-[10px] text-slate-400 mt-0.5">Authorized by {batch.checker.name}</p>
+                                                            )}
+                                                        </td>
                                                         <td className="px-4 py-3 font-mono text-[11px] text-slate-500">BTH-{batch.id.substring(0, 8).toUpperCase()}</td>
                                                         <td className="px-4 py-3">
                                                             <div className="flex items-center gap-2">
@@ -1386,6 +1432,9 @@ export function PaymentQueue({
                                                             ) : (
                                                                 <p className="text-[10px] text-emerald-600 tracking-wider mt-1 ml-8 font-semibold">Processed Successfully</p>
                                                             )}
+                                                            <p className="text-[10.5px] text-slate-400 mt-0.5 ml-8 truncate max-w-[260px]" title={batchItemsSummary(batch)}>
+                                                                {batchItemsSummary(batch)}
+                                                            </p>
                                                         </td>
                                                         <td className="px-4 py-3 text-right font-semibold text-slate-900">{formatAmount(batch.amount, batch.currency)}</td>
                                                         <td className="px-4 py-3 text-right">
@@ -1445,6 +1494,9 @@ export function PaymentQueue({
                                                                 <span className="w-6 h-6 rounded-full bg-slate-100 border border-slate-200 flex items-center justify-center text-[9px] font-semibold text-slate-500">REQ</span>
                                                                 <p className="font-medium text-slate-800 tracking-wide">{item.maker?.name || 'UNKNOWN'}</p>
                                                             </div>
+                                                            <p className="text-[10.5px] text-slate-400 mt-1 ml-8 truncate max-w-[220px]" title={batchItemsSummary(item)}>
+                                                                {batchItemsSummary(item)}
+                                                            </p>
                                                         </td>
                                                         <td className="px-4 py-3 font-medium text-slate-700">
                                                             {item.checker?.name || 'Pending'}
@@ -1455,7 +1507,8 @@ export function PaymentQueue({
                                                                 item.status === 'COMPLETED' || item.status === 'PAID' ? "bg-emerald-50 text-emerald-700 border border-emerald-200" :
                                                                     item.status === 'REJECTED' ? "bg-rose-50 text-rose-700 border border-rose-200" :
                                                                         "bg-slate-50 text-slate-600 border border-slate-200"
-                                                            )}>
+                                                            )}
+                                                                title={item.notes || undefined}>
                                                                 {item.status}
                                                             </span>
                                                         </td>
@@ -1463,7 +1516,7 @@ export function PaymentQueue({
                                                             <p className="font-semibold text-slate-900">{formatAmount(item.amount, item.currency)}</p>
                                                         </td>
                                                         <td className="px-4 py-3 text-right text-slate-500">
-                                                            {formatDate(item.createdAt)}
+                                                            {formatDate(item.processedAt || item.updatedAt || item.createdAt)}
                                                         </td>
                                                         <td className="px-4 py-3 text-right">
                                                             <Link

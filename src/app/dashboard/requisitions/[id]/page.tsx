@@ -117,7 +117,7 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
         { icon: PiCreditCard,   label: 'Payment',      value: <PaymentMethodLabel method={paymentMethod} /> },
         ...(paymentReference ? [{ icon: PiHashStraight, label: 'Reference', value: <span className="font-mono">{paymentReference}</span> }] : []),
         ...(req.expectedDate ? [{ icon: PiCalendar, label: 'Expected', value: new Date(req.expectedDate).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) }] : []),
-        { icon: PiCalendar,     label: 'Submitted',    value: new Date(req.createdAt).toLocaleDateString('en-US', { month: 'short', day: 'numeric', year: 'numeric' }) },
+        { icon: PiCalendar,     label: 'Submitted',    value: new Date(req.createdAt).toLocaleString('en-US', { month: 'short', day: 'numeric', year: 'numeric', hour: 'numeric', minute: '2-digit' }) },
     ];
 
     return (

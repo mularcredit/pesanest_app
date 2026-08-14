@@ -125,13 +125,23 @@ export default async function PaymentsPage() {
         orderBy: { updatedAt: 'desc' }
     });
 
+    // Item-title selects shared across every payment query below — lets the queue show
+    // what a batch is actually for, instead of just a per-type count.
+    const batchItemSelects = {
+        invoices: { select: { id: true, invoiceNumber: true, description: true, amount: true, currency: true, vendor: { select: { name: true } } } },
+        expenses: { select: { id: true, title: true, amount: true, currency: true, category: true, user: { select: { name: true } } } },
+        requisitions: { select: { id: true, title: true, amount: true, currency: true, category: true, user: { select: { name: true } } } },
+        monthlyBudgets: { select: { id: true, month: true, year: true, totalAmount: true, department: true, branch: true } },
+    };
+
     // Fetch pending payment requests
     const pendingPayments = await prisma.payment.findMany({
         where: pendingPaymentWhere as any,
         include: {
             maker: { select: { name: true, email: true, profileImage: true } },
+            ...batchItemSelects,
             _count: {
-                select: { invoices: true, expenses: true }
+                select: { invoices: true, expenses: true, requisitions: true, monthlyBudgets: true }
             }
         },
         orderBy: { createdAt: 'desc' }
@@ -142,8 +152,10 @@ export default async function PaymentsPage() {
         where: authorizedPaymentWhere as any,
         include: {
             maker: { select: { name: true, email: true, profileImage: true } },
+            checker: { select: { name: true } },
+            ...batchItemSelects,
             _count: {
-                select: { invoices: true, expenses: true }
+                select: { invoices: true, expenses: true, requisitions: true, monthlyBudgets: true }
             }
         },
         orderBy: { updatedAt: 'desc' }
@@ -154,6 +166,10 @@ export default async function PaymentsPage() {
         where: paidPaymentWhere as any,
         include: {
             maker: { select: { name: true, email: true, profileImage: true } },
+            checker: { select: { name: true } },
+            invoices: {
+                select: { id: true, invoiceNumber: true, description: true, amount: true, currency: true, vendor: { select: { name: true } } }
+            },
             expenses: {
                 include: {
                     user: { select: { name: true, email: true } },
@@ -173,8 +189,9 @@ export default async function PaymentsPage() {
                     user: { select: { name: true, email: true } },
                 }
             },
+            monthlyBudgets: batchItemSelects.monthlyBudgets,
             _count: {
-                select: { invoices: true, expenses: true, requisitions: true }
+                select: { invoices: true, expenses: true, requisitions: true, monthlyBudgets: true }
             }
         },
         orderBy: { updatedAt: 'desc' }
@@ -185,7 +202,11 @@ export default async function PaymentsPage() {
         where: payoutHistoryWhere as any,
         include: {
             maker: { select: { name: true } },
-            checker: { select: { name: true } }
+            checker: { select: { name: true } },
+            ...batchItemSelects,
+            _count: {
+                select: { invoices: true, expenses: true, requisitions: true, monthlyBudgets: true }
+            }
         },
         orderBy: { updatedAt: 'desc' },
         take: 20
