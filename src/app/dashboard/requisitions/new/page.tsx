@@ -130,6 +130,7 @@ function NewRequisitionForm() {
     })).filter(g => g.options.length > 0);
 
     const paymentOptions = [
+        { value: 'MPESA',         label: 'M-Pesa (Personal)', img: '/pay/Mpesa-Logo.png' },
         { value: 'MPESA_TILL',    label: 'M-Pesa Till',    img: '/pay/Mpesa-Logo.png' },
         { value: 'MPESA_PAYBILL', label: 'M-Pesa Paybill', img: '/pay/Mpesa-Logo.png' },
         { value: 'BANK_TRANSFER', label: 'Bank Transfer',   img: '/pay/accepted.png' },
@@ -437,13 +438,15 @@ function NewRequisitionForm() {
                                     ) : (
                                         <div className="col-span-2">
                                             <label className={LABEL_CLASS}>
-                                                {paymentMethod === 'MPESA_TILL' ? 'M-Pesa till number' :
+                                                {paymentMethod === 'MPESA' ? 'M-Pesa phone number' :
+                                                 paymentMethod === 'MPESA_TILL' ? 'M-Pesa till number' :
                                                  paymentMethod === 'BANK_TRANSFER' ? 'Bank account' :
                                                  paymentMethod === 'AIRTEL_MONEY' ? 'Airtel Money number' :
                                                  paymentMethod === 'PETTY_CASH' ? 'Petty cash voucher no.' : 'Reference'}
                                             </label>
                                             <input type="text" value={paymentReference} onChange={e => setPaymentReference(e.target.value)}
-                                                placeholder={paymentMethod === 'PETTY_CASH' ? 'e.g. PCV-0012' : 'Enter detail…'}
+                                                placeholder={paymentMethod === 'MPESA' ? 'e.g. 0712345678' :
+                                                             paymentMethod === 'PETTY_CASH' ? 'e.g. PCV-0012' : 'Enter detail…'}
                                                 className={INPUT_CLASS} style={INPUT_STYLE} />
                                         </div>
                                     )}

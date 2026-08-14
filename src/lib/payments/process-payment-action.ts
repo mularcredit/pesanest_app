@@ -242,11 +242,14 @@ export async function processPaymentAction(params: {
 
             if (paymentMethod === 'WALLET') {
                 let recipientCode = req.user?.paystackRecipientCode;
-                let bankCode = 'MPESA';
-                let type = 'mobile_money';
+                let bankCode: string;
+                let type: string;
                 let accountNumber = req.paymentReference || '';
                 let accountReference = undefined;
 
+                // Only route through recipient types we've confirmed work against Paystack —
+                // anything else used to silently fall back to M-Pesa's bank code, which sent
+                // Bank Transfer / Airtel Money payouts through the wrong channel without error.
                 if (req.paymentMethod === 'MPESA_PAYBILL' && req.paymentReference) {
                     const [pb, acc] = req.paymentReference.split('|');
                     bankCode = 'MPPAYBILL';
@@ -258,6 +261,15 @@ export async function processPaymentAction(params: {
                     type = 'mobile_money_business';
                     accountNumber = req.paymentReference;
                     accountReference = req.paymentReference;
+                } else if (req.paymentMethod === 'MPESA' && req.paymentReference) {
+                    bankCode = 'MPESA';
+                    type = 'mobile_money';
+                    accountNumber = req.paymentReference;
+                } else {
+                    throw new Error(
+                        `Payment method "${req.paymentMethod || 'unset'}" isn't wired up for automated wallet payouts yet ` +
+                        `(only M-Pesa personal, Till, and Paybill are confirmed working). Use one of those, or disburse this one as Cash.`
+                    );
                 }
 
                 if (!recipientCode && accountNumber) {
