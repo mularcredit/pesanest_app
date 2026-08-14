@@ -84,7 +84,7 @@ export class PaystackService {
         });
 
         const data = await response.json();
-        
+
         if (!data.status) {
             console.error('[Paystack] Payout Failed:', data.message);
             return {
@@ -96,11 +96,37 @@ export class PaystackService {
             };
         }
 
+        // Transfers are asynchronous — the call succeeding (data.status: true) only means Paystack
+        // accepted the request, not that money moved. The real outcome is data.data.status, which can be:
+        //   success    — done, funds sent
+        //   pending    — still processing, may still succeed or fail
+        //   otp        — held pending a one-time-PIN confirmation (can't be satisfied headlessly —
+        //                treat as failed so it isn't silently marked paid; must be confirmed manually
+        //                in the Paystack dashboard, or OTP-for-transfers disabled on the account)
+        //   abandoned  — an OTP was requested but never confirmed in time
+        //   failed     — Paystack rejected it (bad recipient/account details, insufficient balance, etc.)
+        //   reversed   — it went through then bounced back
+        const transferStatus = data.data.status;
+        const transactionId = data.data.reference || data.data.transfer_code;
+
+        if (transferStatus === 'success') {
+            return { amount, currency, status: 'COMPLETED', transactionId };
+        }
+        if (transferStatus === 'pending') {
+            return { amount, currency, status: 'PENDING', transactionId };
+        }
+
+        const reasonByStatus: Record<string, string> = {
+            otp: 'Paystack is holding this transfer for a one-time-PIN confirmation. Confirm it in the Paystack dashboard, or ask Paystack to disable OTP for Transfers so automated payouts go through.',
+            abandoned: 'The transfer was held for OTP confirmation and timed out unconfirmed.',
+        };
+        console.error('[Paystack] Payout did not complete:', transferStatus, data.data.reason || '');
         return {
             amount,
             currency,
-            status: data.data.status === 'success' || data.data.status === 'pending' ? 'COMPLETED' : 'PENDING',
-            transactionId: data.data.reference || data.data.transfer_code,
+            status: 'FAILED',
+            transactionId,
+            error: reasonByStatus[transferStatus] || data.data.reason || `Paystack transfer status: ${transferStatus}`,
         };
     }
 
