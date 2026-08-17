@@ -73,7 +73,7 @@ const STATUS_FILTERS = [
 type FilterId = typeof STATUS_FILTERS[number]['id'];
 
 export function AccountsGridClient({ accountsData, totalRequisitions, totalAmount }: Props) {
-    const [view, setView] = useState<'grid' | 'list'>('grid');
+    const [view, setView] = useState<'grid' | 'list'>('list');
     const [statusFilter, setStatusFilter] = useState<FilterId>('all');
 
     const filtered =
