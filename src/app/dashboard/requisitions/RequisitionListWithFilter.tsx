@@ -1,9 +1,10 @@
 "use client";
 
 import { useState, useMemo } from "react";
-import { PiFunnel, PiMagnifyingGlass, PiClock, PiCheckCircle, PiList } from "react-icons/pi";
+import { PiMagnifyingGlass, PiClock, PiCheckCircle, PiList } from "react-icons/pi";
 import { cn } from "@/lib/utils";
 import { RequisitionList } from "./RequisitionList";
+import { DateRangeFilter, filterByDateRange, type DateRange } from "@/components/ui/DateRangeFilter";
 
 interface RequisitionListWithFilterProps {
     requisitions: any[];
@@ -12,12 +13,19 @@ interface RequisitionListWithFilterProps {
 
 export function RequisitionListWithFilter({ requisitions, monthlyBudgets }: RequisitionListWithFilterProps) {
     const [statusFilter, setStatusFilter] = useState<'active' | 'fulfilled' | 'all'>('active');
+    const [search, setSearch] = useState('');
+    const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
 
     const filteredRequisitions = useMemo(() => {
-        if (statusFilter === 'active') return requisitions.filter(req => req.status !== 'FULFILLED');
-        if (statusFilter === 'fulfilled') return requisitions.filter(req => req.status === 'FULFILLED');
-        return requisitions;
-    }, [requisitions, statusFilter]);
+        let rows = requisitions;
+        if (statusFilter === 'active') rows = rows.filter(req => req.status !== 'FULFILLED');
+        else if (statusFilter === 'fulfilled') rows = rows.filter(req => req.status === 'FULFILLED');
+
+        const q = search.trim().toLowerCase();
+        if (q) rows = rows.filter(req => req.title?.toLowerCase().includes(q) || req.id?.toLowerCase().includes(q));
+
+        return filterByDateRange(rows, dateRange, 'createdAt');
+    }, [requisitions, statusFilter, search, dateRange]);
 
     const statusCounts = useMemo(() => ({
         active: requisitions.filter(req => req.status !== 'FULFILLED').length,
@@ -68,18 +76,18 @@ export function RequisitionListWithFilter({ requisitions, monthlyBudgets }: Requ
             {/* Main Content */}
             <div className="flex-1 min-w-0 pl-6 space-y-4">
                 {/* Search & Filter bar */}
-                <div className="flex gap-4">
-                    <div className="flex-1">
+                <div className="flex items-center gap-4 flex-wrap">
+                    <div className="relative flex-1 min-w-[220px]">
+                        <PiMagnifyingGlass className="absolute left-3 top-1/2 -translate-y-1/2 text-gray-400 text-sm" />
                         <input
                             type="text"
+                            value={search}
+                            onChange={e => setSearch(e.target.value)}
                             placeholder="Search by ID or title..."
-                            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-3 pr-4 py-2.5 text-sm text-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
+                            className="w-full bg-gray-50 border border-gray-200 rounded-lg pl-9 pr-4 py-2.5 text-sm text-gray-900 focus:ring-1 focus:ring-gray-900 focus:outline-none transition-all"
                         />
                     </div>
-                    <button className="px-5 py-2.5 bg-white border border-gray-200 rounded-lg flex items-center gap-2 text-gray-500 hover:text-gray-900 hover:border-gray-900 transition-all">
-                        <PiFunnel />
-                        <span className="text-xs font-semibold">Filter</span>
-                    </button>
+                    <DateRangeFilter value={dateRange} onChange={setDateRange} />
                 </div>
 
                 {/* Table */}
