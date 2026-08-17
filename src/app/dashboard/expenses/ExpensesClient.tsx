@@ -1,7 +1,8 @@
 "use client";
 
-import { useState } from "react";
+import { useMemo, useState } from "react";
 import { cn } from "@/lib/utils";
+import { DateRangeFilter, filterByDateRange, type DateRange } from "@/components/ui/DateRangeFilter";
 import {
     PiPlus,
     PiWallet,
@@ -48,6 +49,10 @@ export function ExpensesClient({
     const [selectedIds, setSelectedIds] = useState<string[]>([]);
     const [showEmergencyAlert, setShowEmergencyAlert] = useState(false);
     const [activeTab, setActiveTab] = useState<'pending' | 'history'>('pending');
+    const [dateRange, setDateRange] = useState<DateRange>({ from: null, to: null });
+
+    const filteredDrafts = useMemo(() => filterByDateRange(draftExpenses, dateRange, 'expenseDate'), [draftExpenses, dateRange]);
+    const filteredSubmitted = useMemo(() => filterByDateRange(submittedExpenses, dateRange, 'expenseDate'), [submittedExpenses, dateRange]);
 
     const handleSubmitReport = async () => {
         setShowConfirmSubmit(false);
@@ -130,10 +135,10 @@ export function ExpensesClient({
     };
 
     const handleToggleAll = () => {
-        if (selectedIds.length === draftExpenses.length) {
+        if (selectedIds.length === filteredDrafts.length) {
             setSelectedIds([]);
         } else {
-            setSelectedIds(draftExpenses.map(e => e.id));
+            setSelectedIds(filteredDrafts.map(e => e.id));
         }
     };
 
@@ -258,14 +263,18 @@ export function ExpensesClient({
                 </div>
             </div>
 
-            {activeTab === 'pending' && draftExpenses.length > 0 && (
+            <div className="flex items-center justify-between flex-wrap gap-3 bg-white/60 border border-slate-200 rounded-lg px-3 py-2">
+                <DateRangeFilter value={dateRange} onChange={setDateRange} />
+            </div>
+
+            {activeTab === 'pending' && filteredDrafts.length > 0 && (
                 <div className="flex justify-end">
                     <button
                         onClick={handleToggleAll}
                         className="flex items-center gap-1.5 text-xs font-semibold uppercase tracking-wider text-slate-500 hover:text-slate-800 transition-colors bg-white border border-slate-200 px-3 py-1.5 rounded-md shadow-sm"
                     >
-                        {selectedIds.length === draftExpenses.length ? <PiCheckSquare className="text-base text-emerald-600" /> : <PiSquare className="text-base" />}
-                        {selectedIds.length === draftExpenses.length ? 'Deselect All' : 'Select All'}
+                        {selectedIds.length === filteredDrafts.length ? <PiCheckSquare className="text-base text-emerald-600" /> : <PiSquare className="text-base" />}
+                        {selectedIds.length === filteredDrafts.length ? 'Deselect All' : 'Select All'}
                     </button>
                 </div>
             )}
@@ -273,13 +282,17 @@ export function ExpensesClient({
             {/* Content Queue */}
             {activeTab === 'pending' ? (
  <div className="glass-card glass-frost overflow-hidden">
-                    {draftExpenses.length === 0 ? (
+                    {filteredDrafts.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50">
                             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4 border border-slate-200">
                                 <PiReceipt className="text-2xl text-slate-400" />
                             </div>
-                            <h3 className="text-slate-900 font-semibold mb-1">No Draft Emergencies</h3>
-                            <p className="text-slate-500 text-sm">You're all caught up. Create an emergency to begin.</p>
+                            <h3 className="text-slate-900 font-semibold mb-1">
+                                {draftExpenses.length === 0 ? 'No Draft Emergencies' : 'No drafts in this date range'}
+                            </h3>
+                            <p className="text-slate-500 text-sm">
+                                {draftExpenses.length === 0 ? "You're all caught up. Create an emergency to begin." : 'Try clearing or widening the date filter.'}
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -294,7 +307,7 @@ export function ExpensesClient({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {draftExpenses.map((exp: any) => (
+                                    {filteredDrafts.map((exp: any) => (
                                         <tr 
                                             key={exp.id} 
                                             className={cn(
@@ -379,13 +392,17 @@ export function ExpensesClient({
                 </div>
             ) : (
  <div className="glass-card glass-frost overflow-hidden">
-                    {submittedExpenses.length === 0 ? (
+                    {filteredSubmitted.length === 0 ? (
                         <div className="flex flex-col items-center justify-center py-20 bg-slate-50/50">
                             <div className="w-16 h-16 rounded-full bg-slate-100 flex items-center justify-center mb-4 border border-slate-200">
                                 <PiClock className="text-2xl text-slate-400" />
                             </div>
-                            <h3 className="text-slate-900 font-semibold mb-1">No Expense History</h3>
-                            <p className="text-slate-500 text-sm">Past submitted items will appear here.</p>
+                            <h3 className="text-slate-900 font-semibold mb-1">
+                                {submittedExpenses.length === 0 ? 'No Expense History' : 'No history in this date range'}
+                            </h3>
+                            <p className="text-slate-500 text-sm">
+                                {submittedExpenses.length === 0 ? 'Past submitted items will appear here.' : 'Try clearing or widening the date filter.'}
+                            </p>
                         </div>
                     ) : (
                         <div className="overflow-x-auto">
@@ -399,7 +416,7 @@ export function ExpensesClient({
                                     </tr>
                                 </thead>
                                 <tbody className="divide-y divide-slate-100">
-                                    {submittedExpenses.map((exp: any) => (
+                                    {filteredSubmitted.map((exp: any) => (
                                         <tr key={exp.id} className="hover:bg-slate-50/50 transition-colors cursor-pointer group" onClick={() => handleExpenseClick(exp)}>
                                             <td className="py-4 px-4 align-top">
                                                 <p className="font-semibold text-slate-900 text-sm">{exp.title}</p>

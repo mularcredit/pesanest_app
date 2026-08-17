@@ -62,8 +62,10 @@ export async function GET(req: Request) {
             accountMap[key].credit += line.credit;
         }
     }
+    // Normal-balance sign: Asset/Expense accounts increase with debits, Liability/Equity/Revenue
+    // increase with credits — a flat debit-minus-credit here would show the latter inverted.
     const trialBalance = Object.entries(accountMap)
-        .map(([id, a]) => ({ id, ...a, net: a.debit - a.credit }))
+        .map(([id, a]) => ({ id, ...a, net: ['ASSET', 'EXPENSE'].includes(a.type) ? a.debit - a.credit : a.credit - a.debit }))
         .sort((a, b) => a.code.localeCompare(b.code));
 
     // 2. Journal listing
