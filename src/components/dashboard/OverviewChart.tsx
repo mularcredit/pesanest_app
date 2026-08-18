@@ -6,7 +6,12 @@ import {
     CartesianGrid, Tooltip, ResponsiveContainer, Cell,
 } from "recharts";
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = {
+    border: '1px solid rgba(139,110,255,0.10)',
+    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
+};
 
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
@@ -30,7 +35,7 @@ export function OverviewChart({ data }: { data: any[] }) {
     const maxVal = Math.max(...chartData.map(d => d.amount), 1);
 
     return (
-        <div className="bg-white rounded-[8px] p-5" style={CARD_STYLE}>
+        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
             <div className="flex items-start justify-between mb-5">
                 <div>
                     <h2 className="text-[13.5px] font-[600] text-gray-900">Activity Trends</h2>

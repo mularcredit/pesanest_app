@@ -27,14 +27,19 @@ const iconBg: Record<string, string> = {
     slate:   "bg-gray-50 text-slate-500",
 };
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = {
+    border: '1px solid rgba(139,110,255,0.10)',
+    background: 'linear-gradient(160deg, rgba(167,139,250,0.045) 0%, rgba(255,255,255,0.94) 45%, rgba(52,211,153,0.03) 100%)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
+};
 
 export function StatsCard({ title, value, trend, trendUp, icon: Icon, lastMonthLabel, color = "purple", sparkline }: StatsCardProps) {
     const iconClass = iconBg[color] ?? iconBg.slate;
     const isUp = trendUp !== false;
 
     return (
-        <div className="bg-white rounded-[8px] p-5 flex flex-col gap-3 overflow-hidden relative" style={CARD_STYLE}>
+        <div className="rounded-[20px] p-5 flex flex-col gap-3 overflow-hidden relative" style={CARD_STYLE}>
 
             {sparkline && sparkline.length > 0 && (
                 <SparklineMini data={sparkline} color={color} />

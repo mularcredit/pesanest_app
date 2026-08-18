@@ -1,5 +1,10 @@
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = {
+    border: '1px solid rgba(139,110,255,0.10)',
+    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
+};
 
 export interface FunnelStage {
     name:  string;
@@ -23,7 +28,7 @@ export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
     const maxCount = Math.max(...stages.map(s => s.count), 1);
 
     return (
-        <div className="bg-white rounded-[8px] p-5" style={CARD_STYLE}>
+        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">

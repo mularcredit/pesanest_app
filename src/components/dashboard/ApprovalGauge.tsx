@@ -1,7 +1,12 @@
 "use client";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = {
+    border: '1px solid rgba(139,110,255,0.10)',
+    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
+};
 
 interface ApprovalGaugeProps {
     approved: number;
@@ -22,7 +27,7 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
         : [{ name: 'Empty', value: 1, color: 'rgba(0,0,0,0.06)' }];
 
     return (
-        <div className="bg-white rounded-[8px] p-5" style={CARD_STYLE}>
+        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
             <div className="mb-1">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">Approval Rate</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">All-time expense outcomes</p>

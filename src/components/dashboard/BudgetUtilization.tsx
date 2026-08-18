@@ -1,6 +1,11 @@
 import { cn } from "@/lib/utils";
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = {
+    border: '1px solid rgba(139,110,255,0.10)',
+    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
+    backdropFilter: 'blur(14px) saturate(160%)',
+    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
+};
 
 interface BudgetRow {
     category: string;
@@ -29,7 +34,7 @@ export function BudgetUtilization({ budgets }: { budgets: BudgetRow[] }) {
     if (!budgets.length) return null;
 
     return (
-        <div className="bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+        <div className="rounded-[20px] overflow-hidden" style={CARD_STYLE}>
             <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                 <h2 className="text-[13px] font-[600] text-gray-900">Budget Utilization</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">This month · Allocated vs spent</p>
