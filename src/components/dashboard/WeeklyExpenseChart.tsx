@@ -52,7 +52,7 @@ export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
                         tickLine={false}
                         tick={{ fontSize: 11, fill: '#9ca3af' }}
                         tickFormatter={(v) => v >= 1000 ? (v / 1000).toFixed(0) + 'k' : String(v)}
-                        width={36}
+                        width={44}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.03)' }} />
                     <Bar dataKey="amount" radius={[4, 4, 0, 0]}>

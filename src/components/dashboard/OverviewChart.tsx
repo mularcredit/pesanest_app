@@ -43,7 +43,7 @@ export function OverviewChart({ data }: { data: any[] }) {
             </div>
 
             <ResponsiveContainer width="100%" height={260}>
-                <BarChart data={chartData} margin={{ top: 8, right: 4, left: -10, bottom: 0 }}>
+                <BarChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
                     <XAxis
                         dataKey="month"
@@ -57,7 +57,7 @@ export function OverviewChart({ data }: { data: any[] }) {
                         tickLine={false}
                         tick={{ fill: '#9ca3af', fontSize: 10.5, fontWeight: 500 }}
                         tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
-                        width={38}
+                        width={46}
                     />
                     <Tooltip content={<CustomTooltip />} cursor={{ fill: 'rgba(0,0,0,0.025)' }} />
                     <Bar dataKey="amount" name="Spending" maxBarSize={36} radius={[4, 4, 0, 0]}>

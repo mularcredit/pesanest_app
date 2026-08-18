@@ -116,7 +116,12 @@ export default async function DashboardPage() {
     const pendingCount         = pendingReqs.length;
     const disbursedThisMonth   = thisMonthReqs.filter((r: any) => ['APPROVED', 'PAID'].includes(r.status));
     const disbursedTotal       = disbursedThisMonth.reduce((s: number, r: any) => s + r.amount, 0);
-    const approvedAllTime      = allRequisitions.filter((r: any) => ['APPROVED', 'PAID'].includes(r.status)).length;
+    // "Approved" means it ever cleared the approval gate — APPROVED, PAID, CLOSED, FULFILLED,
+    // PARTIALLY_PAID all qualify, since a requisition can't reach those without having been
+    // approved first. Checking only for a *current* status of APPROVED/PAID undercounts badly,
+    // since most approved requisitions move on to PAID → CLOSED/FULFILLED and no longer match.
+    const undecidedOrRejectedStatuses = ['DRAFT', 'PENDING', 'REJECTED', 'NEEDS_INFO', 'ADJUSTMENT_REQUIRED'];
+    const approvedAllTime      = allRequisitions.filter((r: any) => !undecidedOrRejectedStatuses.includes(r.status)).length;
     const submittedAllTime     = allRequisitions.filter((r: any) => r.status !== 'DRAFT').length;
     const approvalRate         = submittedAllTime > 0 ? (approvedAllTime / submittedAllTime) * 100 : 0;
     const rejectedCount        = allRequisitions.filter((r: any) => r.status === 'REJECTED').length;

@@ -61,7 +61,7 @@ export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: M
                         tickLine={false}
                         tick={{ fontSize: 11, fill: '#9ca3af' }}
                         tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
-                        width={36}
+                        width={44}
                     />
                     <Tooltip content={<Tip />} cursor={{ fill: 'rgba(0,0,0,0.025)' }} />
                     <Legend
