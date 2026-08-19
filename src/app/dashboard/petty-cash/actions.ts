@@ -76,10 +76,25 @@ export async function getPettyCashWallet() {
         }
     }
 
+    // The stored `balance` field is only ever kept current by this module's own
+    // replenish/spend/reconcile actions below — anything else that posts to the
+    // linked GL account (a manual General Ledger entry, a reclass, a reversal)
+    // changes the real balance without touching it, so it silently drifts from
+    // the ledger. Compute it live from POSTED journal lines instead, so it can
+    // never disagree with the GL — the same source of truth the Balance Sheet,
+    // Trial Balance, and Nuri already use.
+    const agg = wallet.glAccountId
+        ? await prisma.journalLine.aggregate({
+            where: { accountId: wallet.glAccountId, entry: { status: "POSTED" } },
+            _sum: { debit: true, credit: true },
+        })
+        : null;
+    const liveBalance = num(agg?._sum?.debit) - num(agg?._sum?.credit);
+
     return {
         id: wallet.id,
         name: wallet.name,
-        balance: num(wallet.balance),
+        balance: liveBalance,
         floatLimit: num(wallet.floatLimit),
         currency: wallet.currency,
         glAccountId: wallet.glAccountId,
