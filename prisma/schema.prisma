@@ -37,6 +37,9 @@ model User {
   paystackRecipientCode String?
   totpEnabled           Boolean             @default(false)
   totpSecret            String?
+  otpExempt             Boolean             @default(false)
+  loginOtpCode          String?
+  loginOtpExpiry        DateTime?
   approvals             Approval[]
   assets                Asset[]
   leadBranch            Branch?

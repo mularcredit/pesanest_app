@@ -3,7 +3,6 @@ import Credentials from "next-auth/providers/credentials"
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
-import { totp as totpUtil } from "@/lib/totp"
 
 const LOCKOUT_THRESHOLD = 5;  // failed attempts before lockout
 const LOCKOUT_MINUTES = 15;
@@ -81,11 +80,11 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 const userAgent = (request as any)?.headers?.get?.('user-agent') || undefined;
 
                 const parsedCredentials = z
-                    .object({ email: z.string().email(), password: z.string().min(6), totp: z.string().optional() })
+                    .object({ email: z.string().email(), password: z.string().min(6), otp: z.string().optional() })
                     .safeParse(credentials)
 
                 if (parsedCredentials.success) {
-                    const { email, password, totp } = parsedCredentials.data
+                    const { email, password, otp } = parsedCredentials.data
 
                     // Fetch user with Custom Role and Permissions
                     const user = await prisma.user.findUnique({
@@ -136,24 +135,31 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         return null;
                     }
 
-                    // TOTP check if enabled
-                    if (user.totpEnabled) {
-                        if (!totp) {
-                            await recordLoginEvent({ userId: user.id, email, success: false, ipAddress, userAgent, reason: 'TOTP_REQUIRED' });
+                    // SMS OTP check — every account requires one except the designated
+                    // master-admin bypass (otpExempt), which exists specifically so
+                    // there's always a way in if the SMS gateway is down.
+                    if (!user.otpExempt) {
+                        if (!otp) {
+                            await recordLoginEvent({ userId: user.id, email, success: false, ipAddress, userAgent, reason: 'OTP_REQUIRED' });
                             return null;
                         }
-                        const validTotp = totpUtil.verify({ token: totp, secret: user.totpSecret });
-                        if (!validTotp) {
-                            await recordLoginEvent({ userId: user.id, email, success: false, ipAddress, userAgent, reason: 'WRONG_TOTP' });
+                        if (!user.loginOtpCode || !user.loginOtpExpiry || new Date(user.loginOtpExpiry) < new Date()) {
+                            await recordLoginEvent({ userId: user.id, email, success: false, ipAddress, userAgent, reason: 'OTP_EXPIRED' });
+                            return null;
+                        }
+                        const validOtp = await bcrypt.compare(otp, user.loginOtpCode);
+                        if (!validOtp) {
+                            await recordLoginEvent({ userId: user.id, email, success: false, ipAddress, userAgent, reason: 'WRONG_OTP' });
                             return null;
                         }
                     }
 
-                    // Reset failed attempts on successful login — wrapped for DB column compatibility
+                    // Reset failed attempts and consume the OTP (single-use) on successful login
+                    // — wrapped for DB column compatibility
                     try {
                         await (prisma.user.update as any)({
                             where: { id: user.id },
-                            data: { failedLoginAttempts: 0, lockedUntil: null }
+                            data: { failedLoginAttempts: 0, lockedUntil: null, loginOtpCode: null, loginOtpExpiry: null }
                         });
                     } catch {}
                     await recordLoginEvent({ userId: user.id, email, success: true, ipAddress, userAgent });

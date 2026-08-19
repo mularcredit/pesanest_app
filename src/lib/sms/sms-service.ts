@@ -147,4 +147,38 @@ export const smsService = {
     async send(phone: string, message: string): Promise<void> {
         await fire(phone, message, 'MANUAL');
     },
+
+    /**
+     * Login OTP — unlike the other methods this one is NOT fire-and-forget:
+     * the caller needs to know whether the code actually went out before
+     * telling the user "check your phone", so this returns the send result
+     * instead of swallowing it.
+     */
+    async sendLoginOtp(phone: string, code: string): Promise<{ success: boolean; error?: string }> {
+        const msg = `${APP}: Your login code is ${code}. It expires in 5 minutes. Never share this code with anyone.`;
+        const r = await sendSMS(phone, msg);
+        const status = r.success ? 'SENT' : 'FAILED';
+
+        import('@/lib/prisma').then(({ default: prisma }) =>
+            (prisma as any).smsLog.create({
+                data: {
+                    to: phone,
+                    message: msg,
+                    status,
+                    messageId: r.messageId ? String(r.messageId) : null,
+                    errorReason: r.error ?? null,
+                    event: 'LOGIN_OTP',
+                },
+            })
+        ).catch(() => {});
+
+        return { success: r.success, error: r.error };
+    },
+
+    /** Payment confirmation sent to a vendor after a successful disbursement */
+    async sendVendorPaymentNotification(phone: string, vendorName: string, amount: number, ref: string): Promise<void> {
+        const first = vendorName.split(' ')[0];
+        const msg = `Dear ${first}, a payment of ${ksh(amount)} has been made to you by Figbloom. Ref: ${ref}. Thank you for your business.`;
+        await fire(phone, msg, 'VENDOR_PAYMENT');
+    },
 };

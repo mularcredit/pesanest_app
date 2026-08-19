@@ -9,11 +9,11 @@ export default async function SecurityPage() {
     const session = await auth();
     if (!session?.user) return redirect("/login");
 
-    const userRows = await prisma.$queryRaw<{ totpEnabled: boolean; failedLoginAttempts: number; lockedUntil: Date | null }[]>`
-        SELECT "totpEnabled", "failedLoginAttempts", "lockedUntil"
+    const userRows = await prisma.$queryRaw<{ otpExempt: boolean; phoneNumber: string | null }[]>`
+        SELECT "otpExempt", "phoneNumber"
         FROM "User" WHERE id = ${session.user.id} LIMIT 1
-    `.catch(() => [{ totpEnabled: false, failedLoginAttempts: 0, lockedUntil: null }]);
-    const user = userRows[0] ?? { totpEnabled: false, failedLoginAttempts: 0, lockedUntil: null };
+    `.catch(() => [{ otpExempt: false, phoneNumber: null }]);
+    const user = userRows[0] ?? { otpExempt: false, phoneNumber: null };
 
     const loginEvents = await prisma.$queryRaw<any[]>`
         SELECT * FROM "LoginEvent"
@@ -28,7 +28,8 @@ export default async function SecurityPage() {
                 <p className="text-[12.5px] text-gray-400 mt-0.5">Two-factor authentication and login history</p>
             </div>
             <SecurityClient
-                totpEnabled={user?.totpEnabled || false}
+                otpExempt={user?.otpExempt || false}
+                phoneNumber={user?.phoneNumber || null}
                 loginEvents={loginEvents}
             />
         </div>

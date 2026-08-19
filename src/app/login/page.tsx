@@ -12,40 +12,65 @@ import { BrandLogo } from "@/components/ui/BrandLogo";
 function LoginComponent() {
     const [email, setEmail] = useState("");
     const [password, setPassword] = useState("");
-    const [totp, setTotp] = useState("");
-    const [totpRequired, setTotpRequired] = useState(false);
+    const [otp, setOtp] = useState("");
+    const [otpStage, setOtpStage] = useState(false);
+    const [resending, setResending] = useState(false);
     const [error, setError] = useState("");
+    const [info, setInfo] = useState("");
     const [loading, setLoading] = useState(false);
     const router = useRouter();
     const searchParams = useSearchParams();
     const signupSuccess = searchParams.get("signup") === "success";
 
+    const requestOtp = async (): Promise<"exempt" | "sent" | "error"> => {
+        const res = await fetch('/api/auth/send-login-otp', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ email, password }),
+        });
+        const data = await res.json().catch(() => ({}));
+        if (!res.ok) {
+            setError(data.error || "Invalid email or password. Please try again.");
+            return "error";
+        }
+        if (data.exempt) return "exempt";
+        return "sent";
+    };
+
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setLoading(true);
         setError("");
+        setInfo("");
 
         try {
+            if (!otpStage) {
+                // Stage 1: verify the password and send the OTP (or discover the
+                // master-admin bypass) before ever touching next-auth.
+                const outcome = await requestOtp();
+                if (outcome === "error") { setLoading(false); return; }
+                if (outcome === "sent") {
+                    setOtpStage(true);
+                    setInfo("We've sent a login code to your phone.");
+                    setLoading(false);
+                    return;
+                }
+                // "exempt" falls through to sign in immediately below.
+            } else if (!otp) {
+                setError("Enter the code we sent to your phone.");
+                setLoading(false);
+                return;
+            }
+
             const result = await signIn("credentials", {
                 email,
                 password,
-                totp: totp || undefined,
+                otp: otpStage ? otp : undefined,
                 redirect: false,
             });
 
             if (result?.error) {
-                if (!totpRequired && !totp) {
-                    // Check server whether this account actually has TOTP before showing the field
-                    const check = await fetch(`/api/auth/check-totp?email=${encodeURIComponent(email)}`).then(r => r.json()).catch(() => ({ totpEnabled: false }));
-                    if (check.totpEnabled) {
-                        setTotpRequired(true);
-                        setError("Enter your 6-digit authenticator code below.");
-                    } else {
-                        setError("Invalid email or password. Please try again.");
-                    }
-                } else {
-                    setError("Invalid credentials or authenticator code. Please try again.");
-                }
+                setError(otpStage ? "That code is incorrect or has expired." : "Invalid email or password. Please try again.");
                 setLoading(false);
                 return;
             }
@@ -55,6 +80,15 @@ function LoginComponent() {
             setError("Something went wrong. Please try again.");
             setLoading(false);
         }
+    };
+
+    const handleResend = async () => {
+        setResending(true);
+        setError("");
+        setInfo("");
+        const outcome = await requestOtp();
+        if (outcome === "sent") setInfo("A new code has been sent.");
+        setResending(false);
     };
 
     return (
@@ -147,6 +181,11 @@ function LoginComponent() {
                                 {error}
                             </div>
                         )}
+                        {!error && info && (
+                            <div className="mb-5 p-3 rounded-lg text-[11px] text-center bg-indigo-50 text-[#6366F1] border border-[#6366F1]/20">
+                                {info}
+                            </div>
+                        )}
 
                         <form onSubmit={handleSubmit}>
                             {/* Email */}
@@ -158,7 +197,8 @@ function LoginComponent() {
                                     onChange={(e) => setEmail(e.target.value)}
                                     placeholder="you@company.com"
                                     required
-                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                    disabled={otpStage}
+                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] disabled:opacity-60"
                                     style={{ padding: "11px 16px" }}
                                 />
                             </div>
@@ -170,42 +210,56 @@ function LoginComponent() {
                                     Forgot password?
                                 </Link>
                             </div>
-                            <div className={totpRequired ? 'mb-4' : 'mb-8'}>
+                            <div className={otpStage ? 'mb-4' : 'mb-8'}>
                                 <input
                                     type="password"
                                     value={password}
                                     onChange={(e) => setPassword(e.target.value)}
                                     placeholder="Enter your secure password"
                                     required
-                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                    disabled={otpStage}
+                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] disabled:opacity-60"
                                     style={{ padding: "11px 16px" }}
                                 />
                             </div>
 
-                            {totpRequired && (
+                            {otpStage && (
                                 <div className="mb-6">
-                                    <div className="mb-1.5 text-xs font-medium text-zinc-900">Authenticator Code</div>
+                                    <div className="flex justify-between items-center mb-1.5">
+                                        <span className="text-xs font-medium text-zinc-900">Login code</span>
+                                        <button
+                                            type="button"
+                                            onClick={handleResend}
+                                            disabled={resending}
+                                            className="text-[11px] text-[#6366F1]/70 hover:text-[#6366F1] transition-colors disabled:opacity-50"
+                                        >
+                                            {resending ? "Sending…" : "Resend code"}
+                                        </button>
+                                    </div>
                                     <input
                                         type="text"
                                         inputMode="numeric"
                                         pattern="[0-9]{6}"
                                         maxLength={6}
-                                        value={totp}
-                                        onChange={(e) => setTotp(e.target.value.replace(/\D/g, ''))}
+                                        value={otp}
+                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
                                         placeholder="000000"
+                                        autoFocus
                                         className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] text-center tracking-[0.5em] font-mono"
                                         style={{ padding: "11px 16px" }}
                                     />
                                 </div>
                             )}
 
-                            <div className="flex items-center gap-2 mb-8">
-                                <input
-                                    type="checkbox"
-                                    className="w-4 h-4 rounded border-zinc-300 text-[#6366F1] focus:ring-[#6366F1]"
-                                />
-                                <span className="text-xs font-normal text-zinc-600">Remember me</span>
-                            </div>
+                            {!otpStage && (
+                                <div className="flex items-center gap-2 mb-8">
+                                    <input
+                                        type="checkbox"
+                                        className="w-4 h-4 rounded border-zinc-300 text-[#6366F1] focus:ring-[#6366F1]"
+                                    />
+                                    <span className="text-xs font-normal text-zinc-600">Remember me</span>
+                                </div>
+                            )}
 
                             {/* Submit */}
                             <button
@@ -213,8 +267,18 @@ function LoginComponent() {
                                 disabled={loading}
                                 className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#6366F1] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
                             >
-                                {loading ? "Authenticating..." : <>Sign in <HiArrowRight /></>}
+                                {loading ? "Please wait..." : otpStage ? <>Verify code <HiArrowRight /></> : <>Sign in <HiArrowRight /></>}
                             </button>
+
+                            {otpStage && (
+                                <button
+                                    type="button"
+                                    onClick={() => { setOtpStage(false); setOtp(""); setError(""); setInfo(""); }}
+                                    className="w-full text-center mt-3 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
+                                >
+                                    ← Back
+                                </button>
+                            )}
                         </form>
 
                         {/* Divider */}

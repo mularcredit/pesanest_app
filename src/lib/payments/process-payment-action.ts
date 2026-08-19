@@ -61,7 +61,7 @@ export async function processPaymentAction(params: {
     const payment = await (prisma as any).payment.findUnique({
         where: { id: paymentId },
         include: {
-            invoices: { include: { vendor: { select: { paystackRecipientCode: true, name: true } } } },
+            invoices: { include: { vendor: { select: { paystackRecipientCode: true, name: true, phone: true } } } },
             expenses: { include: { user: { select: { paystackRecipientCode: true, name: true, phoneNumber: true } } } },
             requisitions: { include: { user: { select: { name: true, email: true, paystackRecipientCode: true, phoneNumber: true } } } },
             monthlyBudgets: true,
@@ -234,6 +234,7 @@ export async function processPaymentAction(params: {
 
     const results: DisburseSummary = { success: 0, failed: 0, errors: [], details: [] };
     const smsQueue: Array<{ phone: string; name: string; amount: number; ref: string }> = [];
+    const vendorSmsQueue: Array<{ phone: string; name: string; amount: number; ref: string }> = [];
 
     // Process Requisitions
     for (const req of p.requisitions) {
@@ -435,6 +436,7 @@ export async function processPaymentAction(params: {
             const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postInvoicePayment(inv.id, cashAccount.id);
 
+            if (inv.vendor?.phone) vendorSmsQueue.push({ phone: inv.vendor.phone, name: inv.vendor.name ?? 'Vendor', amount: inv.amount, ref: txId });
             results.success++;
         } catch (err: any) {
             console.error(`Disbursement failed for inv ${inv.id}:`, err);
@@ -457,6 +459,11 @@ export async function processPaymentAction(params: {
     if (smsQueue.length > 0) {
         import('@/lib/sms/sms-service').then(({ smsService }) =>
             Promise.allSettled(smsQueue.map(s => smsService.sendPaymentDisbursed(s.phone, s.name, s.amount, s.ref)))
+        ).catch(() => {});
+    }
+    if (vendorSmsQueue.length > 0) {
+        import('@/lib/sms/sms-service').then(({ smsService }) =>
+            Promise.allSettled(vendorSmsQueue.map(s => smsService.sendVendorPaymentNotification(s.phone, s.name, s.amount, s.ref)))
         ).catch(() => {});
     }
 
