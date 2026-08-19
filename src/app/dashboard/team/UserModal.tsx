@@ -236,6 +236,23 @@ export function UserModal({ isOpen, onClose, user }: UserModalProps) {
                         </div>
                     </div>
 
+                    <div>
+                        <label className={LABEL_CLS}>Phone number</label>
+                        <div>
+                            <input
+                                name="phoneNumber"
+                                type="tel"
+                                defaultValue={user?.phoneNumber}
+                                className={`${INPUT_CLS} pl-3`}
+                                style={INPUT_STYLE}
+                                placeholder="e.g. 0712345678"
+                            />
+                        </div>
+                        <p className="text-[10.5px] text-gray-400 mt-1">
+                            Required to receive the SMS login code — required for the user to be able to sign in.
+                        </p>
+                    </div>
+
                     {!user && (
                         <div>
                             <label className={`${LABEL_CLS} flex justify-between`}>
