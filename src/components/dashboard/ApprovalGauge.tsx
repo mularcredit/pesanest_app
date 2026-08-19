@@ -20,9 +20,9 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
 
     const slices = total > 0
         ? [
-            { name: 'Approved', value: approved, color: '#10b981' },
-            { name: 'Pending',  value: pending,  color: '#f59e0b' },
-            { name: 'Rejected', value: rejected, color: '#ef4444' },
+            { name: 'Approved', value: approved, color: '#0ca30c' },
+            { name: 'Pending',  value: pending,  color: '#fab219' },
+            { name: 'Rejected', value: rejected, color: '#d03b3b' },
           ]
         : [{ name: 'Empty', value: 1, color: 'rgba(0,0,0,0.06)' }];
 
@@ -68,9 +68,9 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
             {/* Three legend tiles */}
             <div className="grid grid-cols-3 gap-2 mt-3">
                 {[
-                    { label: 'Approved', count: approved, color: '#10b981', bg: 'rgba(16,185,129,0.08)' },
-                    { label: 'Pending',  count: pending,  color: '#f59e0b', bg: 'rgba(245,158,11,0.08)' },
-                    { label: 'Rejected', count: rejected, color: '#ef4444', bg: 'rgba(239,68,68,0.08)'  },
+                    { label: 'Approved', count: approved, color: '#0ca30c', bg: 'rgba(12,163,12,0.08)' },
+                    { label: 'Pending',  count: pending,  color: '#fab219', bg: 'rgba(250,178,25,0.10)' },
+                    { label: 'Rejected', count: rejected, color: '#d03b3b', bg: 'rgba(208,59,59,0.08)'  },
                 ].map(({ label, count, color, bg }) => (
                     <div key={label} className="rounded-[6px] py-2 px-1 text-center" style={{ background: bg }}>
                         <div className="text-[17px] font-[700] tabular-nums" style={{ color }}>{count}</div>

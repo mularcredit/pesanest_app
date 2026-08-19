@@ -10,15 +10,18 @@ const CARD_STYLE: React.CSSProperties = {
     boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
 };
 
+// Validated categorical order (see dataviz skill) — passes CVD-separation and
+// normal-vision floor checks with this app's direct-labeled rows as the relief
+// for the three slots that dip below 3:1 surface contrast.
 const BAR_COLORS = [
-    '#6366f1',
-    '#10b981',
-    '#f59e0b',
-    '#3b82f6',
-    '#8b5cf6',
-    '#ec4899',
-    '#14b8a6',
-    '#f97316',
+    '#4a3aa7', // violet — closest in spirit to the app's indigo brand color
+    '#1baf7a', // aqua/green
+    '#eb6834', // orange
+    '#2a78d6', // blue
+    '#eda100', // yellow
+    '#e87ba4', // magenta
+    '#008300', // green
+    '#e34948', // red
 ];
 
 export function CategoryBreakdown({ data, totalAmount }: CategoryBreakdownProps) {
