@@ -2,12 +2,103 @@
 
 import { Suspense } from "react";
 import { signIn } from "next-auth/react";
-import { useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import Image from "next/image";
 import { HiArrowRight } from "react-icons/hi2";
 import { BrandLogo } from "@/components/ui/BrandLogo";
+
+const OTP_LENGTH = 6;
+
+function OtpBoxes({ onChange, autoFocus }: { onChange: (value: string) => void; autoFocus?: boolean }) {
+    const [digits, setDigits] = useState<string[]>(Array(OTP_LENGTH).fill(""));
+    const inputsRef = useRef<(HTMLInputElement | null)[]>([]);
+
+    useEffect(() => {
+        if (autoFocus) inputsRef.current[0]?.focus();
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, []);
+
+    const emit = (next: string[]) => {
+        setDigits(next);
+        onChange(next.join(""));
+    };
+
+    const handleChange = (i: number, raw: string) => {
+        const cleaned = raw.replace(/\D/g, "");
+        if (cleaned.length > 1) {
+            // Multi-character insert (iOS SMS autofill, or a paste that landed as a change event).
+            const next = [...digits];
+            let idx = i;
+            for (const ch of cleaned) {
+                if (idx >= OTP_LENGTH) break;
+                next[idx] = ch;
+                idx++;
+            }
+            emit(next);
+            inputsRef.current[Math.min(idx, OTP_LENGTH - 1)]?.focus();
+            return;
+        }
+        const next = [...digits];
+        next[i] = cleaned;
+        emit(next);
+        if (cleaned && i < OTP_LENGTH - 1) inputsRef.current[i + 1]?.focus();
+    };
+
+    const handleKeyDown = (i: number, e: React.KeyboardEvent<HTMLInputElement>) => {
+        if (e.key === "Backspace") {
+            if (digits[i]) {
+                const next = [...digits];
+                next[i] = "";
+                emit(next);
+            } else if (i > 0) {
+                const next = [...digits];
+                next[i - 1] = "";
+                emit(next);
+                inputsRef.current[i - 1]?.focus();
+            }
+        } else if (e.key === "ArrowLeft" && i > 0) {
+            inputsRef.current[i - 1]?.focus();
+        } else if (e.key === "ArrowRight" && i < OTP_LENGTH - 1) {
+            inputsRef.current[i + 1]?.focus();
+        }
+    };
+
+    const handlePaste = (e: React.ClipboardEvent<HTMLInputElement>) => {
+        e.preventDefault();
+        const pasted = e.clipboardData.getData("text").replace(/\D/g, "").slice(0, OTP_LENGTH);
+        if (!pasted) return;
+        const next = Array(OTP_LENGTH).fill("");
+        for (let i = 0; i < pasted.length; i++) next[i] = pasted[i];
+        emit(next);
+        inputsRef.current[Math.min(pasted.length, OTP_LENGTH - 1)]?.focus();
+    };
+
+    return (
+        <div className="flex justify-center gap-2" onPaste={handlePaste}>
+            {digits.map((d, i) => (
+                <input
+                    key={i}
+                    ref={(el) => { inputsRef.current[i] = el; }}
+                    type="text"
+                    inputMode="numeric"
+                    autoComplete={i === 0 ? "one-time-code" : "off"}
+                    maxLength={1}
+                    value={d}
+                    onChange={(e) => handleChange(i, e.target.value)}
+                    onKeyDown={(e) => handleKeyDown(i, e)}
+                    onFocus={(e) => e.target.select()}
+                    className={`w-11 h-11 rounded-full text-center text-lg font-semibold outline-none transition-all duration-150 text-zinc-900 border-2 ${
+                        d
+                            ? "bg-[#6366F1]/[0.06] border-[#6366F1] shadow-[0_0_0_4px_rgba(99,102,241,0.12)]"
+                            : "bg-[#6366F1]/[0.02] border-[#6366F1]/25"
+                    } focus:border-[#6366F1] focus:bg-[#6366F1]/[0.05] focus:shadow-[0_0_0_4px_rgba(99,102,241,0.14)]`}
+                />
+            ))}
+        </div>
+    );
+}
 
 function LoginComponent() {
     const [email, setEmail] = useState("");
@@ -15,6 +106,7 @@ function LoginComponent() {
     const [otp, setOtp] = useState("");
     const [otpStage, setOtpStage] = useState(false);
     const [resending, setResending] = useState(false);
+    const [otpBoxKey, setOtpBoxKey] = useState(0);
     const [error, setError] = useState("");
     const [info, setInfo] = useState("");
     const [loading, setLoading] = useState(false);
@@ -86,6 +178,8 @@ function LoginComponent() {
         setResending(true);
         setError("");
         setInfo("");
+        setOtp("");
+        setOtpBoxKey((k) => k + 1);
         const outcome = await requestOtp();
         if (outcome === "sent") setInfo("A new code has been sent.");
         setResending(false);
@@ -225,7 +319,7 @@ function LoginComponent() {
 
                             {otpStage && (
                                 <div className="mb-6">
-                                    <div className="flex justify-between items-center mb-1.5">
+                                    <div className="flex justify-between items-center mb-3">
                                         <span className="text-xs font-medium text-zinc-900">Login code</span>
                                         <button
                                             type="button"
@@ -236,18 +330,10 @@ function LoginComponent() {
                                             {resending ? "Sending…" : "Resend code"}
                                         </button>
                                     </div>
-                                    <input
-                                        type="text"
-                                        inputMode="numeric"
-                                        pattern="[0-9]{6}"
-                                        maxLength={6}
-                                        value={otp}
-                                        onChange={(e) => setOtp(e.target.value.replace(/\D/g, ''))}
-                                        placeholder="000000"
-                                        autoFocus
-                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] text-center tracking-[0.5em] font-mono"
-                                        style={{ padding: "11px 16px" }}
-                                    />
+                                    <OtpBoxes key={otpBoxKey} onChange={setOtp} autoFocus />
+                                    <p className="text-[11px] text-zinc-400 text-center mt-3">
+                                        Paste or type the 6-digit code sent to your phone.
+                                    </p>
                                 </div>
                             )}
 
@@ -273,7 +359,7 @@ function LoginComponent() {
                             {otpStage && (
                                 <button
                                     type="button"
-                                    onClick={() => { setOtpStage(false); setOtp(""); setError(""); setInfo(""); }}
+                                    onClick={() => { setOtpStage(false); setOtp(""); setOtpBoxKey((k) => k + 1); setError(""); setInfo(""); }}
                                     className="w-full text-center mt-3 text-[11px] text-zinc-400 hover:text-zinc-600 transition-colors"
                                 >
                                     ← Back
