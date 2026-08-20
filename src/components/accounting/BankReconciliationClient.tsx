@@ -45,31 +45,35 @@ function readAsBinaryString(file: File): Promise<string> {
 // use "Completion Time" / "Details" / "Paid In" / "Withdrawn"; bank exports
 // tend to use "Date" / "Description" / "Amount" or split "Debit"/"Credit".
 const HEADER_ALIASES = {
-    date: ['completion time', 'transaction date', 'trans date', 'date', 'value date', 'posting date'],
+    date: ['completion time', 'transaction date', 'trans date', 'txn date', 'date', 'value date', 'posting date'],
     description: ['details', 'description', 'narration', 'particulars', 'transaction details'],
     amount: ['amount'],
     credit: ['paid in', 'credit', 'money in', 'cr'],
     debit: ['withdrawn', 'debit', 'money out', 'dr'],
 };
 
-const normalizeHeader = (h: unknown) => String(h ?? '').trim().toLowerCase();
+// Collapse embedded newlines/tabs too — bank exports (e.g. ABSA's "Money Out\n(Debit)")
+// wrap header labels onto multiple lines within a single cell.
+const normalizeHeader = (h: unknown) => String(h ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
 
 /** M-Pesa/bank exports often prefix a few metadata rows before the real header row. */
 function findHeaderRow(rows: any[][]): number {
     for (let i = 0; i < Math.min(rows.length, 30); i++) {
-        const cells = (rows[i] || []).map(normalizeHeader);
-        const hasDate = HEADER_ALIASES.date.some(a => cells.includes(a));
-        const hasAmount = HEADER_ALIASES.amount.some(a => cells.includes(a));
-        const hasCredit = HEADER_ALIASES.credit.some(a => cells.includes(a));
-        const hasDebit = HEADER_ALIASES.debit.some(a => cells.includes(a));
+        const cells = Array.from(rows[i] || [], normalizeHeader);
+        const hasDate = HEADER_ALIASES.date.some(a => cells.some(c => c.includes(a)));
+        const hasAmount = HEADER_ALIASES.amount.some(a => cells.some(c => c.includes(a)));
+        const hasCredit = HEADER_ALIASES.credit.some(a => cells.some(c => c.includes(a)));
+        const hasDebit = HEADER_ALIASES.debit.some(a => cells.some(c => c.includes(a)));
         if (hasDate && (hasAmount || hasCredit || hasDebit)) return i;
     }
     return -1;
 }
 
+// Substring match, not exact equality — real headers carry extra words/parentheses
+// around the meaningful term (e.g. "Money In (Credit)", "Money Out\n(Debit)").
 function findCol(headerCells: string[], aliases: string[]): number {
     for (const a of aliases) {
-        const idx = headerCells.indexOf(a);
+        const idx = headerCells.findIndex(c => c.includes(a));
         if (idx !== -1) return idx;
     }
     return -1;
@@ -109,7 +113,7 @@ function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; descripti
         throw new Error("Couldn't find a header row with recognizable date/amount columns in this file");
     }
 
-    const headerCells = rawRows[headerRowIdx].map(normalizeHeader);
+    const headerCells = Array.from(rawRows[headerRowIdx], normalizeHeader);
     const dateCol = findCol(headerCells, HEADER_ALIASES.date);
     const descCol = findCol(headerCells, HEADER_ALIASES.description);
     const amountCol = findCol(headerCells, HEADER_ALIASES.amount);
@@ -132,9 +136,15 @@ function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; descripti
         if (!date) { skipped++; continue; }
 
         const description = descCol !== -1 ? String(row[descCol] ?? '').trim() : '';
+        // Some banks (e.g. ABSA) prepend a synthetic "OPENING BALANCE" row carrying the
+        // opening balance as if it were a transaction — it isn't one, skip it.
+        if (description.toUpperCase() === 'OPENING BALANCE') { skipped++; continue; }
+        // Debit is taken at face value, not abs()'d — some banks (e.g. ABSA) record a
+        // reversal of a debit as a *negative* number in the debit column itself, which
+        // should add back to the balance rather than subtract again.
         const amount = amountCol !== -1
             ? toNum(row[amountCol])
-            : (creditCol !== -1 ? toNum(row[creditCol]) : 0) - Math.abs(debitCol !== -1 ? toNum(row[debitCol]) : 0);
+            : (creditCol !== -1 ? toNum(row[creditCol]) : 0) - (debitCol !== -1 ? toNum(row[debitCol]) : 0);
 
         parsed.push({ date, description: description || 'Unknown', amount });
     }
