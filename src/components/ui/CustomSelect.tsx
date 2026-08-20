@@ -98,12 +98,12 @@ export function CustomSelect({
                         left: coords.left,
                         width: coords.width,
                         zIndex: 99999,
-                        background: "#fff",
-                        border: "1px solid rgba(0,0,0,0.09)",
-                        borderRadius: 6,
-                        boxShadow: "0 8px 24px rgba(0,0,0,0.12)",
+                        background: "var(--card)",
+                        borderRadius: "var(--r-input)",
+                        boxShadow: "var(--card-rim), var(--shadow-dropdown)",
                         maxHeight: 220,
                         overflowY: "auto",
+                        padding: 4,
                     }}
                 >
                     {options.map(opt => (
@@ -120,14 +120,15 @@ export function CustomSelect({
                                 textAlign: "left",
                                 padding: "10px 12px",
                                 fontSize: 13,
-                                color: opt.disabled ? "#9ca3af" : value === opt.value ? "#6366F1" : "#374151",
+                                borderRadius: 8,
+                                color: opt.disabled ? "#9ca3af" : value === opt.value ? "var(--p)" : "#374151",
                                 fontWeight: value === opt.value ? 500 : 400,
-                                background: "transparent",
+                                background: value === opt.value ? "var(--p-dim)" : "transparent",
                                 border: "none",
                                 cursor: opt.disabled ? "not-allowed" : "pointer",
                             }}
-                            onMouseEnter={e => { if (!opt.disabled) e.currentTarget.style.background = "#f9fafb"; }}
-                            onMouseLeave={e => { e.currentTarget.style.background = "transparent"; }}
+                            onMouseEnter={e => { if (!opt.disabled && value !== opt.value) e.currentTarget.style.background = "var(--glass-h)"; }}
+                            onMouseLeave={e => { if (value !== opt.value) e.currentTarget.style.background = "transparent"; }}
                         >
                             {opt.label}
                         </button>

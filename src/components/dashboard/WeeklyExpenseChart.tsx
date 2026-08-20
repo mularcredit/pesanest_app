@@ -14,13 +14,6 @@ interface WeeklyExpenseChartProps {
     data: { week: string; amount: number; isCurrentWeek: boolean }[];
 }
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
@@ -38,7 +31,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
     return (
-        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
+        <div className="card-premium p-5">
             <div className="mb-4">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">This Month by Week</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">Current month expense breakdown</p>

@@ -302,8 +302,8 @@ function AllocateModal({ onClose, branches }: {
     return createPortal(
         <div className="fixed inset-0 z-[9999] flex items-center justify-center p-4">
             <div className="absolute inset-0 bg-black/30" onClick={onClose} />
-            <div className="relative bg-white rounded-[12px] w-full max-w-[460px] overflow-hidden flex flex-col max-h-[90vh] z-10"
-                style={{ border: '1px solid rgba(0,0,0,0.09)', boxShadow: '0 20px 60px rgba(0,0,0,0.15)' }}>
+            <div className="relative bg-[var(--card)] rounded-[var(--r-xl)] w-full max-w-[460px] overflow-hidden flex flex-col max-h-[90vh] z-10"
+                style={{ boxShadow: 'var(--card-rim), 0 24px 64px rgba(15,23,42,0.12)' }}>
 
                 <div className="flex items-center justify-between px-6 py-4 shrink-0"
                     style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>

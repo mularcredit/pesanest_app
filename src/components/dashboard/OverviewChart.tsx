@@ -6,13 +6,6 @@ import {
     CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 const LINE_COLOR = '#6366f1';
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -35,7 +28,7 @@ export function OverviewChart({ data }: { data: any[] }) {
     })), [data]);
 
     return (
-        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
+        <div className="card-premium p-5">
             <div className="flex items-start justify-between mb-5">
                 <div>
                     <h2 className="text-[13.5px] font-[600] text-gray-900">Activity Trends</h2>

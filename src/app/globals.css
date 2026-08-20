@@ -62,6 +62,12 @@
   --shadow-dropdown: 0 12px 40px rgba(0, 0, 0, 0.4);
   --r: 8px;
   --r-lg: 12px;
+  /* Premium redesign radius scale — additive, existing --r/--r-lg untouched */
+  --r-input: 14px;
+  --r-btn: 13px;
+  --r-md: 20px;
+  --r-xl: 28px;
+  --r-pill: 999px;
   --font-midnight: var(--font-outfit), 'Outfit', sans-serif;
   --font-mono: var(--font-outfit), 'Outfit', sans-serif;
 
@@ -156,6 +162,18 @@
   --shadow-sm: 0 1px 4px rgba(0, 0, 0, 0.04);
   --shadow-hover: 0 8px 30px rgba(0, 0, 0, 0.05);
   --shadow-dropdown: 0 10px 30px rgba(0, 0, 0, 0.08);
+
+  /* Real amber, distinct from the indigo primary — was `var(--p)` before,
+     which meant "warning" and "primary" were the same color. */
+  --amber: #D97706;
+  --amber-glow: rgba(217, 119, 6, 0.18);
+  --amber-d: rgba(217, 119, 6, 0.08);
+
+  /* Soft white luminous rim + gentle top highlight for premium cards —
+     layered against --page (#EAF0FC) so the rim reads as light catching
+     the edge rather than a drawn border. */
+  --card-rim: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
+  --card-elevation: 0 1px 2px rgba(15, 23, 42, 0.03), 0 12px 32px rgba(15, 23, 42, 0.05);
 
   /* Payment Center (PC) Specific Tokens - Light Mode */
   --pc-header-bg: #FAFAFA;
@@ -866,11 +884,23 @@ select:focus {
   background: rgba(148, 163, 184, 0.4);
 }
 
-/* Glassmorphic Card - Refined for Midnight Edition Beauty */
+/* Premium card — soft white luminous rim + gentle top highlight, no
+   glassmorphism/blur. The global surface language for major cards,
+   table containers, and modals per the redesign spec. */
+.card-premium {
+  background-color: var(--card);
+  border: none;
+  border-radius: var(--r-xl);
+  box-shadow: var(--card-rim), var(--card-elevation);
+  transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+}
+
+.card-premium:hover {
+  box-shadow: var(--card-rim), var(--shadow-hover);
+}
+
 .gds-glass, .glass-card {
   background-color: var(--card);
-  backdrop-filter: var(--blur);
-  -webkit-backdrop-filter: var(--blur);
   border: 1px solid var(--p-line);
   border-radius: var(--r-lg);
   box-shadow: var(--shadow);
@@ -1068,13 +1098,13 @@ button { font-weight: 400 !important; }
 /* ── EXACT DESIGN.HTML PORT ── */
 .glass-card {
   background: var(--card);
-  border-radius: var(--r-lg);
-  box-shadow: var(--shadow);
+  border-radius: var(--r-xl);
+  box-shadow: var(--card-rim), var(--card-elevation);
   transition: box-shadow .2s;
 }
 
 .glass-card:hover {
-  box-shadow: var(--shadow-hover);
+  box-shadow: var(--card-rim), var(--shadow-hover);
 }
 
 .cp {
@@ -1619,19 +1649,18 @@ button { font-weight: 400 !important; }
 }
 
 .nav-sub-item.on {
-    color: #ffffff;
+    color: var(--p-bright);
     font-weight: 600;
-    background: var(--p);
-    box-shadow: 0 4px 12px var(--p-glow);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .nav-sub-item.on svg {
     opacity: 1;
-    color: #ffffff;
+    color: var(--p-bright);
 }
 
 .nav-sub-item.on:hover {
-    background: var(--p-bright);
+    background: rgba(255, 255, 255, 0.16);
 }
 
 /* Hide the curve connector under the active pill's solid fill —

@@ -3,13 +3,6 @@ interface CategoryBreakdownProps {
     totalAmount: number;
 }
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 // Validated categorical order (see dataviz skill) — passes CVD-separation and
 // normal-vision floor checks with this app's direct-labeled rows as the relief
 // for the three slots that dip below 3:1 surface contrast.
@@ -29,7 +22,7 @@ export function CategoryBreakdown({ data, totalAmount }: CategoryBreakdownProps)
     const hasData = data.length > 0;
 
     return (
-        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
+        <div className="card-premium p-5">
             {/* Header */}
             <div className="mb-5">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">Spending by Category</h2>

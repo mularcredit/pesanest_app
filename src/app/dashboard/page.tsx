@@ -24,13 +24,6 @@ import {
 import { WalletCard } from "@/components/dashboard/WalletCard";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 export default async function DashboardPage() {
     const session = await auth();
     if (!session?.user?.id) return redirect("/login");
@@ -274,28 +267,18 @@ export default async function DashboardPage() {
 
     return (
         <div className="space-y-6 pb-12 relative">
-            {/* Ambient glow wash — soft purple/mint, matching Nuri's visual language */}
-            <div className="pointer-events-none fixed inset-0 -z-10 overflow-hidden">
-                <div className="absolute -top-24 -left-24 w-[420px] h-[420px] rounded-full"
-                    style={{ background: '#a78bfa', opacity: 0.10, filter: 'blur(90px)' }} />
-                <div className="absolute top-[30%] -right-32 w-[480px] h-[480px] rounded-full"
-                    style={{ background: '#34d399', opacity: 0.07, filter: 'blur(100px)' }} />
-            </div>
-
             {/* ── HEADER ── */}
             <div className="flex items-end justify-between">
                 <div>
-                    <h1 className="text-[22px] font-[700] tracking-tight"
-                        style={{ background: 'linear-gradient(135deg, #1f2937 0%, #4c3fae 120%)', WebkitBackgroundClip: 'text', WebkitTextFillColor: 'transparent', backgroundClip: 'text' }}>
+                    <h1 className="text-[26px] font-semibold tracking-tight text-gray-900">
                         Expense Dashboard
                     </h1>
-                    <p className="text-[12.5px] text-gray-400 mt-0.5">
+                    <p className="text-[13px] text-gray-400 mt-1">
                         {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · 30-day view
                     </p>
                 </div>
                 <Link href="/dashboard/reports"
-                    className="flex items-center gap-1.5 px-4 py-2 rounded-[12px] text-[12.5px] font-[500] text-gray-600 hover:text-[#6366F1] transition-colors"
-                    style={CARD_STYLE}>
+                    className="card-premium flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#6366F1] transition-colors">
                     <PiDownloadSimple className="text-[14px]" /> Export
                 </Link>
             </div>
@@ -375,7 +358,7 @@ export default async function DashboardPage() {
 
                     {/* Spending alerts */}
                     {recentLargeExpenses.length > 0 && (
-                        <div className="rounded-[20px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="card-premium overflow-hidden">
                             {/* Header */}
                             <div className="flex items-center justify-between px-5 py-3.5"
                                 style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
@@ -460,7 +443,7 @@ export default async function DashboardPage() {
 
                     {/* Active requisitions */}
                     {requisitions.length > 0 && (
-                        <div className="rounded-[20px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="card-premium overflow-hidden">
                             <div className="px-5 py-3.5 text-[10.5px] font-[500] uppercase tracking-[0.08em] text-gray-400"
                                 style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 Active Expenses

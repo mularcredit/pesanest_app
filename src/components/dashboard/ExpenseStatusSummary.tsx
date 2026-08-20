@@ -17,13 +17,6 @@ interface ExpenseStatusSummaryProps {
     rejected:  StatusGroup;
 }
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 const ROWS = [
     { key: 'draft',     label: 'Draft',     Icon: PiNotePencil,  color: '#9ca3af', light: 'rgba(156,163,175,0.1)'  },
     { key: 'submitted', label: 'Pending',   Icon: PiHourglass,   color: '#f59e0b', light: 'rgba(245,158,11,0.1)'   },
@@ -39,7 +32,7 @@ export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
     const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
 
     return (
-        <div className="rounded-[20px] p-5" style={CARD_STYLE}>
+        <div className="card-premium p-5">
             {/* Header */}
             <div className="flex items-start justify-between mb-5">
                 <div>

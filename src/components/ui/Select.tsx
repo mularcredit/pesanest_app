@@ -127,8 +127,8 @@ export function Select({
             <div
                 onClick={() => setIsOpen(!isOpen)}
                 className={cn(
-                    "w-full px-4 py-2.5 bg-[var(--sidebar)] border border-[var(--p-line)] rounded-[5px] flex items-center justify-between cursor-pointer transition-all group select-none relative",
-                    isOpen ? 'ring-1 ring-[var(--p)] border-[var(--p)]' : 'hover:border-[var(--p)]/50',
+                    "w-full px-4 py-2.5 bg-[var(--card)] border border-[var(--p-line)] rounded-[var(--r-input)] flex items-center justify-between cursor-pointer transition-all group select-none relative",
+                    isOpen ? 'ring-4 ring-[var(--p)]/10 border-[var(--p)]' : 'hover:border-[var(--p)]/50',
                     icon ? "!pl-11" : "",
                     className
                 )}
@@ -153,14 +153,15 @@ export function Select({
             {isOpen && typeof document !== 'undefined' && createPortal(
                 <div
                     ref={dropdownRef}
+                    className="bg-[var(--card)] rounded-[var(--r-input)] p-2 animate-in fade-in zoom-in-95 duration-100"
                     style={{
                         position: 'absolute',
                         top: coords.top + 8,
                         left: coords.left,
                         width: coords.width,
-                        zIndex: 9999
+                        zIndex: 9999,
+                        boxShadow: 'var(--card-rim), var(--shadow-dropdown)',
                     }}
-                    className="bg-[var(--sidebar)] border border-[var(--p-line)] rounded-lg shadow-[var(--shadow-dropdown)] p-2 animate-in fade-in zoom-in-95 duration-100"
                 >
                     {searchable && (
                         <div className="mb-2 px-1">

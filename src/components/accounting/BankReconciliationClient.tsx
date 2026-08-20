@@ -30,7 +30,7 @@ interface Props {
     initialDrafts?: ReconciliationDraft[];
 }
 
-const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const CARD_STYLE: React.CSSProperties = { boxShadow: 'var(--card-rim), var(--card-elevation)' };
 
 function readAsBinaryString(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
@@ -497,7 +497,7 @@ export function BankReconciliationClient({
     return (
         <div className="space-y-5">
             {/* Info banner */}
-            <div className="bg-white rounded-[8px] p-5 flex items-start gap-4" style={CARD_STYLE}>
+            <div className="bg-white rounded-[var(--r-md)] p-5 flex items-start gap-4" style={CARD_STYLE}>
                 <div className="w-9 h-9 rounded-[7px] bg-blue-50 flex items-center justify-center shrink-0">
                     <PiInfo className="text-blue-500 text-[16px]" />
                 </div>
@@ -530,7 +530,7 @@ export function BankReconciliationClient({
             </div>
 
             {/* Progress Steps */}
-            <div className="bg-white rounded-[8px] px-6 py-5" style={CARD_STYLE}>
+            <div className="bg-white rounded-[var(--r-md)] px-6 py-5" style={CARD_STYLE}>
                 <div className="flex items-center">
                     {(['upload', 'match', 'review'] as const).map((s, idx) => {
                         const labels = ['Upload Bank Statement', 'Match Transactions', 'Review & Complete']
@@ -562,7 +562,7 @@ export function BankReconciliationClient({
 
             {/* Step 1: Upload */}
             {step === 'upload' && (
-                <div className="bg-white rounded-[8px] py-16 flex flex-col items-center" style={CARD_STYLE}>
+                <div className="bg-white rounded-[var(--r-xl)] py-16 flex flex-col items-center" style={CARD_STYLE}>
                     <div className="w-12 h-12 rounded-[8px] bg-indigo-50 flex items-center justify-center mb-5"
                         style={{ border: '1px solid rgba(99,102,241,0.15)' }}>
                         {isUploading ? <PiSpinner className="text-[#6366F1] text-[22px] animate-spin" /> : <PiUploadSimple className="text-[#6366F1] text-[22px]" />}
@@ -609,7 +609,7 @@ export function BankReconciliationClient({
                             { label: 'Matched this session', value: matchedCount, cls: 'text-emerald-600', bg: 'rgba(240,253,244,0.7)', bdr: 'rgba(16,185,129,0.2)' },
                             { label: 'Remaining', value: unmatchedBankCount + unmatchedBookCount, cls: 'text-orange-600', bg: 'rgba(255,247,237,0.7)', bdr: 'rgba(249,115,22,0.2)' },
                         ].map(({ label, value, cls, bg, bdr }) => (
-                            <div key={label} className="bg-white rounded-[8px] px-4 py-4"
+                            <div key={label} className="bg-white rounded-[var(--r-md)] px-4 py-4"
                                 style={{ border: bdr ? `1px solid ${bdr}` : '1px solid rgba(0,0,0,0.09)', background: bg || 'white' }}>
                                 <p className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1">{label}</p>
                                 <p className={cn('text-[22px] font-[600]', cls || 'text-gray-900')}>{value}</p>
@@ -618,10 +618,10 @@ export function BankReconciliationClient({
                     </div>
 
                     {/* Auto-match + import more */}
-                    <div className="bg-white rounded-[8px] px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={CARD_STYLE}>
+                    <div className="bg-white rounded-[var(--r-md)] px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={CARD_STYLE}>
                         <div className="flex items-center gap-3">
-                            <div className="w-8 h-8 rounded-[7px] bg-purple-50 flex items-center justify-center shrink-0">
-                                <PiLightning className="text-purple-500 text-[15px]" />
+                            <div className="w-8 h-8 rounded-[7px] flex items-center justify-center shrink-0" style={{ background: 'var(--p-dim)' }}>
+                                <PiLightning className="text-[15px]" style={{ color: 'var(--p)' }} />
                             </div>
                             <div>
                                 <p className="text-[13px] font-[600] text-gray-900">Try Auto-Match First</p>
@@ -644,7 +644,7 @@ export function BankReconciliationClient({
                                 </div>
                             </label>
                             <button onClick={autoMatch} disabled={isMatching || bankTransactions.length === 0}
-                                className="flex items-center gap-1.5 px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-purple-600 hover:bg-purple-700 transition-colors shrink-0 disabled:opacity-50">
+                                className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--r-btn)] text-[12.5px] font-[500] text-white bg-[var(--p)] hover:bg-[var(--p)]/90 transition-colors shrink-0 disabled:opacity-50">
                                 {isMatching ? <PiSpinner className="text-[14px] animate-spin" /> : <PiLightning className="text-[14px]" />}
                                 Auto-Match
                             </button>
@@ -653,7 +653,7 @@ export function BankReconciliationClient({
 
                     {/* Saved drafts — resume a paused split-match selection */}
                     {drafts.length > 0 && (
-                        <div className="bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="bg-white rounded-[var(--r-md)] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 <h3 className="text-[12.5px] font-[600] text-gray-900">Saved drafts</h3>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -694,7 +694,7 @@ export function BankReconciliationClient({
 
                     {/* Recent imports — revert a bad or duplicate one */}
                     {importGroups.length > 0 && (
-                        <div className="bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="bg-white rounded-[var(--r-md)] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-5 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 <h3 className="text-[12.5px] font-[600] text-gray-900">Imports still open</h3>
                                 <p className="text-[11px] text-gray-400 mt-0.5">
@@ -728,7 +728,7 @@ export function BankReconciliationClient({
                     {/* Matching Interface */}
                     <div className="grid grid-cols-12 gap-4">
                         {/* Bank Transactions */}
-                        <div className="col-span-5 bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="col-span-5 bg-white rounded-[var(--r-xl)] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: 'rgba(239,246,255,0.5)' }}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <PiBank className="text-blue-500 text-[15px]" />
@@ -784,7 +784,7 @@ export function BankReconciliationClient({
 
                         {/* Center */}
                         <div className="col-span-2 flex flex-col justify-center">
-                            <div className="bg-white rounded-[8px] p-5 text-center" style={CARD_STYLE}>
+                            <div className="bg-white rounded-[var(--r-md)] p-5 text-center" style={CARD_STYLE}>
                                 <PiArrowsLeftRight className="text-gray-300 text-[28px] mx-auto mb-4" />
                                 <p className="text-[10px] font-[500] text-gray-400 uppercase tracking-[0.07em] mb-3">Select & Match</p>
 
@@ -835,7 +835,7 @@ export function BankReconciliationClient({
                         </div>
 
                         {/* Book Entries */}
-                        <div className="col-span-5 bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="col-span-5 bg-white rounded-[var(--r-xl)] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-4 py-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)', background: 'rgba(238,242,255,0.4)' }}>
                                 <div className="flex items-center gap-2 mb-3">
                                     <PiFileText className="text-[#6366F1] text-[15px]" />
@@ -891,7 +891,7 @@ export function BankReconciliationClient({
 
                     {/* Matched this session */}
                     {sessionMatches.length > 0 && (
-                        <div className="bg-white rounded-[8px] overflow-hidden" style={CARD_STYLE}>
+                        <div className="bg-white rounded-[var(--r-md)] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-5 py-3 flex items-center gap-2" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 <PiCheckCircle className="text-emerald-500 text-[14px]" />
                                 <h3 className="text-[12.5px] font-[600] text-gray-900">Matched this session</h3>
@@ -925,7 +925,7 @@ export function BankReconciliationClient({
 
                     {/* Proceed to review */}
                     {matchedCount > 0 && (
-                        <div className="bg-white rounded-[8px] px-5 py-4 flex items-center justify-between" style={CARD_STYLE}>
+                        <div className="bg-white rounded-[var(--r-md)] px-5 py-4 flex items-center justify-between" style={CARD_STYLE}>
                             <div>
                                 <p className="text-[13px] font-[600] text-gray-900 mb-0.5">
                                     {isReconciled ? 'Everything is matched!' : `${matchedCount} transaction${matchedCount !== 1 ? 's' : ''} matched`}
@@ -948,9 +948,9 @@ export function BankReconciliationClient({
 
             {/* Step 3: Review */}
             {step === 'review' && (
-                <div className="bg-white rounded-[8px] p-8" style={CARD_STYLE}>
+                <div className="bg-white rounded-[var(--r-xl)] p-8" style={CARD_STYLE}>
                     <div className="max-w-2xl mx-auto">
-                        <div className={cn('text-center py-10 px-8 rounded-[8px] mb-6')}
+                        <div className={cn('text-center py-10 px-8 rounded-[var(--r-md)] mb-6')}
                             style={{
                                 background: isReconciled ? 'rgba(240,253,244,0.7)' : 'rgba(255,247,237,0.7)',
                                 border: isReconciled ? '1px solid rgba(16,185,129,0.25)' : '1px solid rgba(249,115,22,0.25)'
@@ -973,11 +973,11 @@ export function BankReconciliationClient({
                         </div>
 
                         <div className="grid grid-cols-2 gap-4 mb-6">
-                            <div className="rounded-[8px] px-5 py-4 text-center" style={{ background: '#FAFAFA', border: '1px solid rgba(0,0,0,0.07)' }}>
+                            <div className="rounded-[var(--r-md)] px-5 py-4 text-center" style={{ background: '#FAFAFA', border: '1px solid rgba(0,0,0,0.07)' }}>
                                 <p className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1">Matched This Session</p>
                                 <p className="text-[28px] font-[600] text-emerald-600">{matchedCount}</p>
                             </div>
-                            <div className="rounded-[8px] px-5 py-4 text-center" style={{ background: '#FAFAFA', border: '1px solid rgba(0,0,0,0.07)' }}>
+                            <div className="rounded-[var(--r-md)] px-5 py-4 text-center" style={{ background: '#FAFAFA', border: '1px solid rgba(0,0,0,0.07)' }}>
                                 <p className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1">Unmatched Items</p>
                                 <p className="text-[28px] font-[600] text-orange-500">{unmatchedBankCount + unmatchedBookCount}</p>
                             </div>

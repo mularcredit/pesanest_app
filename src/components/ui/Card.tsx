@@ -4,13 +4,14 @@ import { cn } from "@/lib/utils"
 const Card = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>
->(({ className, ...props }, ref) => (
+>(({ className, style, ...props }, ref) => (
     <div
         ref={ref}
         className={cn(
-            "rounded-lg border border-[var(--p-line)] bg-[var(--card)] text-[var(--t1)] overflow-hidden flex flex-col transition-all duration-300 font-[var(--font-midnight)]",
+            "card-premium text-[var(--t1)] overflow-hidden flex flex-col font-[var(--font-midnight)]",
             className
         )}
+        style={style}
         {...props}
     />
 ))
@@ -22,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("bg-[var(--sidebar)] px-6 py-5 md:py-0 md:h-[64px] flex flex-col justify-center border-b border-[var(--p-line)] shrink-0", className)}
+        className={cn("bg-[var(--card)] px-6 py-5 md:py-0 md:h-[64px] flex flex-col justify-center border-b border-[var(--p-line)] shrink-0", className)}
         {...props}
     />
 ))
@@ -35,7 +36,7 @@ const CardTitle = React.forwardRef<
     <h3
         ref={ref}
         className={cn(
-            "text-[11px] font-bold leading-none tracking-[0.2em] text-[var(--t1)] uppercase",
+            "text-[16px] font-semibold leading-tight tracking-tight text-[var(--t1)]",
             className
         )}
         {...props}
@@ -49,7 +50,7 @@ const CardDescription = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <p
         ref={ref}
-        className={cn("text-[10px] text-[var(--t4)] mt-1.5 font-normal uppercase tracking-normal", className)}
+        className={cn("text-[12.5px] text-[var(--t3)] mt-1 font-normal", className)}
         {...props}
     />
 ))
@@ -69,7 +70,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("bg-[var(--sidebar)] px-6 md:h-[64px] py-5 md:py-0 flex items-center border-t border-[var(--p-line)] shrink-0", className)}
+        className={cn("bg-[var(--card)] px-6 md:h-[64px] py-5 md:py-0 flex items-center border-t border-[var(--p-line)] shrink-0", className)}
         {...props}
     />
 ))

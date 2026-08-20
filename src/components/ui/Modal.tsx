@@ -63,7 +63,7 @@ export function BaseModal({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className={`relative bg-[var(--sidebar)] border border-[var(--p-line)] w-full ${maxWidthClasses[maxWidth]} rounded-xl overflow-hidden`} style={{ boxShadow: '0 0 0 1px rgba(219,39,119,0.15), 0 24px 64px rgba(0,0,0,0.4), 0 0 40px rgba(219,39,119,0.12)' }}
+                        className={`relative bg-[var(--card)] w-full ${maxWidthClasses[maxWidth]} rounded-[var(--r-xl)] overflow-hidden`} style={{ boxShadow: 'var(--card-rim), 0 24px 64px rgba(15,23,42,0.12)' }}
                     >
                         {showCloseButton && (
                             <button
@@ -134,7 +134,7 @@ export function ConfirmationModal({
             buttonBg: "bg-[var(--red)] hover:bg-[var(--red)]/80"
         },
         warning: {
-            iconBg: "bg-[rgba(219,39,119,0.12)]",
+            iconBg: "bg-[var(--amber-d)]",
             iconColor: "text-[var(--amber)]",
             buttonBg: "bg-[var(--amber)] hover:bg-[var(--amber)]/80"
         },
@@ -163,8 +163,8 @@ export function ConfirmationModal({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className="relative bg-[var(--sidebar)] border border-[var(--p-line)] w-full max-w-md rounded-xl overflow-hidden"
-                        style={{ boxShadow: '0 0 0 1px rgba(219,39,119,0.15), 0 24px 64px rgba(0,0,0,0.4), 0 0 40px rgba(219,39,119,0.12)' }}
+                        className="relative bg-[var(--card)] w-full max-w-md rounded-[var(--r-xl)] overflow-hidden"
+                        style={{ boxShadow: 'var(--card-rim), 0 24px 64px rgba(15,23,42,0.12)' }}
                     >
                         <div className="p-8 text-center">
                             <div className={`w-14 h-14 rounded-full ${styles.iconBg} ${styles.iconColor} flex items-center justify-center mx-auto mb-4`}>
@@ -187,14 +187,14 @@ export function ConfirmationModal({
                                 <button
                                     onClick={onCancel || onClose}
                                     disabled={isLoading}
-                                    className="px-6 py-2.5 text-sm font-semibold text-[var(--t2)] bg-[var(--glass-h)] hover:bg-transparent rounded-lg transition-colors disabled:opacity-50"
+                                    className="px-6 py-2.5 text-sm font-semibold text-[var(--t2)] bg-[var(--glass-h)] hover:bg-transparent rounded-[var(--r-btn)] transition-colors disabled:opacity-50"
                                 >
                                     {cancelText}
                                 </button>
                                 <button
                                     onClick={handleConfirm}
                                     disabled={isLoading}
-                                    className={`px-6 py-2.5 text-sm font-semibold text-white ${styles.buttonBg} rounded-lg transition-colors flex items-center gap-2 disabled:opacity-50`}
+                                    className={`px-6 py-2.5 text-sm font-semibold text-white ${styles.buttonBg} rounded-[var(--r-btn)] transition-colors flex items-center gap-2 disabled:opacity-50`}
                                 >
                                     {isLoading && (
                                         <div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin" />
@@ -273,11 +273,11 @@ export function FormModal({
                         initial={{ opacity: 0, scale: 0.95, y: 20 }}
                         animate={{ opacity: 1, scale: 1, y: 0 }}
                         exit={{ opacity: 0, scale: 0.95, y: 20 }}
-                        className={`relative bg-[var(--sidebar)] border border-[var(--p-line)] w-full ${maxWidthClasses[maxWidth]} rounded-xl overflow-hidden max-h-[90vh] flex flex-col`}
-                        style={{ boxShadow: '0 0 0 1px rgba(219,39,119,0.15), 0 24px 64px rgba(0,0,0,0.4), 0 0 40px rgba(219,39,119,0.12)' }}
+                        className={`relative bg-[var(--card)] w-full ${maxWidthClasses[maxWidth]} rounded-[var(--r-xl)] overflow-hidden max-h-[90vh] flex flex-col`}
+                        style={{ boxShadow: 'var(--card-rim), 0 24px 64px rgba(15,23,42,0.12)' }}
                     >
                         {/* Header */}
-                        <div className="h-[72px] px-8 border-b border-[var(--p-line)] flex justify-between items-center bg-[var(--sidebar)] shrink-0">
+                        <div className="h-[72px] px-8 border-b border-[var(--p-line)] flex justify-between items-center bg-[var(--card)] shrink-0">
                             <div className="flex items-center gap-4">
                                 {icon && (
                                     <div className={cn(

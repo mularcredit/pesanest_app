@@ -1,13 +1,6 @@
 import { cn } from "@/lib/utils";
 import { PiListDashes, PiArrowsLeftRight } from "react-icons/pi";
 
-const CARD_STYLE: React.CSSProperties = {
-    border: '1px solid rgba(139,110,255,0.10)',
-    background: 'linear-gradient(160deg, rgba(167,139,250,0.04) 0%, rgba(255,255,255,0.95) 40%, rgba(52,211,153,0.025) 100%)',
-    backdropFilter: 'blur(14px) saturate(160%)',
-    boxShadow: '0 12px 32px rgba(17,24,39,0.05)',
-};
-
 const STATUS_META: Record<string, { cls: string; border: string }> = {
     APPROVED:         { cls: 'text-emerald-600 bg-emerald-50', border: 'rgba(16,185,129,0.2)' },
     PAID:             { cls: 'text-emerald-600 bg-emerald-50', border: 'rgba(16,185,129,0.2)' },
@@ -22,7 +15,7 @@ const STATUS_META: Record<string, { cls: string; border: string }> = {
 export function TransactionTable({ expenses }: { expenses: any[] }) {
     if (!expenses || expenses.length === 0) {
         return (
-            <div className="rounded-[20px] p-16 flex flex-col items-center justify-center" style={CARD_STYLE}>
+            <div className="card-premium p-16 flex flex-col items-center justify-center">
                 <div className="w-12 h-12 rounded-[7px] bg-gray-50 flex items-center justify-center mb-3"
                     style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
                     <PiListDashes className="text-2xl text-gray-300" />
@@ -34,7 +27,7 @@ export function TransactionTable({ expenses }: { expenses: any[] }) {
     }
 
     return (
-        <div className="rounded-[20px] overflow-hidden" style={CARD_STYLE}>
+        <div className="card-premium overflow-hidden">
             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                 <div>
                     <h2 className="text-[13px] font-[600] text-gray-900">Recent Activity</h2>

@@ -205,8 +205,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* Help */}
                 <button
                     onClick={() => handleNotImplemented("Help Center")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-black/5 text-gray-500">
-                    <PiQuestion className="text-xl group-hover:text-cyan-600 transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-[var(--glass-h)] text-gray-500">
+                    <PiQuestion className="text-xl group-hover:text-[var(--p)] transition-colors" />
                 </button>
 
                 {/* Notifications */}
@@ -214,11 +214,11 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                     <button
                         onClick={() => setNotificationsOpen(!notificationsOpen)}
                         className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-[var(--glass-h)] text-[var(--t3)]">
-                        <PiEnvelope className="text-[22px] group-hover:text-purple-600 transition-colors" />
+                        <PiEnvelope className="text-[22px] group-hover:text-[var(--p)] transition-colors" />
                         {unreadCount > 0 && (
                             <>
-                                <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full shadow-[0_0_8px_rgba(147,51,234,0.6)] animate-pulse bg-purple-600"></span>
-                                <span className="absolute -top-1 -right-1 bg-purple-600 text-white text-[9px] font-semibold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white">
+                                <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--p)', boxShadow: '0 0 8px var(--p-glow)' }}></span>
+                                <span className="absolute -top-1 -right-1 text-white text-[9px] font-semibold rounded-full w-5 h-5 flex items-center justify-center border-2 border-white" style={{ background: 'var(--p)' }}>
                                     {unreadCount > 9 ? '9+' : unreadCount}
                                 </span>
                             </>
@@ -227,19 +227,19 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
 
                     {notificationsOpen && (
                         <>
-                            <div className="absolute right-0 top-full mt-2 w-96 bg-white rounded-xl shadow-xl border border-[var(--p-line)] z-40 overflow-hidden animate-fade-in-up">
-                                <div className="p-4 border-b border-[var(--p-line)] flex justify-between items-center bg-[var(--glass)]">
+                            <div className="card-premium absolute right-0 top-full mt-2 w-96 z-40 overflow-hidden animate-fade-in-up">
+                                <div className="p-4 border-b border-[var(--p-line)] flex justify-between items-center">
                                     <h3 className="text-sm font-semibold text-gray-900">System Messages</h3>
                                     <div className="flex items-center gap-2">
                                         {unreadCount > 0 && (
-                                            <span className="text-[10px] text-purple-600 font-semibold bg-purple-50 px-2 py-1 rounded-full border border-purple-100">
+                                            <span className="text-[10px] font-semibold px-2 py-1 rounded-full" style={{ color: 'var(--p)', background: 'var(--p-dim)', border: '1px solid var(--p-line)' }}>
                                                 {unreadCount} New
                                             </span>
                                         )}
                                         {notifications.length > 0 && (
                                             <button
                                                 onClick={markAllAsRead}
-                                                className="text-[10px] font-semibold text-gray-500 hover:text-purple-600 transition-colors flex items-center gap-1"
+                                                className="text-[10px] font-semibold text-gray-500 hover:text-[var(--p)] transition-colors flex items-center gap-1"
                                             >
                                                 <PiCheckCircle />
                                                 Mark all read
@@ -253,7 +253,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                                             Loading notifications...
                                         </div>
                                     ) : notifications.length === 0 ? (
-                                        <div className="p-8 text-center border border-[var(--p-line)] rounded-xl bg-[var(--glass)] my-6 mx-4">
+                                        <div className="p-8 text-center border border-[var(--p-line)] rounded-[var(--r-md)] bg-[var(--glass)] my-6 mx-4">
                                             <PiEnvelope className="text-4xl text-gray-300 mx-auto mb-3" />
                                             <p className="text-sm font-semibold text-gray-500">No messages yet</p>
                                         </div>
@@ -262,14 +262,14 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                                             <div
                                                 key={notification.id}
                                                 onClick={() => handleNotificationClick(notification)}
-                                                className={`p-4 hover:bg-gray-50 transition-colors cursor-pointer group ${!notification.isRead ? 'bg-purple-50/30' : ''
-                                                    }`}
+                                                className="p-4 hover:bg-[var(--glass)] transition-colors cursor-pointer group"
+                                                style={!notification.isRead ? { background: 'var(--p-dim)' } : undefined}
                                             >
                                                 <div className="flex gap-3">
                                                     <div className={`mt-1 w-2 h-2 rounded-full shrink-0 ${getNotificationColor(notification.type)} ${!notification.isRead ? 'animate-pulse' : 'opacity-50'
                                                         }`}></div>
                                                     <div className="flex-1 min-w-0">
-                                                        <p className={`text-sm group-hover:text-purple-600 transition-colors ${!notification.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'
+                                                        <p className={`text-sm group-hover:text-[var(--p)] transition-colors ${!notification.isRead ? 'font-semibold text-gray-900' : 'font-medium text-gray-700'
                                                             }`}>
                                                             {notification.title}
                                                         </p>
@@ -290,7 +290,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                                         <Link
                                             href="/dashboard/notifications"
                                             onClick={() => setNotificationsOpen(false)}
-                                            className="text-xs font-semibold text-gray-600 hover:text-purple-600 transition-colors"
+                                            className="text-xs font-semibold text-gray-600 hover:text-[var(--p)] transition-colors"
                                         >
                                             View All Notifications
                                         </Link>
@@ -304,8 +304,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* App Switcher */}
                 <button
                     onClick={() => handleNotImplemented("App Switcher")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-black/5 group text-gray-500">
-                    <PiSquaresFour className="text-xl group-hover:text-purple-600 transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-[var(--glass-h)] group text-gray-500">
+                    <PiSquaresFour className="text-xl group-hover:text-[var(--p)] transition-colors" />
                 </button>
             </div>
 
