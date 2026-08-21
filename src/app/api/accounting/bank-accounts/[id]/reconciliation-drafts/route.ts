@@ -37,7 +37,7 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
     if (!account) return NextResponse.json({ error: "Account not found" }, { status: 404 });
 
     const drafts = await (prisma as any).reconciliationDraft.findMany({
-        where: account.kind === 'BANK' ? { bankAccountId: params.id } : { paybillAccountId: params.id },
+        where: account.kind === 'BANK' ? { bankAccountId: params.id } : account.kind === 'PAYBILL' ? { paybillAccountId: params.id } : { walletId: params.id },
         orderBy: { updatedAt: 'desc' },
     });
 
@@ -101,6 +101,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         data: {
             bankAccountId: account.kind === 'BANK' ? account.id : null,
             paybillAccountId: account.kind === 'PAYBILL' ? account.id : null,
+            walletId: account.kind === 'WALLET' ? account.id : null,
             label: body.label || null,
             statementLineIds,
             createdBy: session.user.id,

@@ -4,6 +4,65 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { redirect } from "next/navigation";
 import { revalidatePath } from "next/cache";
+import { BUDGET_RULE_BRANCH, BUDGET_RULE_DEPARTMENT } from "./budget-constants";
+
+/**
+ * Creates or updates a category spending-limit "rule" for the current month —
+ * the Budget Rules quick-create flow (/dashboard/budgets). Unlike
+ * createMonthlyBudget, this is a personal alert-threshold config, not a spend
+ * request, so it saves immediately as APPROVED with no approval routing.
+ */
+export async function createBudgetRule(data: { category: string; amount: number }) {
+    const session = await auth();
+    if (!session?.user?.id) throw new Error("Unauthorized");
+
+    if (!data.category || !(data.amount > 0)) {
+        return { error: "A category and a positive amount are required" };
+    }
+
+    const now = new Date();
+    const month = now.getMonth() + 1;
+    const year = now.getFullYear();
+
+    try {
+        const existing = await prisma.monthlyBudget.findFirst({
+            where: {
+                userId: session.user.id, month, year,
+                branch: BUDGET_RULE_BRANCH, department: BUDGET_RULE_DEPARTMENT,
+            },
+            include: { items: true },
+        });
+
+        if (!existing) {
+            await prisma.monthlyBudget.create({
+                data: {
+                    userId: session.user.id, month, year,
+                    branch: BUDGET_RULE_BRANCH, department: BUDGET_RULE_DEPARTMENT,
+                    totalAmount: data.amount, status: "APPROVED",
+                    items: { create: [{ description: `${data.category} budget rule`, category: data.category, amount: data.amount }] },
+                },
+            });
+        } else {
+            const existingItem = existing.items.find(i => i.category === data.category);
+            if (existingItem) {
+                await prisma.budgetItem.update({ where: { id: existingItem.id }, data: { amount: data.amount } });
+            } else {
+                await prisma.budgetItem.create({
+                    data: { budgetId: existing.id, description: `${data.category} budget rule`, category: data.category, amount: data.amount },
+                });
+            }
+            const total = await prisma.budgetItem.aggregate({ where: { budgetId: existing.id }, _sum: { amount: true } });
+            await prisma.monthlyBudget.update({ where: { id: existing.id }, data: { totalAmount: total._sum.amount || data.amount } });
+        }
+
+        revalidatePath("/dashboard/budgets");
+        revalidatePath("/dashboard");
+        return { success: true };
+    } catch (e: any) {
+        console.error("Budget Rule Creation Error:", e);
+        return { error: e.message || "Failed to create budget rule" };
+    }
+}
 
 export async function createMonthlyBudget(data: {
     month: number;

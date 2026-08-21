@@ -4,6 +4,7 @@ import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { BankReconciliationClient } from '@/components/accounting/BankReconciliationClient';
 import { BankAccountPicker } from './BankAccountPicker';
+import { statementOwnerFilter } from '@/lib/accounting/reconcilable-accounts';
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 
@@ -17,7 +18,7 @@ export default async function BankReconciliationPage({
 
     const { bankAccountId: requestedId } = await searchParams;
 
-    const [bankRows, paybillRows] = await Promise.all([
+    const [bankRows, paybillRows, walletRows] = await Promise.all([
         prisma.bankAccount.findMany({
             where: { isActive: true },
             select: { id: true, name: true, bankName: true, currency: true, glAccountId: true },
@@ -28,11 +29,16 @@ export default async function BankReconciliationPage({
             select: { id: true, name: true, paybillNumber: true, glAccountId: true },
             orderBy: { name: 'asc' },
         }),
+        prisma.wallet.findMany({
+            where: { glAccountId: { not: null } },
+            select: { id: true, currency: true, glAccountId: true },
+        }),
     ]);
 
     const accounts = [
         ...bankRows.map(b => ({ id: b.id, kind: 'BANK' as const, label: `${b.name} — ${b.bankName}`, currency: b.currency, glAccountId: b.glAccountId })),
         ...paybillRows.map(p => ({ id: p.id, kind: 'PAYBILL' as const, label: `${p.name} — ${p.paybillNumber}`, currency: 'KES', glAccountId: p.glAccountId })),
+        ...walletRows.map(w => ({ id: w.id, kind: 'WALLET' as const, label: 'Corporate Wallet', currency: w.currency, glAccountId: w.glAccountId! })),
     ];
 
     if (accounts.length === 0) {
@@ -74,7 +80,7 @@ export default async function BankReconciliationPage({
         }),
         prisma.reconciliationMatch.findMany({ select: { journalEntryId: true } }),
         prisma.bankStatementLine.findMany({
-            where: { isMatched: false, statement: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] } },
+            where: { isMatched: false, statement: statementOwnerFilter(account.id) },
             orderBy: { transactionDate: 'asc' },
         }),
     ]);
@@ -83,7 +89,7 @@ export default async function BankReconciliationPage({
     const unmatchedGlLines = glLines.filter(l => !matchedSet.has(l.entryId));
 
     const rawDrafts = await prisma.reconciliationDraft.findMany({
-        where: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] },
+        where: statementOwnerFilter(account.id),
         orderBy: { updatedAt: 'desc' },
     });
     const draftLineIds = Array.from(new Set(rawDrafts.flatMap(d => d.statementLineIds)));

@@ -9,6 +9,8 @@ import {
 import { cn } from "@/lib/utils";
 import { EXPENSE_CATEGORIES } from "@/lib/constants";
 import { getExpenseAccountsAction } from "@/app/dashboard/requisitions/new/multi-item-actions";
+import { createBudgetRule } from "@/app/dashboard/requisitions/budget-actions";
+import { useToast } from "@/components/ui/ToastProvider";
 
 interface CreateBudgetModalProps {
     isOpen: boolean;
@@ -21,6 +23,7 @@ const INPUT_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' 
 const LABEL_CLASS = "block text-[11.5px] font-[500] text-gray-400 mb-1.5";
 
 export function CreateBudgetModal({ isOpen, onClose, onSuccess }: CreateBudgetModalProps) {
+    const { showToast } = useToast();
     const [isSubmitting, setIsSubmitting] = useState(false);
     const [frequency, setFrequency] = useState<'MONTHLY' | 'WEEKLY'>('MONTHLY');
     const [amount, setAmount] = useState('');
@@ -42,9 +45,13 @@ export function CreateBudgetModal({ isOpen, onClose, onSuccess }: CreateBudgetMo
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
         setIsSubmitting(true);
-        // Simulate API call
-        await new Promise(r => setTimeout(r, 900));
+        const result = await createBudgetRule({ category, amount: parseFloat(amount) });
         setIsSubmitting(false);
+        if (result?.error) {
+            showToast(result.error, 'error');
+            return;
+        }
+        showToast(`Budget rule saved for ${category}`, 'success');
         onSuccess?.();
     };
 

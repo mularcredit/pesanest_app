@@ -5,6 +5,7 @@
 
 import prisma from '@/lib/prisma';
 import { EXPENSE_CATEGORIES } from '@/lib/constants';
+import { BUDGET_RULE_BRANCH, BUDGET_RULE_DEPARTMENT } from '@/app/dashboard/requisitions/budget-constants';
 
 export interface Budget {
     id: string;
@@ -41,12 +42,16 @@ export class BudgetManager {
         const currentMonth = now.getMonth() + 1; // 1-12
         const currentYear = now.getFullYear();
 
-        // 1. Fetch defined budgets from DB (Production Source)
+        // 1. Fetch defined budgets from DB (Production Source) — scoped to the
+        // Budget Rules sentinel branch/department so this never picks up a
+        // real branch-specific Monthly Budget Plan row sharing this table.
         const dbBudget = await prisma.monthlyBudget.findFirst({
             where: {
                 userId,
                 month: currentMonth,
-                year: currentYear
+                year: currentYear,
+                branch: BUDGET_RULE_BRANCH,
+                department: BUDGET_RULE_DEPARTMENT,
             },
             include: { items: true }
         });
@@ -175,10 +180,10 @@ export class BudgetManager {
                 warning = `Notice: This expense exceeds your ${category} budget. (Overspend allowed for Capital Pay)`;
             } else {
                 allowed = false;
-                warning = `This expense would exceed your ${category} budget by $${Math.abs(remainingAfter).toFixed(2)}. Current: $${budget.spent.toFixed(2)} / $${budget.amount.toFixed(2)}`;
+                warning = `This expense would exceed your ${category} budget by KES ${Math.abs(remainingAfter).toFixed(2)}. Current: KES ${budget.spent.toFixed(2)} / KES ${budget.amount.toFixed(2)}`;
             }
         } else if (percentAfter >= 90) {
-            warning = `⚠️ Warning: This expense will bring you to ${percentAfter.toFixed(0)}% of your ${category} budget. Only $${remainingAfter.toFixed(2)} remaining.`;
+            warning = `⚠️ Warning: This expense will bring you to ${percentAfter.toFixed(0)}% of your ${category} budget. Only KES ${remainingAfter.toFixed(2)} remaining.`;
         } else if (percentAfter >= 75) {
             warning = `Notice: After this expense, you'll have used ${percentAfter.toFixed(0)}% of your ${category} budget.`;
         }
@@ -215,7 +220,7 @@ export class BudgetManager {
                     id: `alert-exceeded-${budget.category}`,
                     type: 'EXCEEDED',
                     category: budget.category,
-                    message: `${budget.category} budget exceeded by $${Math.abs(budget.remaining).toFixed(2)}`,
+                    message: `${budget.category} budget exceeded by KES ${Math.abs(budget.remaining).toFixed(2)}`,
                     currentSpend: budget.spent,
                     budgetAmount: budget.amount,
                     percentUsed: budget.percentUsed,
@@ -229,7 +234,7 @@ export class BudgetManager {
                     id: `alert-critical-${budget.category}`,
                     type: 'CRITICAL',
                     category: budget.category,
-                    message: `${budget.category} budget at ${budget.percentUsed.toFixed(0)}% - only $${budget.remaining.toFixed(2)} remaining`,
+                    message: `${budget.category} budget at ${budget.percentUsed.toFixed(0)}% - only KES ${budget.remaining.toFixed(2)} remaining`,
                     currentSpend: budget.spent,
                     budgetAmount: budget.amount,
                     percentUsed: budget.percentUsed,
@@ -259,7 +264,7 @@ export class BudgetManager {
                     id: `alert-forecast-${budget.category}`,
                     type: 'FORECAST',
                     category: budget.category,
-                    message: `At current rate, ${budget.category} will exceed budget by $${projectedOverspend.toFixed(2)} by month end`,
+                    message: `At current rate, ${budget.category} will exceed budget by KES ${projectedOverspend.toFixed(2)} by month end`,
                     currentSpend: budget.spent,
                     budgetAmount: budget.amount,
                     percentUsed: budget.percentUsed,

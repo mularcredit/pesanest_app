@@ -3,7 +3,7 @@
 import { useRouter } from "next/navigation";
 
 interface Props {
-    accounts: { id: string; kind: 'BANK' | 'PAYBILL'; label: string }[];
+    accounts: { id: string; kind: 'BANK' | 'PAYBILL' | 'WALLET'; label: string }[];
     value: string;
     basePath?: string;
 }
@@ -12,6 +12,7 @@ export function BankAccountPicker({ accounts, value, basePath = '/dashboard/acco
     const router = useRouter();
     const banks = accounts.filter(a => a.kind === 'BANK');
     const paybills = accounts.filter(a => a.kind === 'PAYBILL');
+    const wallets = accounts.filter(a => a.kind === 'WALLET');
 
     return (
         <select
@@ -28,6 +29,11 @@ export function BankAccountPicker({ accounts, value, basePath = '/dashboard/acco
             {paybills.length > 0 && (
                 <optgroup label="Paybill accounts">
                     {paybills.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
+                </optgroup>
+            )}
+            {wallets.length > 0 && (
+                <optgroup label="Wallets">
+                    {wallets.map(a => <option key={a.id} value={a.id}>{a.label}</option>)}
                 </optgroup>
             )}
         </select>

@@ -27,7 +27,7 @@ export async function DELETE(req: Request, props: { params: Promise<{ id: string
     }
 
     const draft = await (prisma as any).reconciliationDraft.findUnique({ where: { id: params.draftId } });
-    if (!draft || (draft.bankAccountId !== params.id && draft.paybillAccountId !== params.id)) {
+    if (!draft || (draft.bankAccountId !== params.id && draft.paybillAccountId !== params.id && draft.walletId !== params.id)) {
         return NextResponse.json({ error: "Draft not found" }, { status: 404 });
     }
 

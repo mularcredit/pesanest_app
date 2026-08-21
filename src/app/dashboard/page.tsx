@@ -70,7 +70,7 @@ export default async function DashboardPage() {
         branchesData,
         thisMonthSales,
     ] = await Promise.all([
-        prisma.monthlyBudget.findMany({ where: { month: currentMonthNum, year: currentYear } }),
+        prisma.monthlyBudget.findMany({ where: { month: currentMonthNum, year: currentYear, status: 'APPROVED' }, include: { items: true } }),
         prisma.expense.findMany({ where: { ...expenseFilter, createdAt: { gte: firstDayThisMonth } }, orderBy: { createdAt: 'desc' } }),
         prisma.expense.findMany({ where: { ...expenseFilter, createdAt: { gte: firstDayLastMonth, lte: lastDayLastMonth } } }),
         prisma.expense.findMany({ where: { ...expenseFilter, status: { in: ['PENDING_APPROVAL', 'SUBMITTED'] } }, orderBy: { createdAt: 'desc' }, take: 10 }),
@@ -242,13 +242,16 @@ export default async function DashboardPage() {
         bg:     cfg.bg,
     }));
 
-    // ── Budget utilization ──
-    const budgetRows = activeBudgets.map((b: any) => {
-        const spent = allRequisitions
-            .filter((r: any) => r.category === b.category && !['DRAFT','REJECTED'].includes(r.status))
-            .reduce((s: number, r: any) => s + r.amount, 0);
-        return { category: b.category, allocated: b.amount, spent };
-    });
+    // ── Budget utilization — flatten each approved budget's line items
+    // (category + amount live on BudgetItem, not on MonthlyBudget itself) ──
+    const budgetRows = activeBudgets.flatMap((b: any) =>
+        b.items.map((item: any) => {
+            const spent = allRequisitions
+                .filter((r: any) => r.category === item.category && !['DRAFT','REJECTED'].includes(r.status))
+                .reduce((s: number, r: any) => s + r.amount, 0);
+            return { category: item.category, allocated: item.amount, spent };
+        })
+    );
 
     // ── Spending alerts ──
     const avgDailySpend       = allRequisitions.length > 0 ? allRequisitions.reduce((s: number, r: any) => s + r.amount, 0) / 30 : 0;

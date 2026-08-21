@@ -161,6 +161,8 @@ model Wallet {
   glAccount           Account?            @relation("HQWalletGL", fields: [glAccountId], references: [id])
   user                User                @relation(fields: [userId], references: [id])
   transactions        WalletTransaction[]
+  statements          BankStatement[]
+  reconciliationDrafts ReconciliationDraft[]
 }
 
 model WalletTransaction {
@@ -944,13 +946,14 @@ model BankAccount {
   @@index([isActive])
 }
 
-/// Belongs to either a BankAccount or a PaybillAccount — never both — now that
-/// paybills are reconcilable accounts in their own right, not just a shared
-/// clearing bucket.
+/// Belongs to exactly one of a BankAccount, a PaybillAccount, or a Wallet —
+/// never more than one — now that paybills and the corporate wallet are
+/// reconcilable accounts in their own right, not just a shared clearing bucket.
 model BankStatement {
   id               String              @id @default(cuid())
   bankAccountId    String?
   paybillAccountId String?
+  walletId         String?
   periodStart      DateTime
   periodEnd        DateTime
   openingBalance   Decimal             @db.Decimal(18, 2)
@@ -959,10 +962,12 @@ model BankStatement {
   importedBy       String?
   bankAccount      BankAccount?        @relation(fields: [bankAccountId], references: [id])
   paybillAccount   PaybillAccount?     @relation(fields: [paybillAccountId], references: [id])
+  wallet           Wallet?             @relation(fields: [walletId], references: [id])
   lines            BankStatementLine[]
 
   @@index([bankAccountId])
   @@index([paybillAccountId])
+  @@index([walletId])
 }
 
 model BankStatementLine {
@@ -1007,14 +1012,17 @@ model ReconciliationDraft {
   id               String   @id @default(cuid())
   bankAccountId    String?
   paybillAccountId String?
+  walletId         String?
   label            String?
   statementLineIds String[]
   createdBy        String?
   createdAt        DateTime @default(now())
   updatedAt        DateTime @updatedAt
+  wallet           Wallet?  @relation(fields: [walletId], references: [id])
 
   @@index([bankAccountId])
   @@index([paybillAccountId])
+  @@index([walletId])
 }
 
 model AccrualSchedule {

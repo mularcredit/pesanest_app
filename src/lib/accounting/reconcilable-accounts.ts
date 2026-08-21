@@ -1,16 +1,17 @@
 /**
  * A "reconcilable account" is anything with its own GL sub-account that a bank
- * statement can be imported and matched against — currently BankAccount and
- * PaybillAccount. IDs are globally unique cuids, so resolving one by trying
- * both tables is safe and unambiguous, and lets the existing
- * /api/accounting/bank-accounts/[id]/... routes serve either kind without a
+ * statement can be imported and matched against — BankAccount, PaybillAccount,
+ * and the corporate Wallet (only once it has a glAccountId linked — most
+ * per-user wallets don't). IDs are globally unique cuids, so resolving one by
+ * trying each table is safe and unambiguous, and lets the existing
+ * /api/accounting/bank-accounts/[id]/... routes serve any kind without a
  * separate URL space per account type.
  */
 
 import prisma from "@/lib/prisma";
 
 export type ReconcilableAccount = {
-    kind: 'BANK' | 'PAYBILL';
+    kind: 'BANK' | 'PAYBILL' | 'WALLET';
     id: string;
     label: string;
     glAccountId: string;
@@ -29,10 +30,16 @@ export async function resolveReconcilableAccount(id: string): Promise<Reconcilab
     });
     if (paybill) return { kind: 'PAYBILL', id: paybill.id, label: `${paybill.name} — ${paybill.paybillNumber}`, glAccountId: paybill.glAccountId };
 
+    const wallet = await prisma.wallet.findUnique({
+        where: { id },
+        select: { id: true, glAccountId: true },
+    });
+    if (wallet?.glAccountId) return { kind: 'WALLET', id: wallet.id, label: 'Corporate Wallet', glAccountId: wallet.glAccountId };
+
     return null;
 }
 
 /** Prisma where-clause fragment for "statements belonging to this account", regardless of kind. */
 export function statementOwnerFilter(accountId: string) {
-    return { OR: [{ bankAccountId: accountId }, { paybillAccountId: accountId }] };
+    return { OR: [{ bankAccountId: accountId }, { paybillAccountId: accountId }, { walletId: accountId }] };
 }
