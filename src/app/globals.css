@@ -121,10 +121,7 @@
 
 [data-theme='light'] {
   /* Light Mode Surfaces — cool vivid orange tint */
-  /* Almost-white with a faint icy-blue cast, per the v2 design direction —
-     replaces the more visibly lavender-blue #EAF0FC so floating surfaces
-     read against a background that still looks predominantly white. */
-  --page: #F7FAFF;
+  --page: #ECEAFF;
   --sidebar: #3730a3;
   --sidebar-grad: #3730a3;
   --card: #FFFFFF;
@@ -155,10 +152,10 @@
   --t4: #888888;
   --t-muted: #555555;
 
-  /* Light sidebar tones — dark navy labels, blue active state */
-  --sb-inactive: #334155;
-  --sb-active: var(--p);
-  --nav-line: rgba(15, 23, 42, 0.12);
+  /* Sidebar Dark Indigo Tones */
+  --sb-inactive: #FFFFFF;
+  --sb-active: #FFFFFF;
+  --nav-line: rgba(255, 255, 255, 0.15);
 
   /* Subtle Light Mode Shadows */
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -173,15 +170,10 @@
   --amber-d: rgba(217, 119, 6, 0.08);
 
   /* Soft white luminous rim + gentle top highlight for premium cards —
-     layered against --page so the rim reads as light catching the edge
-     rather than a drawn border. Rim strengthened slightly (v2 design
-     direction) since --page is now lighter and needs more contrast to
-     stay "visibly noticeable" against it. */
-  --card-rim: inset 0 1px 0 rgba(255, 255, 255, 0.95), inset 0 0 0 1px rgba(255, 255, 255, 0.85);
+     layered against --page (#EAF0FC) so the rim reads as light catching
+     the edge rather than a drawn border. */
+  --card-rim: inset 0 1px 0 rgba(255, 255, 255, 0.9), inset 0 0 0 1px rgba(255, 255, 255, 0.7);
   --card-elevation: 0 1px 2px rgba(15, 23, 42, 0.03), 0 12px 32px rgba(15, 23, 42, 0.05);
-  /* Frosted translucent card body — white fading to a whisper of pale
-     blue, rather than flat white, per the v2 "signature surface" spec. */
-  --card-frost: linear-gradient(145deg, rgba(255, 255, 255, 0.94), rgba(245, 249, 255, 0.88));
 
   /* Payment Center (PC) Specific Tokens - Light Mode */
   --pc-header-bg: #FAFAFA;
@@ -496,17 +488,14 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Sidebar light mode — v2 design direction: a genuinely light rail
-   (white/pale-blue surface, dark navy labels, blue active state)
-   replacing the old solid-indigo rail this block used to re-darken
-   the sidebar into even under [data-theme='light'].
+   Sidebar light mode — nav items & sub-items
 ───────────────────────────────────────────────────────────── */
-[data-theme='light'] .sb { background: #FBFDFF !important; border-right-color: rgba(15,23,42,0.07) !important; }
+[data-theme='light'] .sb { background: #3730a3 !important; border-right-color: rgba(255,255,255,0.06) !important; }
 [data-theme='light'] .sb-logo { background: transparent !important; }
-[data-theme='light'] .nav-sub-list::before { background: var(--nav-line) !important; }
+[data-theme='light'] .nav-sub-list::before { background: rgba(255,255,255,0.12) !important; }
 [data-theme='light'] .sb-foot { background: transparent !important; }
 [data-theme='light'] .user-card { background: transparent !important; }
-[data-theme='light'] .sb-logo { border-bottom: 1px solid rgba(15,23,42,0.07) !important; }
+[data-theme='light'] .sb-logo { border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
 [data-theme='light'] .sb input { border-color: var(--edge) !important; }
 [data-theme='light'] .sb input:not([type="checkbox"]):not([type="radio"]),
 [data-theme='light'] .sb input:not([type="checkbox"]):not([type="radio"]):hover,
@@ -514,32 +503,32 @@
     background-color: #FFFFFF !important;
 }
 
-/* Light sidebar — hover & active overrides */
+/* Dark indigo sidebar — hover & active overrides */
 [data-theme='light'] .nav-item:hover {
-    background: var(--p-dim) !important;
+    background: rgba(255,255,255,0.07) !important;
     border-left-color: transparent !important;
 }
 [data-theme='light'] .nav-item.on {
-    background: var(--p-dim) !important;
-    border-left-color: var(--p) !important;
+    background: rgba(255,255,255,0.11) !important;
+    border-left-color: rgba(255,255,255,0.55) !important;
 }
-[data-theme='light'] .nav-item.on svg { color: var(--p) !important; opacity: 1 !important; }
+[data-theme='light'] .nav-item.on svg { color: #FFFFFF !important; opacity: 1 !important; }
 [data-theme='light'] .nav-group-trigger:hover {
-    background: var(--p-dim) !important;
+    background: rgba(255,255,255,0.07) !important;
     border-left-color: transparent !important;
 }
-[data-theme='light'] .nav-group.open .chevron { color: var(--t3) !important; }
-[data-theme='light'] .nav-sub-item:hover { background: var(--p-dim) !important; }
-[data-theme='light'] .nav-tab:hover { background: var(--p-dim) !important; }
-[data-theme='light'] .nav-tab.on { background: var(--p-dim) !important; color: var(--p) !important; }
+[data-theme='light'] .nav-group.open .chevron { color: rgba(255,255,255,0.6) !important; }
+[data-theme='light'] .nav-sub-item:hover { background: rgba(255,255,255,0.07) !important; }
+[data-theme='light'] .nav-tab:hover { background: rgba(255,255,255,0.07) !important; }
+[data-theme='light'] .nav-tab.on { background: rgba(255,255,255,0.12) !important; color: #FFFFFF !important; }
 
-/* Footer / user card */
-[data-theme='light'] .sb-foot { border-top-color: rgba(15,23,42,0.07) !important; }
-[data-theme='light'] .sb-mark { background: var(--p-dim) !important; border-color: var(--p-line) !important; }
-[data-theme='light'] .sb-mark svg { color: var(--p) !important; }
-[data-theme='light'] .avatar { background: var(--p-dim) !important; border-color: var(--p-line) !important; color: var(--p) !important; }
-[data-theme='light'] .btn-logout { color: var(--t3) !important; border-color: var(--p-line) !important; }
-[data-theme='light'] .btn-logout:hover { background: var(--p-dim) !important; color: var(--p) !important; border-color: var(--p-line) !important; }
+/* Footer / user card text */
+[data-theme='light'] .sb-foot { border-top-color: rgba(255,255,255,0.07) !important; }
+[data-theme='light'] .sb-mark { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.12) !important; }
+[data-theme='light'] .sb-mark svg { color: #FFFFFF !important; }
+[data-theme='light'] .avatar { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.15) !important; color: #FFFFFF !important; }
+[data-theme='light'] .btn-logout { color: rgba(255,255,255,0.45) !important; border-color: rgba(255,255,255,0.08) !important; }
+[data-theme='light'] .btn-logout:hover { background: rgba(255,255,255,0.07) !important; color: #FFFFFF !important; border-color: rgba(255,255,255,0.15) !important; }
 
 /* ─────────────────────────────────────────────────────────────
    Header / Topbar — global styles (style jsx doesn't work in App Router)
@@ -895,11 +884,11 @@ select:focus {
   background: rgba(148, 163, 184, 0.4);
 }
 
-/* Premium card — frosted translucent body + soft white luminous rim +
-   gentle top highlight. The global surface language for major cards,
-   table containers, and modals per the v2 design direction. */
+/* Premium card — soft white luminous rim + gentle top highlight, no
+   glassmorphism/blur. The global surface language for major cards,
+   table containers, and modals per the redesign spec. */
 .card-premium {
-  background: var(--card-frost);
+  background-color: var(--card);
   border: none;
   border-radius: var(--r-xl);
   box-shadow: var(--card-rim), var(--card-elevation);
@@ -908,24 +897,6 @@ select:focus {
 
 .card-premium:hover {
   box-shadow: var(--card-rim), var(--shadow-hover);
-}
-
-/* Circular icon container — the signature icon shape for page headers and
-   metric cards per the v2 design direction. Sized via inline width/height
-   at the call site (48-64px typical). Shape/rim only — deliberately no
-   background or color here: those are Tailwind utility classes at the call
-   site (e.g. per-metric bg-emerald-50/text-emerald-600), and since Tailwind
-   utilities live in a lower-priority @layer, a background set here would
-   always beat them regardless of class order, flattening every icon to
-   one color. Callers that just want the plain frosted look add
-   bg-[var(--card-frost)] text-[var(--p)] alongside this class. */
-.icon-circle {
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  flex-shrink: 0;
-  border-radius: 50%;
-  box-shadow: var(--card-rim), var(--card-elevation);
 }
 
 .gds-glass, .glass-card {
@@ -1126,7 +1097,7 @@ button { font-weight: 400 !important; }
 
 /* ── EXACT DESIGN.HTML PORT ── */
 .glass-card {
-  background: var(--card-frost);
+  background: var(--card);
   border-radius: var(--r-xl);
   box-shadow: var(--card-rim), var(--card-elevation);
   transition: box-shadow .2s;
@@ -1678,18 +1649,18 @@ button { font-weight: 400 !important; }
 }
 
 .nav-sub-item.on {
-    color: var(--p);
+    color: var(--p-bright);
     font-weight: 600;
-    background: var(--p-dim);
+    background: rgba(255, 255, 255, 0.12);
 }
 
 .nav-sub-item.on svg {
     opacity: 1;
-    color: var(--p);
+    color: var(--p-bright);
 }
 
 .nav-sub-item.on:hover {
-    background: var(--p-accent);
+    background: rgba(255, 255, 255, 0.16);
 }
 
 /* Hide the curve connector under the active pill's solid fill —
@@ -1881,7 +1852,7 @@ button { font-weight: 400 !important; }
 }
 
 [data-theme='light'] .u-name {
-    color: var(--sb-inactive);
+    color: rgba(255,255,255,0.85);
 }
 
 .u-email {
@@ -1893,7 +1864,7 @@ button { font-weight: 400 !important; }
 }
 
 [data-theme='light'] .u-email {
-    color: var(--t4);
+    color: rgba(255,255,255,0.4);
 }
 
 .btn-logout {

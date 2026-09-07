@@ -272,7 +272,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
         <aside className={cn("sb", isOpen ? 'translate-x-0' : '-translate-x-full', "lg:translate-x-0 fixed lg:static transition-transform duration-300 z-50")}>
             <div className="sb-logo justify-between">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                    <BrandLogo width={130} height={30} color="#1e293b" />
+                    <BrandLogo width={130} height={30} color="rgba(255,255,255,0.88)" />
                 </Link>
                 <button onClick={onClose} className="lg:hidden text-[var(--t-muted)] hover:text-[var(--t1)] transition-colors">
                     <PiX />
