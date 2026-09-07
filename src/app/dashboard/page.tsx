@@ -271,19 +271,29 @@ export default async function DashboardPage() {
     return (
         <div className="space-y-6 pb-12 relative">
             {/* ── HEADER ── */}
-            <div className="flex items-end justify-between">
-                <div>
-                    <h1 className="text-[26px] font-semibold tracking-tight text-gray-900">
-                        Expense Dashboard
-                    </h1>
-                    <p className="text-[13px] text-gray-400 mt-1">
-                        {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · 30-day view
-                    </p>
+            <div className="flex flex-col gap-5 sm:flex-row sm:items-start sm:justify-between">
+                <div className="flex items-start gap-4">
+                    <div className="icon-circle w-14 h-14 bg-[var(--card-frost)] text-[var(--p)] shrink-0">
+                        <PiReceipt className="text-[22px]" />
+                    </div>
+                    <div className="pt-1">
+                        <h1 className="text-[26px] font-semibold tracking-tight text-gray-900">
+                            Expense Dashboard
+                        </h1>
+                        <p className="text-[13px] text-gray-400 mt-1 max-w-md">
+                            Track, analyze and manage your organization's expenses.
+                        </p>
+                    </div>
                 </div>
-                <Link href="/dashboard/reports"
-                    className="card-premium flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#6366F1] transition-colors">
-                    <PiDownloadSimple className="text-[14px]" /> Export
-                </Link>
+                <div className="flex items-center gap-3 sm:pt-2">
+                    <span className="text-[12.5px] text-gray-400 font-[500] whitespace-nowrap">
+                        {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })}
+                    </span>
+                    <Link href="/dashboard/reports"
+                        className="card-premium flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#6366F1] transition-colors">
+                        <PiDownloadSimple className="text-[14px]" /> Export
+                    </Link>
+                </div>
             </div>
 
             {/* ── STAT CARDS with sparklines ── */}

@@ -239,6 +239,7 @@ export async function createTransfer(formData: FormData) {
                     userId: user.id,
                     reference,
                     description,
+                    date: transferDate,
                 });
                 journalEntryId = entry.id;
             }
@@ -287,6 +288,7 @@ export async function updateTransferStatus(id: string, status: string) {
                         userId: user.id,
                         reference: existing.reference,
                         description: existing.narration || `Transfer ${existing.reference}`,
+                        date: existing.transferDate,
                     });
                     await tx.transfer.update({
                         where: { id },

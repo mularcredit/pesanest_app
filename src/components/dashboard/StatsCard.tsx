@@ -34,12 +34,16 @@ export function StatsCard({ title, value, trend, trendUp, icon: Icon, lastMonthL
     return (
         <div className="card-premium p-5 flex flex-col gap-3 relative overflow-hidden">
 
+            {/* Soft blue atmospheric shape, anchored bottom-right */}
+            <div className="pointer-events-none absolute -bottom-8 -right-8 w-24 h-24 rounded-full"
+                style={{ background: 'var(--p)', opacity: 0.05, filter: 'blur(28px)' }} />
+
             {sparkline && sparkline.length > 0 && (
                 <SparklineMini data={sparkline} color={color} />
             )}
 
             <div className="flex items-center gap-3 relative z-10">
-                <div className={cn("w-9 h-9 rounded-[7px] flex items-center justify-center shrink-0", iconClass)}>
+                <div className={cn("icon-circle w-9 h-9", iconClass)}>
                     <Icon className="text-[15px]" />
                 </div>
                 <p className="flex-1 text-[12.5px] font-[500] text-gray-500 truncate leading-tight">{title}</p>

@@ -196,6 +196,8 @@ export async function postTransfer(tx: Tx, params: {
     userId?: string;
     reference: string;
     description: string;
+    /** Date the transfer actually happened. Defaults to now; backdated for historical entries. */
+    date?: Date;
 }) {
     const charges = params.charges || 0;
 
@@ -210,7 +212,7 @@ export async function postTransfer(tx: Tx, params: {
     }
 
     return postGL(tx, {
-        date: new Date(),
+        date: params.date || new Date(),
         description: params.description,
         reference: params.reference,
         userId: params.userId,

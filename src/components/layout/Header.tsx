@@ -7,7 +7,8 @@ import {
     PiList,
     PiReceipt,
     PiCheckCircle,
-    PiBell
+    PiBell,
+    PiMagnifyingGlass,
 } from "react-icons/pi";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -182,7 +183,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 </button>
 
                 {/* Breadcrumbs */}
-                <div className="flex items-center gap-2 text-sm">
+                <div className="flex items-center gap-2 text-sm shrink-0">
                     {breadcrumbs.map((crumb, index) => (
                         <div key={index} className="flex items-center gap-2">
                             {index > 0 && <span className="text-[var(--t4)]">/</span>}
@@ -191,6 +192,16 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                             </span>
                         </div>
                     ))}
+                </div>
+
+                {/* Search */}
+                <div className="hidden md:flex items-center relative max-w-[320px] w-full">
+                    <PiMagnifyingGlass className="absolute left-3.5 text-[var(--t-muted)] text-[14px] pointer-events-none" />
+                    <input
+                        type="text"
+                        placeholder="Search transactions..."
+                        className="w-full pl-9 pr-4 py-2 rounded-[var(--r-input)] text-[13px] text-[var(--t1)] placeholder:text-[var(--t-muted)] outline-none bg-[var(--card-frost)] border border-[var(--p-line)] transition-all focus:border-[var(--p)] focus:ring-4 focus:ring-[var(--p)]/10"
+                    />
                 </div>
             </div>
 
