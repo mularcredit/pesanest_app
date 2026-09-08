@@ -67,6 +67,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
                 bankAccountId: account.kind === 'BANK' ? account.id : null,
                 paybillAccountId: account.kind === 'PAYBILL' ? account.id : null,
                 walletId: account.kind === 'WALLET' ? account.id : null,
+                paystackAccountId: account.kind === 'PAYSTACK' ? account.id : null,
                 periodStart: new Date(periodStart),
                 periodEnd: new Date(periodEnd),
                 openingBalance: openingBalance ?? 0,

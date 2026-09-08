@@ -18,7 +18,7 @@ export default async function BankReconciliationPage({
 
     const { bankAccountId: requestedId } = await searchParams;
 
-    const [bankRows, paybillRows, walletRows] = await Promise.all([
+    const [bankRows, paybillRows, walletRows, paystackRows] = await Promise.all([
         prisma.bankAccount.findMany({
             where: { isActive: true },
             select: { id: true, name: true, bankName: true, currency: true, glAccountId: true },
@@ -33,12 +33,17 @@ export default async function BankReconciliationPage({
             where: { glAccountId: { not: null } },
             select: { id: true, currency: true, glAccountId: true },
         }),
+        prisma.paystackAccount.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, currency: true, glAccountId: true },
+        }),
     ]);
 
     const accounts = [
         ...bankRows.map(b => ({ id: b.id, kind: 'BANK' as const, label: `${b.name} — ${b.bankName}`, currency: b.currency, glAccountId: b.glAccountId })),
         ...paybillRows.map(p => ({ id: p.id, kind: 'PAYBILL' as const, label: `${p.name} — ${p.paybillNumber}`, currency: 'KES', glAccountId: p.glAccountId })),
         ...walletRows.map(w => ({ id: w.id, kind: 'WALLET' as const, label: 'Corporate Wallet', currency: w.currency, glAccountId: w.glAccountId! })),
+        ...paystackRows.map(p => ({ id: p.id, kind: 'PAYSTACK' as const, label: p.name, currency: p.currency, glAccountId: p.glAccountId })),
     ];
 
     if (accounts.length === 0) {

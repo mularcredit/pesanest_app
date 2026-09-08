@@ -1,17 +1,18 @@
 /**
  * A "reconcilable account" is anything with its own GL sub-account that a bank
  * statement can be imported and matched against — BankAccount, PaybillAccount,
- * and the corporate Wallet (only once it has a glAccountId linked — most
- * per-user wallets don't). IDs are globally unique cuids, so resolving one by
- * trying each table is safe and unambiguous, and lets the existing
- * /api/accounting/bank-accounts/[id]/... routes serve any kind without a
- * separate URL space per account type.
+ * the corporate Wallet (only once it has a glAccountId linked — most per-user
+ * wallets don't), and the PaystackAccount (a singleton row representing the
+ * Paystack settlement/clearing float). IDs are globally unique cuids, so
+ * resolving one by trying each table is safe and unambiguous, and lets the
+ * existing /api/accounting/bank-accounts/[id]/... routes serve any kind
+ * without a separate URL space per account type.
  */
 
 import prisma from "@/lib/prisma";
 
 export type ReconcilableAccount = {
-    kind: 'BANK' | 'PAYBILL' | 'WALLET';
+    kind: 'BANK' | 'PAYBILL' | 'WALLET' | 'PAYSTACK';
     id: string;
     label: string;
     glAccountId: string;
@@ -36,10 +37,16 @@ export async function resolveReconcilableAccount(id: string): Promise<Reconcilab
     });
     if (wallet?.glAccountId) return { kind: 'WALLET', id: wallet.id, label: 'Corporate Wallet', glAccountId: wallet.glAccountId };
 
+    const paystack = await prisma.paystackAccount.findUnique({
+        where: { id },
+        select: { id: true, name: true, glAccountId: true },
+    });
+    if (paystack) return { kind: 'PAYSTACK', id: paystack.id, label: paystack.name, glAccountId: paystack.glAccountId };
+
     return null;
 }
 
 /** Prisma where-clause fragment for "statements belonging to this account", regardless of kind. */
 export function statementOwnerFilter(accountId: string) {
-    return { OR: [{ bankAccountId: accountId }, { paybillAccountId: accountId }, { walletId: accountId }] };
+    return { OR: [{ bankAccountId: accountId }, { paybillAccountId: accountId }, { walletId: accountId }, { paystackAccountId: accountId }] };
 }

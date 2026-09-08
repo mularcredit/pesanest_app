@@ -699,6 +699,7 @@ model Account {
   accrualDebits         AccrualSchedule[]      @relation("AccrualDebit")
   bankAccount           BankAccount?
   paybillAccount        PaybillAccount?
+  paystackAccount       PaystackAccount?
   branchWallets         BranchWallet[]         @relation("BranchWalletGL")
   journalLines          JournalLine[]
   periodBalances        PeriodBalance[]
@@ -946,28 +947,51 @@ model BankAccount {
   @@index([isActive])
 }
 
-/// Belongs to exactly one of a BankAccount, a PaybillAccount, or a Wallet —
-/// never more than one — now that paybills and the corporate wallet are
-/// reconcilable accounts in their own right, not just a shared clearing bucket.
+/// The Paystack settlement/clearing float — money collected via Paystack
+/// before it settles into a bank account or the corporate wallet. A
+/// singleton in practice (one row), modeled as a table so it can plug into
+/// the same reconciliation machinery as BankAccount/PaybillAccount/Wallet.
+model PaystackAccount {
+  id          String          @id @default(cuid())
+  name        String          @default("Paystack")
+  currency    String          @default("KES")
+  glAccountId String          @unique
+  isActive    Boolean         @default(true)
+  createdAt   DateTime        @default(now())
+  updatedAt   DateTime        @updatedAt
+  glAccount   Account         @relation(fields: [glAccountId], references: [id])
+  statements  BankStatement[]
+  reconciliationDrafts ReconciliationDraft[]
+
+  @@index([isActive])
+}
+
+/// Belongs to exactly one of a BankAccount, a PaybillAccount, a Wallet, or
+/// the PaystackAccount — never more than one — now that paybills, the
+/// corporate wallet, and Paystack settlement are all reconcilable accounts
+/// in their own right, not just a shared clearing bucket.
 model BankStatement {
-  id               String              @id @default(cuid())
-  bankAccountId    String?
-  paybillAccountId String?
-  walletId         String?
-  periodStart      DateTime
-  periodEnd        DateTime
-  openingBalance   Decimal             @db.Decimal(18, 2)
-  closingBalance   Decimal             @db.Decimal(18, 2)
-  importedAt       DateTime            @default(now())
-  importedBy       String?
-  bankAccount      BankAccount?        @relation(fields: [bankAccountId], references: [id])
-  paybillAccount   PaybillAccount?     @relation(fields: [paybillAccountId], references: [id])
-  wallet           Wallet?             @relation(fields: [walletId], references: [id])
-  lines            BankStatementLine[]
+  id                String              @id @default(cuid())
+  bankAccountId     String?
+  paybillAccountId  String?
+  walletId          String?
+  paystackAccountId String?
+  periodStart       DateTime
+  periodEnd         DateTime
+  openingBalance    Decimal             @db.Decimal(18, 2)
+  closingBalance    Decimal             @db.Decimal(18, 2)
+  importedAt        DateTime            @default(now())
+  importedBy        String?
+  bankAccount       BankAccount?        @relation(fields: [bankAccountId], references: [id])
+  paybillAccount    PaybillAccount?     @relation(fields: [paybillAccountId], references: [id])
+  wallet            Wallet?             @relation(fields: [walletId], references: [id])
+  paystackAccount   PaystackAccount?    @relation(fields: [paystackAccountId], references: [id])
+  lines             BankStatementLine[]
 
   @@index([bankAccountId])
   @@index([paybillAccountId])
   @@index([walletId])
+  @@index([paystackAccountId])
 }
 
 model BankStatementLine {
@@ -1009,20 +1033,23 @@ model ReconciliationMatch {
 /// draft outliving its statement/account (reverted import, etc.) should just
 /// silently become irrelevant, not cascade-delete or block deletion elsewhere.
 model ReconciliationDraft {
-  id               String   @id @default(cuid())
-  bankAccountId    String?
-  paybillAccountId String?
-  walletId         String?
-  label            String?
-  statementLineIds String[]
-  createdBy        String?
-  createdAt        DateTime @default(now())
-  updatedAt        DateTime @updatedAt
-  wallet           Wallet?  @relation(fields: [walletId], references: [id])
+  id                String           @id @default(cuid())
+  bankAccountId     String?
+  paybillAccountId  String?
+  walletId          String?
+  paystackAccountId String?
+  label             String?
+  statementLineIds  String[]
+  createdBy         String?
+  createdAt         DateTime         @default(now())
+  updatedAt         DateTime         @updatedAt
+  wallet            Wallet?          @relation(fields: [walletId], references: [id])
+  paystackAccount   PaystackAccount? @relation(fields: [paystackAccountId], references: [id])
 
   @@index([bankAccountId])
   @@index([paybillAccountId])
   @@index([walletId])
+  @@index([paystackAccountId])
 }
 
 model AccrualSchedule {
