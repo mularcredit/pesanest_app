@@ -207,6 +207,14 @@ export function BankReconciliationClient({
     const fmt = (amount: number) =>
         `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`
 
+    // Number only, no currency prefix — for the paired Debit/Credit columns,
+    // which sit close enough together that repeating "KES" on both would be
+    // noisy. A signed `amount` (positive = credit, negative = debit) becomes
+    // one value in one column and a blank dash in the other, mirroring how
+    // the source bank statement itself lays out separate Debit/Credit
+    // columns rather than a single signed figure.
+    const fmtNum = (amount: number) => amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
@@ -741,6 +749,10 @@ export function BankReconciliationClient({
                                         className={searchInputCls} style={CARD_STYLE} />
                                 </div>
                             </div>
+                            <div className="flex items-center justify-end gap-3 px-3 pt-2.5">
+                                <span className="text-[10px] font-[600] uppercase tracking-[0.06em] text-gray-400 w-[84px] text-right">Debit</span>
+                                <span className="text-[10px] font-[600] uppercase tracking-[0.06em] text-gray-400 w-[84px] text-right">Credit</span>
+                            </div>
                             <div className="h-[420px] overflow-y-auto p-3 space-y-2">
                                 {filteredBankTx.length === 0 && (
                                     <p className="text-[12px] text-gray-400 text-center py-8 px-4 leading-relaxed">
@@ -772,9 +784,16 @@ export function BankReconciliationClient({
                                                         {new Date(tx.date).toLocaleDateString()}
                                                     </p>
                                                 </div>
-                                                <p className="text-[12.5px] font-mono font-[600] text-gray-900 shrink-0">
-                                                    {fmt(tx.amount)}
-                                                </p>
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <span className="text-[12px] font-mono font-[600] w-[84px] text-right"
+                                                        style={{ color: tx.amount < 0 ? '#dc2626' : '#d1d5db' }}>
+                                                        {tx.amount < 0 ? fmtNum(Math.abs(tx.amount)) : '—'}
+                                                    </span>
+                                                    <span className="text-[12px] font-mono font-[600] w-[84px] text-right"
+                                                        style={{ color: tx.amount > 0 ? '#059669' : '#d1d5db' }}>
+                                                        {tx.amount > 0 ? fmtNum(tx.amount) : '—'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     )
@@ -848,6 +867,10 @@ export function BankReconciliationClient({
                                         className={searchInputCls} style={CARD_STYLE} />
                                 </div>
                             </div>
+                            <div className="flex items-center justify-end gap-3 px-3 pt-2.5">
+                                <span className="text-[10px] font-[600] uppercase tracking-[0.06em] text-gray-400 w-[84px] text-right">Debit</span>
+                                <span className="text-[10px] font-[600] uppercase tracking-[0.06em] text-gray-400 w-[84px] text-right">Credit</span>
+                            </div>
                             <div className="h-[420px] overflow-y-auto p-3 space-y-2">
                                 {filteredBookLines.length === 0 && (
                                     <p className="text-[12px] text-gray-400 text-center py-8 px-4 leading-relaxed">
@@ -878,9 +901,16 @@ export function BankReconciliationClient({
                                                         {line.reference ? ` · ${line.reference}` : ''}
                                                     </p>
                                                 </div>
-                                                <p className="text-[12.5px] font-mono font-[600] text-gray-900 shrink-0">
-                                                    {fmt(line.amount)}
-                                                </p>
+                                                <div className="flex items-center gap-3 shrink-0">
+                                                    <span className="text-[12px] font-mono font-[600] w-[84px] text-right"
+                                                        style={{ color: line.debit > 0 ? '#dc2626' : '#d1d5db' }}>
+                                                        {line.debit > 0 ? fmtNum(line.debit) : '—'}
+                                                    </span>
+                                                    <span className="text-[12px] font-mono font-[600] w-[84px] text-right"
+                                                        style={{ color: line.credit > 0 ? '#059669' : '#d1d5db' }}>
+                                                        {line.credit > 0 ? fmtNum(line.credit) : '—'}
+                                                    </span>
+                                                </div>
                                             </div>
                                         </div>
                                     )
