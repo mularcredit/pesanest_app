@@ -50,6 +50,7 @@ export function CreateCreditNoteModal({
     const [step, setStep] = useState<'form' | 'confirm' | 'success'>('form');
     const [createdId, setCreatedId] = useState<string | null>(null);
     const [createdCNNumber, setCreatedCNNumber] = useState<string | null>(null);
+    const [createdEtims, setCreatedEtims] = useState<{ status?: string; etimsInvoiceNumber?: string; controlUnit?: string } | null>(null);
 
     // Initial State
     const [formData, setFormData] = useState({
@@ -139,6 +140,7 @@ export function CreateCreditNoteModal({
             const creditNote = await res.json();
             setCreatedId(creditNote.id);
             setCreatedCNNumber(creditNote.cnNumber);
+            setCreatedEtims(creditNote.etims || (creditNote.etimsControlUnit ? { status: creditNote.etimsStatus, etimsInvoiceNumber: creditNote.etimsReceiptNo, controlUnit: creditNote.etimsControlUnit } : null));
             setStep('success');
             showToast(`Credit Note ${creditNote.cnNumber} created successfully!`, "success");
             router.refresh();
@@ -190,6 +192,7 @@ export function CreateCreditNoteModal({
         });
         setCreatedId(null);
         setCreatedCNNumber(null);
+        setCreatedEtims(null);
         onClose();
     };
 
@@ -215,6 +218,22 @@ export function CreateCreditNoteModal({
                             </p>
                         </div>
                     </div>
+
+                    {createdEtims && createdEtims.status === 'ACCEPTED' && createdEtims.controlUnit && !String(createdEtims.etimsInvoiceNumber || '').startsWith('ETIMS-STUB-') && (
+                        <div className="rounded-[10px] border border-emerald-200 bg-emerald-50/60 p-5">
+                            <div className="flex items-center gap-1.5 text-emerald-700">
+                                <PiCheckCircle className="text-[16px]" />
+                                <span className="text-[12px] font-[600] tracking-wide uppercase">KRA eTIMS Credit Note</span>
+                            </div>
+                            <dl className="mt-3 grid grid-cols-1 sm:grid-cols-2 gap-x-8 gap-y-1.5 text-[12.5px]">
+                                <div className="flex justify-between gap-4"><dt className="text-gray-500">Credit Note No.</dt><dd className="font-mono text-gray-900">{createdCNNumber}</dd></div>
+                                <div className="flex justify-between gap-4"><dt className="text-gray-500">eTIMS Receipt No.</dt><dd className="font-mono text-gray-900">{createdEtims.etimsInvoiceNumber}</dd></div>
+                                <div className="flex justify-between gap-4 sm:col-span-2"><dt className="text-gray-500">Receipt Signature (SCU)</dt><dd className="font-mono text-gray-900 break-all">{createdEtims.controlUnit}</dd></div>
+                                <div className="flex justify-between gap-4"><dt className="text-gray-500">Type</dt><dd className="text-gray-900">Credit Note (rcptTyCd R)</dd></div>
+                                <div className="flex justify-between gap-4"><dt className="text-gray-500">Status</dt><dd className="text-emerald-700 font-[600]">ACCEPTED</dd></div>
+                            </dl>
+                        </div>
+                    )}
 
                     <div className="grid grid-cols-1 gap-3">
 

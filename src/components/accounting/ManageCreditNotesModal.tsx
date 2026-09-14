@@ -161,21 +161,9 @@ export function ManageCreditNotesModal({
                                         <td className="py-4 px-6 text-right">
                                             <div className="flex items-center justify-end gap-2">
                                                 <button
-                                                    onClick={() => {
-                                                        const params = new URLSearchParams();
-                                                        params.set('type', 'CREDIT_NOTE');
-                                                        params.set('id', cn.id);
-                                                        params.set('customerId', customerId);
-                                                        params.set('cnNumber', cn.cnNumber);
-                                                        params.set('amount', cn.amount.toString());
-                                                        params.set('customerName', customerName);
-                                                        params.set('reason', cn.reason);
-                                                        params.set('invoiceRef', cn.invoiceRef);
-                                                        params.set('date', cn.createdAt);
-                                                        router.push(`/finance-studio?${params.toString()}`);
-                                                    }}
+                                                    onClick={() => window.open(`/dashboard/accounting/credit-notes/${cn.id}/print`, '_blank')}
                                                     className="p-2 text-gray-400 hover:text-indigo-600 transition-colors bg-gray-50 hover:bg-indigo-50 rounded-lg"
-                                                    title="View Credit Note"
+                                                    title="View / Download Credit Note"
                                                 >
                                                     <PiFileText className="text-lg" />
                                                 </button>

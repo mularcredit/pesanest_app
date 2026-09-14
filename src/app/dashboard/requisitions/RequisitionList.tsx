@@ -6,7 +6,7 @@ import { useRouter } from "next/navigation";
 import Link from "next/link";
 import { cn } from "@/lib/utils";
 import { BiX, BiReceipt } from "react-icons/bi";
-import { PiCaretRight, PiCheckCircle, PiUploadSimple, PiBuilding, PiTag, PiCalendar, PiCurrencyDollar, PiFileText, PiPlus, PiPencil, PiWarning, PiEye } from "react-icons/pi";
+import { PiCaretRight, PiCheckCircle, PiUploadSimple, PiBuilding, PiTag, PiCalendar, PiCurrencyDollar, PiFileText, PiPlus, PiPencil, PiWarning, PiEye, PiArrowsLeftRight } from "react-icons/pi";
 import { fulfillRequisition, updateRequisition } from "./actions";
 import { useToast } from "@/components/ui/ToastProvider";
 import { EtrReceiptInput } from "@/components/accounting/EtrReceiptInput";
@@ -14,6 +14,7 @@ import { DeleteEntityButton } from "@/components/dashboard/DeleteEntityButton";
 import { AddItemModal } from "@/components/requisitions/AddItemModal";
 import { AttachReceiptButton } from "@/components/requisitions/AttachReceiptButton";
 import { EditBudgetModal } from "@/components/requisitions/EditBudgetModal";
+import { MoveToAccountModal } from "@/components/requisitions/MoveToAccountModal";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { Select } from "@/components/ui/Select";
 import { EXPENSE_CATEGORIES_WITH_GROUPS } from "@/lib/constants";
@@ -61,6 +62,7 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
     const [showConfirmation, setShowConfirmation] = useState(false);
     const [addingItemTo, setAddingItemTo] = useState<any>(null);
     const [editingBudget, setEditingBudget] = useState<any>(null);
+    const [movingReq, setMovingReq] = useState<any>(null);
 
     // Edit state
     const [editingReq, setEditingReq] = useState<any>(null);
@@ -362,6 +364,16 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                                                     currentReceiptUrl={req.receiptUrl}
                                                     currentEtrNumber={req.etrNumber}
                                                 />
+                                            ) : null}
+
+                                            {req.listType === 'STANDARD' ? (
+                                                <button
+                                                    onClick={() => setMovingReq(req)}
+                                                    className="p-1.5 rounded-md hover:bg-indigo-50 text-slate-400 hover:text-[#6366F1] transition-all"
+                                                    title="Move to Account"
+                                                >
+                                                    <PiArrowsLeftRight className="text-base" />
+                                                </button>
                                             ) : null}
 
                                             <div className="flex items-center gap-0.5 ml-0.5 border-l border-slate-100 pl-0.5">
@@ -902,6 +914,12 @@ export function RequisitionList({ requisitions, monthlyBudgets = [] }: Requisiti
                 isOpen={!!editingBudget}
                 onClose={() => setEditingBudget(null)}
                 budget={editingBudget}
+            />
+
+            {/* Move to Account Modal */}
+            <MoveToAccountModal
+                requisition={movingReq}
+                onClose={() => setMovingReq(null)}
             />
         </>
     );

@@ -62,6 +62,7 @@ export function SalesForm({ customers, initialData }: SalesFormProps) {
             ? new Date(initialData.dueDate).toISOString().split('T')[0]
             : new Date(Date.now() + 30 * 24 * 60 * 60 * 1000).toISOString().split('T')[0],
         notes: initialData?.notes || "",
+        applyVat: (initialData as any)?.taxAmount != null ? Number((initialData as any).taxAmount) > 0 : true,
         items: initialData?.items?.map(i => ({
             ...i,
             id: i.id || Date.now() + Math.random(),
@@ -75,6 +76,9 @@ export function SalesForm({ customers, initialData }: SalesFormProps) {
 
     const subtotal = formData.items.reduce((sum, item) =>
         sum + (Number(item.quantity) * Number(item.unitPrice)), 0);
+    const VAT_RATE = 16;
+    const taxAmount = formData.applyVat ? Math.round(subtotal * (VAT_RATE / 100) * 100) / 100 : 0;
+    const grandTotal = subtotal + taxAmount;
 
     const handleAddItem = () => {
         setFormData(prev => ({
@@ -357,15 +361,22 @@ export function SalesForm({ customers, initialData }: SalesFormProps) {
                                     {currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
                             </div>
-                            <div className="flex justify-between text-[12.5px]">
-                                <span className="text-gray-400">Tax (0%)</span>
-                                <span className="font-mono font-[600] text-gray-400 tabular-nums">{currency} 0.00</span>
-                            </div>
+                            <label className="flex justify-between items-center text-[12.5px] cursor-pointer select-none">
+                                <span className="flex items-center gap-2 text-gray-500">
+                                    <input type="checkbox" checked={formData.applyVat}
+                                        onChange={(e) => setFormData(prev => ({ ...prev, applyVat: e.target.checked }))}
+                                        className="w-3.5 h-3.5 accent-[#6366F1]" />
+                                    Apply VAT (16%)
+                                </span>
+                                <span className="font-mono font-[600] text-gray-700 tabular-nums">
+                                    {currency} {taxAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                </span>
+                            </label>
                             <div className="flex justify-between text-[14px] font-[600] pt-3"
                                 style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
                                 <span className="text-gray-900">Total</span>
                                 <span className="font-mono text-[#6366F1] tabular-nums">
-                                    {currency} {subtotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                    {currency} {grandTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </span>
                             </div>
                         </div>

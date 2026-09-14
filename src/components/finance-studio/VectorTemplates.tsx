@@ -468,6 +468,37 @@ export const CreditNotePDF = ({ data, baseUrl, settings = {} }: { data: any, bas
                 </PDFView>
             </PDFView>
 
+            {/* KRA eTIMS block */}
+            {data?.etims?.controlUnit && !String(data?.etims?.receiptNo || '').startsWith('ETIMS-STUB-') && (
+                <PDFView style={{ marginTop: 14, border: '1pt solid #6ee7b7', borderRadius: 4, overflow: 'hidden' }}>
+                    <PDFText style={{ backgroundColor: '#ecfdf5', padding: '6pt 10pt', fontSize: 10, fontWeight: 700, color: '#047857', borderBottom: '1pt solid #a7f3d0', textTransform: 'uppercase' }}>KRA eTIMS Credit Note</PDFText>
+                    <PDFView style={{ padding: 10 }}>
+                        {!!data?.etims?.pin && (
+                            <PDFView style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                                <PDFText style={{ fontSize: 10, color: '#64748b' }}>Supplier PIN</PDFText>
+                                <PDFText style={{ fontSize: 10, color: '#334155' }}>{data.etims.pin}</PDFText>
+                            </PDFView>
+                        )}
+                        <PDFView style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <PDFText style={{ fontSize: 10, color: '#64748b' }}>eTIMS Receipt No.</PDFText>
+                            <PDFText style={{ fontSize: 10, color: '#334155' }}>{data.etims.receiptNo}</PDFText>
+                        </PDFView>
+                        <PDFView style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <PDFText style={{ fontSize: 10, color: '#64748b' }}>Receipt Signature (SCU)</PDFText>
+                            <PDFText style={{ fontSize: 10, color: '#334155' }}>{data.etims.controlUnit}</PDFText>
+                        </PDFView>
+                        <PDFView style={{ flexDirection: 'row', justifyContent: 'space-between', marginBottom: 3 }}>
+                            <PDFText style={{ fontSize: 10, color: '#64748b' }}>Type</PDFText>
+                            <PDFText style={{ fontSize: 10, color: '#334155' }}>Credit Note (rcptTyCd R)</PDFText>
+                        </PDFView>
+                        <PDFView style={{ flexDirection: 'row', justifyContent: 'space-between' }}>
+                            <PDFText style={{ fontSize: 10, color: '#64748b' }}>Status</PDFText>
+                            <PDFText style={{ fontSize: 10, fontWeight: 700, color: '#047857' }}>ACCEPTED</PDFText>
+                        </PDFView>
+                    </PDFView>
+                </PDFView>
+            )}
+
             <PDFView style={styles.footer}>
                 <PDFText style={styles.footerText}>This document officially confirms the credit adjustment to your account.</PDFText>
                 <PDFView style={styles.footerLogos}>

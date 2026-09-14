@@ -125,6 +125,25 @@ export async function createRequisitionWithItems(formData: FormData) {
 
     const expectedDate = expectedDateStr ? new Date(expectedDateStr) : undefined;
 
+    // Guards against double-submission: the requisition below is saved immediately,
+    // but the approval-workflow calls that follow it are not part of that write, and
+    // this action ends in redirect() — so a slow network or a transient failure in the
+    // workflow step can make a save look like it failed. If the user resubmits, this
+    // catches the same title+amount landing again within the retry window and reuses
+    // the existing requisition instead of creating a second one.
+    const recentDuplicate = await prisma.requisition.findFirst({
+        where: {
+            userId: session.user.id,
+            title,
+            amount: totalAmount,
+            createdAt: { gte: new Date(Date.now() - 2 * 60 * 1000) },
+        },
+        orderBy: { createdAt: 'desc' },
+    });
+    if (recentDuplicate) {
+        redirect("/dashboard/requisitions");
+    }
+
     // Calculate Next Run Date helper
     const calculateNextRun = (startDate: Date, frequency: string): Date => {
         const nextRun = new Date(startDate);

@@ -14,6 +14,11 @@ interface CreditNoteProps {
         address: string;
         tin?: string;
     };
+    etims?: {
+        receiptNo?: string;
+        controlUnit?: string;
+        pin?: string;
+    };
 }
 
 export const CreditNoteTemplate: React.FC<CreditNoteProps> = ({
@@ -23,7 +28,9 @@ export const CreditNoteTemplate: React.FC<CreditNoteProps> = ({
     reason,
     date,
     customer,
+    etims,
 }) => {
+    const etimsAccepted = !!(etims && etims.controlUnit && !String(etims.receiptNo || '').startsWith('ETIMS-STUB-'));
     const formattedAmount = new Intl.NumberFormat('en-US', {
         style: 'currency',
         currency: 'KES',
@@ -225,6 +232,22 @@ export const CreditNoteTemplate: React.FC<CreditNoteProps> = ({
                         </div>
 
                     </div>
+
+                    {/* KRA eTIMS block */}
+                    {etimsAccepted && (
+                        <div className="mt-[15px] border border-emerald-300 rounded-[6px] overflow-hidden">
+                            <div className="p-[6px_12px] font-bold text-[11px] uppercase bg-emerald-50 text-emerald-700 border-b border-emerald-200">
+                                KRA eTIMS Credit Note
+                            </div>
+                            <div className="p-[12px] text-[11px] leading-[1.6] text-[#334155] grid grid-cols-2 gap-x-[20px] gap-y-[3px]">
+                                {etims?.pin && <><span className="text-[#64748b]">Supplier PIN</span><span className="font-mono text-right">{etims.pin}</span></>}
+                                <span className="text-[#64748b]">eTIMS Receipt No.</span><span className="font-mono text-right">{etims?.receiptNo}</span>
+                                <span className="text-[#64748b]">Receipt Signature (SCU)</span><span className="font-mono text-right break-all">{etims?.controlUnit}</span>
+                                <span className="text-[#64748b]">Type</span><span className="text-right">Credit Note (rcptTyCd R)</span>
+                                <span className="text-[#64748b]">Status</span><span className="text-right font-bold text-emerald-700">ACCEPTED</span>
+                            </div>
+                        </div>
+                    )}
                 </div>
 
 

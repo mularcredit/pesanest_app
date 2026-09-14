@@ -3,6 +3,7 @@
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
+import { AccountingEngine } from "@/lib/accounting/accounting-engine";
 
 export async function fulfillRequisition(formData: FormData) {
     const session = await auth();
@@ -249,6 +250,132 @@ export async function updateRequisition(formData: FormData) {
         console.error("Failed to update requisition:", e);
         return { success: false, message: e.message || "Failed to update" };
     }
+}
+
+/**
+ * Moves an already-categorized (or already-posted) requisition to a different
+ * GL account. If the requisition has already been paid — i.e. it has a live
+ * posted journal entry — this posts a correcting reclass entry (debit the new
+ * account, credit the old one) rather than editing history, so the ledger
+ * stays append-only. Otherwise it just updates the account the requisition
+ * will post to once paid.
+ */
+export async function reclassifyRequisitionAccount(requisitionId: string, newAccountId: string) {
+    const session = await auth();
+    if (!session?.user?.id) return { success: false, message: "Unauthorized" };
+
+    const user = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true, customRole: { select: { isSystem: true } } }
+    });
+    const isAdmin = user?.role === 'SYSTEM_ADMIN' || user?.customRole?.isSystem;
+    if (!isAdmin) {
+        return { success: false, message: "Only System Admins can move an expense to a different account" };
+    }
+
+    const requisition = await prisma.requisition.findUnique({ where: { id: requisitionId } });
+    if (!requisition) return { success: false, message: "Expense not found" };
+
+    const newAccount = await prisma.account.findUnique({ where: { id: newAccountId } });
+    if (!newAccount) return { success: false, message: "Target account not found" };
+
+    if ((requisition as any).accountId === newAccountId) {
+        return { success: false, message: `This expense is already posted to ${newAccount.code} ${newAccount.name}` };
+    }
+
+    // If it's already been paid, there's a live journal entry debiting some
+    // expense account — find it so we know what to reclass out of.
+    const activeEntry = await (prisma as any).journalEntry.findFirst({
+        where: { requisitionId, status: 'POSTED', reversalOfId: null },
+        include: { lines: { include: { account: true } } },
+        orderBy: { createdAt: 'desc' },
+    });
+
+    let oldAccountLabel = (requisition as any).accountId ? "its current account" : (requisition.category || "Uncategorized");
+
+    if (activeEntry) {
+        const expenseLine = activeEntry.lines.find((l: any) => l.debit > 0 && l.account.type === 'EXPENSE');
+        if (!expenseLine) {
+            return { success: false, message: "Couldn't find the expense side of this entry — it will need a manual journal reclass instead" };
+        }
+        const oldAccount = expenseLine.account;
+        oldAccountLabel = `${oldAccount.code} ${oldAccount.name}`;
+
+        if (oldAccount.id === newAccountId) {
+            return { success: false, message: `This expense is already posted to ${newAccount.code} ${newAccount.name}` };
+        }
+
+        try {
+            await AccountingEngine.postJournalEntry({
+                date: new Date(),
+                description: `Reclass: ${requisition.title} moved from ${oldAccount.code} ${oldAccount.name} to ${newAccount.code} ${newAccount.name}`,
+                reference: `RECLASS-${requisitionId.slice(0, 8)}`,
+                source: { requisitionId },
+                userId: session.user.id,
+                lines: [
+                    { accountId: newAccount.id, debit: expenseLine.debit, credit: 0, description: `Reclass in: ${requisition.title}` },
+                    { accountId: oldAccount.id, debit: 0, credit: expenseLine.debit, description: `Reclass out: ${requisition.title}` },
+                ],
+            });
+        } catch (e: any) {
+            return { success: false, message: e.message || "Failed to post the reclassification entry" };
+        }
+    }
+
+    // The account-scoped list page matches a requisition to an account by
+    // EITHER accountId or category name equal to the account's name — update
+    // both, or this would keep showing up under the old account's list too.
+    await (prisma as any).requisition.update({
+        where: { id: requisitionId },
+        data: { accountId: newAccountId, category: newAccount.name },
+    });
+
+    await (prisma as any).auditLog.create({
+        data: {
+            actorId: session.user.id,
+            action: 'REQUISITION_RECLASSIFY',
+            entity: 'Requisition',
+            entityId: requisitionId,
+            before: { account: oldAccountLabel },
+            after: { account: `${newAccount.code} ${newAccount.name}` },
+        },
+    }).catch(() => {});
+
+    revalidatePath("/dashboard/requisitions");
+    revalidatePath(`/dashboard/requisitions/${requisitionId}`);
+
+    return {
+        success: true,
+        message: activeEntry
+            ? `Moved to ${newAccount.code} ${newAccount.name} — a reclassification entry was posted`
+            : `Moved to ${newAccount.code} ${newAccount.name}`,
+    };
+}
+
+/**
+ * Returns (creating it once, if missing) the Cost of Sales account — the
+ * quick-pick target for the "Move to account" action. Mirrors the P&L's own
+ * lookup: type EXPENSE + subtype COST_OF_SALES (see income-statement report).
+ */
+export async function getOrCreateCostOfSalesAccount() {
+    let account = await prisma.account.findFirst({ where: { type: 'EXPENSE', subtype: 'COST_OF_SALES' } });
+    if (!account) {
+        const accounts = await prisma.account.findMany({ select: { code: true } });
+        const maxCode = accounts.reduce((max, a) => {
+            const n = parseInt(a.code, 10);
+            return !isNaN(n) && n > max ? n : max;
+        }, 0);
+        account = await prisma.account.create({
+            data: {
+                code: String(maxCode + 1),
+                name: 'Cost of Sales',
+                type: 'EXPENSE',
+                subtype: 'COST_OF_SALES',
+                description: 'Direct costs attributable to goods or services sold',
+            },
+        });
+    }
+    return account;
 }
 
 export async function createItemPaymentBatch(itemId: string) {

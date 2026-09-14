@@ -256,7 +256,7 @@ export default async function CustomerStatementPage({
                                                 invoiceUrl={(row as any).invoiceUrl}
                                                 date={row.date}
                                                 description={row.description}
-                                                amount={row.debit > 0 ? row.debit : row.credit}
+                                                amount={Number(row.debit) > 0 ? Number(row.debit) : Number(row.credit)}
                                                 currency={customer.currency}
                                             />
                                         </td>

@@ -1,0 +1,353 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8" />
+<title>PesaNest — Software Architecture Document</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;500;600&display=swap');
+  :root{
+    --green:#2D5523; --green-dark:#1C3A14; --gold:#B45309;
+    --cream:#FBF5EF; --soft-green:#EDF4E8; --mint:#F0FBF4; --ink:#2C3A4E;
+    --muted:#5A6A7E; --border:#D0DAC8; --line:#E7ECEF;
+  }
+  *{ box-sizing:border-box; }
+  @page{ size:A4; margin:0; }
+  html,body{ margin:0; padding:0; }
+  body{ font-family:'Outfit','Segoe UI',Arial,sans-serif; color:var(--ink); font-size:11.5px; line-height:1.6; background:#fff;
+        -webkit-print-color-adjust:exact; print-color-adjust:exact; }
+  strong,b{ font-weight:600; }
+  .page{ position:relative; width:210mm; min-height:297mm; padding:24mm 22mm 20mm; margin:0 auto; background:#fff; page-break-after:always; }
+  .page:last-child{ page-break-after:auto; }
+
+  /* Cover */
+  .cover{ background:var(--green-dark); color:#fff; padding:0; }
+  .cover-bar{ height:3px; background:var(--gold); }
+  .cover-inner{ padding:34mm 22mm; min-height:calc(297mm - 3px); display:flex; flex-direction:column; }
+  .brand{ font-weight:600; font-size:18px; letter-spacing:.3px; }
+  .brand span{ color:#8FBF7A; }
+  .cover-label{ margin-top:60mm; text-transform:uppercase; letter-spacing:3px; font-size:10px; color:#9BC48A; font-weight:500; }
+  .cover-title{ font-size:34px; font-weight:600; line-height:1.06; letter-spacing:-.5px; margin:10px 0 0; }
+  .cover-title em{ font-style:normal; color:var(--gold); }
+  .cover-div{ width:44px; height:2px; background:var(--gold); margin:18px 0; }
+  .cover-sub{ font-size:13.5px; color:#D9E6D2; font-weight:300; max-width:150mm; }
+  .cover-foot{ margin-top:auto; display:flex; justify-content:space-between; border-top:1px solid rgba(255,255,255,.14); padding-top:14px; }
+  .cover-foot .k{ text-transform:uppercase; letter-spacing:1.4px; font-size:8.5px; color:#8FBF7A; }
+  .cover-foot .v{ font-size:11.5px; color:#fff; font-weight:500; margin-top:3px; }
+
+  .phead{ display:flex; justify-content:space-between; align-items:center; border-bottom:1px solid var(--line); padding-bottom:7px; margin-bottom:14px; font-size:9px; color:var(--muted); letter-spacing:.4px; }
+  .phead .b{ font-weight:600; color:var(--green); }
+  .eyebrow{ display:flex; align-items:center; gap:8px; text-transform:uppercase; letter-spacing:2.4px; font-size:9.5px; font-weight:600; color:var(--gold); }
+  .eyebrow::before{ content:""; width:16px; height:1px; background:var(--gold); }
+  h1{ font-size:21px; font-weight:600; letter-spacing:-.3px; margin:7px 0 3px; color:var(--green-dark); }
+  h2{ font-size:14px; font-weight:600; color:var(--green); margin:22px 0 7px; padding-bottom:5px; border-bottom:1px solid var(--soft-green); }
+  h3{ font-size:12px; font-weight:600; color:var(--ink); margin:13px 0 3px; }
+  p{ margin:7px 0; }
+  .lead{ font-size:12.5px; color:var(--muted); }
+  ul,ol{ margin:5px 0 9px 17px; padding:0; }
+  li{ margin:2px 0; }
+  code,.mono{ font-family:Consolas,monospace; font-size:10.5px; }
+  code{ background:#f2f5f8; padding:1px 4px; border-radius:3px; }
+
+  table{ width:100%; border-collapse:collapse; margin:7px 0 11px; page-break-inside:avoid; }
+  th,td{ border:1px solid var(--line); padding:6px 8px; text-align:left; vertical-align:top; }
+  th{ background:var(--green); color:#fff; font-size:9.5px; text-transform:uppercase; letter-spacing:.5px; font-weight:600; }
+  tr:nth-child(even) td{ background:#fafcf8; }
+
+  .callout{ border-left:3px solid var(--gold); background:var(--cream); padding:10px 14px; border-radius:0 6px 6px 0; margin:12px 0; page-break-inside:avoid; }
+  .callout.green{ border-left-color:var(--green); background:var(--mint); }
+  .callout .t{ font-weight:600; color:var(--green-dark); display:block; margin-bottom:2px; }
+  .fig{ page-break-inside:avoid; margin:10px 0 6px; }
+  .figcap{ font-size:9px; color:var(--muted); text-transform:uppercase; letter-spacing:1px; margin-top:5px; }
+  .foot{ position:absolute; bottom:12mm; left:22mm; right:22mm; border-top:1px solid var(--line); padding-top:6px; font-size:8.5px; color:#9aa8b6; display:flex; justify-content:space-between; }
+  svg{ display:block; width:100%; height:auto; }
+</style>
+</head>
+<body>
+
+<!-- COVER -->
+<div class="page cover">
+  <div class="cover-bar"></div>
+  <div class="cover-inner">
+    <div class="brand">Figbloom Digital Group<span> Limited</span></div>
+    <div class="cover-label">Software Architecture Document</div>
+    <div class="cover-title">Pesa<em>Nest</em></div>
+    <div class="cover-div"></div>
+    <div class="cover-sub">Architecture of the PesaNest Trader Invoicing System (TIS) and its integration with the KRA electronic Tax Invoice Management System (eTIMS) under the OSCU model.</div>
+    <div class="cover-foot">
+      <div><div class="k">Prepared by</div><div class="v">Figbloom Digital Group Limited · PIN P052552232W</div></div>
+      <div style="text-align:right"><div class="k">Version · Status</div><div class="v">1.0 · eTIMS OSCU Go-Live · 2026</div></div>
+    </div>
+  </div>
+</div>
+
+<!-- PAGE 1 · Document control + Introduction -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 1</div>
+  <h1>Document Control &amp; Introduction</h1>
+
+  <h2>1.1 Document Control</h2>
+  <table>
+    <tr><th style="width:18%">Version</th><th style="width:18%">Date</th><th style="width:30%">Author</th><th>Change summary</th></tr>
+    <tr><td>1.0</td><td>2026</td><td>Ian Duncan Kibet — CTO</td><td>Initial architecture document for eTIMS OSCU Go-Live.</td></tr>
+  </table>
+  <table>
+    <tr><th style="width:34%">Attribute</th><th>Detail</th></tr>
+    <tr><td>System</td><td>PesaNest — Trader Invoicing System (TIS)</td></tr>
+    <tr><td>Owner</td><td>Figbloom Digital Group Limited (KRA PIN P052552232W)</td></tr>
+    <tr><td>Integrator type</td><td>Third-Party Vendor</td></tr>
+    <tr><td>eTIMS solution</td><td>OSCU (Online Sales Control Unit)</td></tr>
+    <tr><td>Status</td><td>Sandbox validated (23/23 test cases) → Production Go-Live</td></tr>
+    <tr><td>Reviewer / Approver</td><td>__________________________ (KRA / Figbloom)</td></tr>
+  </table>
+
+  <h2>1.2 Purpose</h2>
+  <p>This document describes the technology and software architecture of PesaNest and specifies how the system integrates with KRA eTIMS to validate and fiscally sign tax invoices, credit notes and related documents in real time. It is prepared in support of the KRA eTIMS OSCU third-party integrator Go-Live application.</p>
+
+  <h2>1.3 Scope</h2>
+  <ul>
+    <li>System context, container and component architecture of PesaNest.</li>
+    <li>The TIS ↔ eTIMS integration design, protocols and data exchange.</li>
+    <li>Deployment, security, data, and reliability aspects relevant to fiscal compliance.</li>
+  </ul>
+
+  <h2>1.4 Intended Audience</h2>
+  <p>KRA eTIMS onboarding and technical review teams; Figbloom engineering and operations; auditors.</p>
+
+  <h2>1.5 Glossary</h2>
+  <table>
+    <tr><th style="width:22%">Term</th><th>Meaning</th></tr>
+    <tr><td>TIS</td><td>Trader Invoicing System — the taxpayer's invoicing software (PesaNest).</td></tr>
+    <tr><td>eTIMS</td><td>Electronic Tax Invoice Management System operated by KRA.</td></tr>
+    <tr><td>OSCU</td><td>Online Sales Control Unit — the online fiscalisation model used here.</td></tr>
+    <tr><td>SCU / rcptSign</td><td>Sales Control Unit signature returned by KRA on each receipt.</td></tr>
+    <tr><td>GavaConnect</td><td>KRA's API gateway through which eTIMS is accessed.</td></tr>
+    <tr><td>cmcKey</td><td>Device communication key issued at initialisation.</td></tr>
+  </table>
+  <div class="foot"><span>Figbloom Digital Group Limited</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+<!-- PAGE 2 · Goals, NFRs, Context diagram -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 2</div>
+  <h1>Architecture Goals &amp; System Context</h1>
+
+  <h2>2.1 Goals &amp; Quality Attributes</h2>
+  <table>
+    <tr><th style="width:26%">Attribute</th><th>Target / approach</th></tr>
+    <tr><td>Compliance</td><td>Every VAT-relevant document is validated and signed by KRA before issue.</td></tr>
+    <tr><td>Security</td><td>TLS 1.2+; server-to-server fiscal channel; OAuth2; encrypted secrets.</td></tr>
+    <tr><td>Availability</td><td>Managed cloud hosting; automatic retries; queue-and-resume during KRA outages.</td></tr>
+    <tr><td>Integrity</td><td>Idempotent submissions; immutable stored receipt number &amp; signature.</td></tr>
+    <tr><td>Scalability</td><td>Stateless app tier on managed platform; serverless PostgreSQL.</td></tr>
+    <tr><td>Auditability</td><td>Full request/response logging with timestamp, receipt no. and signature.</td></tr>
+  </table>
+
+  <h2>2.2 System Context (C4 — Level 1)</h2>
+  <div class="fig">
+    <svg viewBox="0 0 620 250" role="img" aria-label="System context diagram">
+      <defs>
+        <marker id="arw" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5A6A7E"/></marker>
+      </defs>
+      <!-- actor -->
+      <rect x="18" y="92" width="120" height="64" rx="8" fill="#EDF4E8" stroke="#2D5523" stroke-width="1"/>
+      <text x="78" y="118" text-anchor="middle" font-size="12" font-weight="600" fill="#1C3A14">Cashier / User</text>
+      <text x="78" y="134" text-anchor="middle" font-size="9.5" fill="#5A6A7E">Creates invoices</text>
+      <!-- PesaNest -->
+      <rect x="200" y="78" width="200" height="92" rx="10" fill="#2D5523" stroke="#1C3A14" stroke-width="1"/>
+      <text x="300" y="112" text-anchor="middle" font-size="13.5" font-weight="600" fill="#fff">PesaNest (TIS)</text>
+      <text x="300" y="130" text-anchor="middle" font-size="9.5" fill="#CDE3C2">Accounting &amp; invoicing</text>
+      <text x="300" y="145" text-anchor="middle" font-size="9.5" fill="#CDE3C2">platform</text>
+      <!-- Gava -->
+      <rect x="462" y="52" width="140" height="54" rx="8" fill="#FBF5EF" stroke="#B45309" stroke-width="1"/>
+      <text x="532" y="75" text-anchor="middle" font-size="11" font-weight="600" fill="#7a3908">GavaConnect</text>
+      <text x="532" y="90" text-anchor="middle" font-size="9" fill="#8a5a30">KRA API gateway</text>
+      <!-- KRA -->
+      <rect x="462" y="142" width="140" height="54" rx="8" fill="#FBF5EF" stroke="#B45309" stroke-width="1"/>
+      <text x="532" y="165" text-anchor="middle" font-size="11" font-weight="600" fill="#7a3908">KRA eTIMS</text>
+      <text x="532" y="180" text-anchor="middle" font-size="9" fill="#8a5a30">OSCU fiscalisation</text>
+      <!-- arrows -->
+      <line x1="138" y1="124" x2="198" y2="124" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw)"/>
+      <line x1="400" y1="104" x2="460" y2="82" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw)"/>
+      <line x1="462" y1="169" x2="402" y2="150" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw)"/>
+      <line x1="532" y1="106" x2="532" y2="140" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw)"/>
+      <text x="300" y="205" text-anchor="middle" font-size="9" fill="#8a94a1">OAuth2 + signed request → validate &amp; sign → signed receipt returned</text>
+    </svg>
+    <div class="figcap">Figure 1 — System context: PesaNest transmits to KRA eTIMS via GavaConnect.</div>
+  </div>
+  <div class="foot"><span>Figbloom Digital Group Limited</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+<!-- PAGE 3 · Container diagram + components -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 3</div>
+  <h1>Container &amp; Component Architecture</h1>
+  <p class="lead">PesaNest is a server-rendered Next.js application in a layered architecture: a React presentation layer, a server layer (business logic, accounting engine, eTIMS service) and a managed PostgreSQL data layer.</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 620 320" role="img" aria-label="Container diagram">
+      <defs>
+        <marker id="arw2" markerWidth="9" markerHeight="9" refX="7" refY="3" orient="auto"><path d="M0,0 L7,3 L0,6 Z" fill="#5A6A7E"/></marker>
+      </defs>
+      <rect x="200" y="14" width="220" height="42" rx="8" fill="#EDF4E8" stroke="#2D5523" stroke-width="1"/>
+      <text x="310" y="33" text-anchor="middle" font-size="11.5" font-weight="600" fill="#1C3A14">Web Browser — React UI</text>
+      <text x="310" y="47" text-anchor="middle" font-size="9" fill="#5A6A7E">invoices · credit notes · items · reports</text>
+
+      <rect x="70" y="86" width="480" height="132" rx="10" fill="#F5FAF2" stroke="#2D5523" stroke-width="1"/>
+      <text x="90" y="104" font-size="10.5" font-weight="600" fill="#2D5523">Application Server — Next.js (Node · TypeScript)</text>
+      <rect x="88" y="116" width="130" height="42" rx="6" fill="#fff" stroke="#C9D8BE"/><text x="153" y="133" text-anchor="middle" font-size="9.5" font-weight="600" fill="#2C3A4E">Auth</text><text x="153" y="147" text-anchor="middle" font-size="8" fill="#5A6A7E">NextAuth · OTP · bcrypt</text>
+      <rect x="228" y="116" width="140" height="42" rx="6" fill="#fff" stroke="#C9D8BE"/><text x="298" y="133" text-anchor="middle" font-size="9.5" font-weight="600" fill="#2C3A4E">API &amp; Server Actions</text><text x="298" y="147" text-anchor="middle" font-size="8" fill="#5A6A7E">invoicing · credit notes</text>
+      <rect x="378" y="116" width="150" height="42" rx="6" fill="#fff" stroke="#C9D8BE"/><text x="453" y="133" text-anchor="middle" font-size="9.5" font-weight="600" fill="#2C3A4E">Accounting Engine</text><text x="453" y="147" text-anchor="middle" font-size="8" fill="#5A6A7E">double-entry GL · tax</text>
+      <rect x="228" y="166" width="300" height="40" rx="6" fill="#FBF5EF" stroke="#B45309"/><text x="378" y="183" text-anchor="middle" font-size="9.5" font-weight="600" fill="#7a3908">eTIMS Service</text><text x="378" y="197" text-anchor="middle" font-size="8" fill="#8a5a30">OAuth2 · payload build · transmit · persist · resubmit</text>
+
+      <rect x="70" y="252" width="220" height="52" rx="8" fill="#EDF4E8" stroke="#2D5523" stroke-width="1"/>
+      <text x="180" y="273" text-anchor="middle" font-size="10.5" font-weight="600" fill="#1C3A14">PostgreSQL — Neon</text>
+      <text x="180" y="288" text-anchor="middle" font-size="8.5" fill="#5A6A7E">transactions + receipt no. &amp; signature</text>
+      <rect x="330" y="252" width="220" height="52" rx="8" fill="#FBF5EF" stroke="#B45309" stroke-width="1"/>
+      <text x="440" y="273" text-anchor="middle" font-size="10.5" font-weight="600" fill="#7a3908">GavaConnect → KRA eTIMS</text>
+      <text x="440" y="288" text-anchor="middle" font-size="8.5" fill="#8a5a30">validate → sign (SCU) → return</text>
+
+      <line x1="310" y1="56" x2="310" y2="84" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw2)"/>
+      <line x1="180" y1="218" x2="180" y2="250" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw2)"/>
+      <line x1="440" y1="206" x2="440" y2="250" stroke="#5A6A7E" stroke-width="1" marker-end="url(#arw2)"/>
+    </svg>
+    <div class="figcap">Figure 2 — Container view: browser, application server (with internal components), database and the eTIMS gateway.</div>
+  </div>
+
+  <table>
+    <tr><th style="width:28%">Component</th><th>Responsibility</th></tr>
+    <tr><td>React UI</td><td>Transaction capture; renders the signed KRA receipt and QR verification code.</td></tr>
+    <tr><td>Auth</td><td>NextAuth v5 (credentials + OTP), bcrypt hashing, role-based access control.</td></tr>
+    <tr><td>API &amp; Server Actions</td><td>Invoice / credit-note / item business logic and validation.</td></tr>
+    <tr><td>Accounting Engine</td><td>Double-entry general ledger, tax accounts and receivables.</td></tr>
+    <tr><td>eTIMS Service</td><td>Token acquisition, payload build, transmission, response persistence, resubmission.</td></tr>
+  </table>
+  <div class="foot"><span>Figbloom Digital Group Limited</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+<!-- PAGE 4 · Sequence + endpoints -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 4</div>
+  <h1>Integration Flow</h1>
+  <p class="lead">Sequence of a fiscally-signed sale, from user confirmation to a stored, signed receipt.</p>
+
+  <div class="fig">
+    <svg viewBox="0 0 620 300" role="img" aria-label="Sequence diagram">
+      <defs>
+        <marker id="a" markerWidth="8" markerHeight="8" refX="6" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5 Z" fill="#2D5523"/></marker>
+        <marker id="ar" markerWidth="8" markerHeight="8" refX="6" refY="2.5" orient="auto"><path d="M0,0 L6,2.5 L0,5 Z" fill="#B45309"/></marker>
+      </defs>
+      <!-- lifelines -->
+      <g font-size="8.5" font-weight="600" fill="#1C3A14" text-anchor="middle">
+        <rect x="15" y="10" width="80" height="26" rx="5" fill="#EDF4E8" stroke="#2D5523"/><text x="55" y="27">User</text>
+        <rect x="140" y="10" width="80" height="26" rx="5" fill="#EDF4E8" stroke="#2D5523"/><text x="180" y="27">PesaNest UI</text>
+        <rect x="262" y="10" width="96" height="26" rx="5" fill="#FBF5EF" stroke="#B45309"/><text x="310" y="27">eTIMS Service</text>
+        <rect x="400" y="10" width="90" height="26" rx="5" fill="#FBF5EF" stroke="#B45309"/><text x="445" y="27">GavaConnect</text>
+        <rect x="525" y="10" width="80" height="26" rx="5" fill="#FBF5EF" stroke="#B45309"/><text x="565" y="27">KRA eTIMS</text>
+      </g>
+      <g stroke="#C8CDD6" stroke-width="1" stroke-dasharray="3 3">
+        <line x1="55" y1="36" x2="55" y2="286"/><line x1="180" y1="36" x2="180" y2="286"/><line x1="310" y1="36" x2="310" y2="286"/><line x1="445" y1="36" x2="445" y2="286"/><line x1="565" y1="36" x2="565" y2="286"/>
+      </g>
+      <g font-size="8" fill="#3a4b5c">
+        <line x1="55" y1="60" x2="178" y2="60" stroke="#2D5523" stroke-width="1" marker-end="url(#a)"/><text x="60" y="55">1. Confirm invoice</text>
+        <line x1="180" y1="86" x2="308" y2="86" stroke="#2D5523" stroke-width="1" marker-end="url(#a)"/><text x="185" y="81">2. Submit</text>
+        <line x1="310" y1="112" x2="443" y2="112" stroke="#2D5523" stroke-width="1" marker-end="url(#a)"/><text x="315" y="107">3. GET token (OAuth2)</text>
+        <line x1="445" y1="138" x2="312" y2="138" stroke="#B45309" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/><text x="330" y="133">4. Bearer token</text>
+        <line x1="310" y1="164" x2="443" y2="164" stroke="#2D5523" stroke-width="1" marker-end="url(#a)"/><text x="315" y="159">5. POST saveTrnsSalesOsdc</text>
+        <line x1="445" y1="190" x2="563" y2="190" stroke="#2D5523" stroke-width="1" marker-end="url(#a)"/><text x="450" y="185">6. Forward</text>
+        <line x1="565" y1="216" x2="447" y2="216" stroke="#B45309" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/><text x="452" y="211">7. Sign (SCU) + receipt</text>
+        <line x1="445" y1="242" x2="312" y2="242" stroke="#B45309" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/><text x="330" y="237">8. rcptSign, curRcptNo</text>
+        <line x1="310" y1="268" x2="182" y2="268" stroke="#B45309" stroke-width="1" stroke-dasharray="4 3" marker-end="url(#ar)"/><text x="188" y="263">9. Persist + render receipt</text>
+      </g>
+    </svg>
+    <div class="figcap">Figure 3 — Sequence: real-time sale fiscalisation. Credit notes (type R) and purchases follow the same pattern.</div>
+  </div>
+
+  <h2>4.1 Environments &amp; Endpoints</h2>
+  <table>
+    <tr><th style="width:30%">Environment</th><th>Base URL</th></tr>
+    <tr><td>Sandbox</td><td class="mono">https://sbx.kra.go.ke/etims-oscu/api/v1</td></tr>
+    <tr><td>Token (sandbox)</td><td class="mono">https://sbx.kra.go.ke/v1/token/generate</td></tr>
+    <tr><td>Production</td><td class="mono">https://api.kra.go.ke/etims-oscu/api/v1</td></tr>
+  </table>
+  <h2>4.2 Key Operations</h2>
+  <table>
+    <tr><th style="width:40%">Function</th><th>Endpoint</th></tr>
+    <tr><td>Device initialisation</td><td class="mono">selectInitOsdcInfo</td></tr>
+    <tr><td>Item registration</td><td class="mono">saveItem · saveItemComposition</td></tr>
+    <tr><td>Stock &amp; imports</td><td class="mono">updateImportItem · insertStockIO · saveStockMaster</td></tr>
+    <tr><td>Sales &amp; credit notes</td><td class="mono">saveTrnsSalesOsdc</td></tr>
+    <tr><td>Purchases</td><td class="mono">insertTrnsPurchase</td></tr>
+  </table>
+  <div class="foot"><span>Figbloom Digital Group Limited</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+<!-- PAGE 5 · Data + deployment -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 5</div>
+  <h1>Data &amp; Deployment Architecture</h1>
+
+  <h2>5.1 Data Architecture</h2>
+  <p>Transactions are persisted with their KRA fiscal result so every document is reproducible and verifiable.</p>
+  <table>
+    <tr><th style="width:26%">Entity</th><th>Key fields (incl. fiscal)</th></tr>
+    <tr><td>Sale (Invoice)</td><td>invoiceNumber, customer, subtotal, taxAmount, totalAmount, <b>etimsStatus</b>, <b>etimsInvoiceNumber (curRcptNo)</b>, <b>etimsControlUnit (rcptSign)</b></td></tr>
+    <tr><td>SaleItem</td><td>description, quantity, unitPrice, total, taxType</td></tr>
+    <tr><td>CreditNote</td><td>cnNumber, invoiceRef, amount, reason, <b>etimsReceiptNo</b>, <b>etimsControlUnit</b>, etimsStatus</td></tr>
+    <tr><td>Customer</td><td>name, KRA PIN (taxId), currency</td></tr>
+    <tr><td>Item / Product</td><td>KRA item code, classification code, tax type, unit price</td></tr>
+  </table>
+  <div class="callout green"><span class="t">Immutability of fiscal data</span>Once KRA accepts a document, its receipt number and SCU signature are stored read-only and retained for the statutory period for audit and reprint.</div>
+
+  <h2>5.2 Deployment &amp; Infrastructure</h2>
+  <table>
+    <tr><th style="width:26%">Aspect</th><th>Detail</th></tr>
+    <tr><td>Application hosting</td><td>Render — managed cloud, automatic HTTPS/TLS, managed scaling.</td></tr>
+    <tr><td>Database</td><td>Neon serverless PostgreSQL over encrypted WebSocket pool; backups &amp; point-in-time recovery.</td></tr>
+    <tr><td>Configuration</td><td>Secrets (DB URL, Consumer Key/Secret, cmcKey, app id, PIN) as encrypted environment variables — never in source or client bundle.</td></tr>
+    <tr><td>Environments</td><td>Sandbox (validated) and Production (<span class="mono">api.kra.go.ke</span>).</td></tr>
+  </table>
+  <div class="foot"><span>Figbloom Digital Group Limited</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+<!-- PAGE 6 · Security, reliability, assumptions -->
+<div class="page">
+  <div class="phead"><span class="b">PesaNest — Software Architecture Document</span><span>Figbloom Digital Group Limited</span></div>
+  <div class="eyebrow">Section 6</div>
+  <h1>Security, Reliability &amp; Assumptions</h1>
+
+  <h2>6.1 Security Architecture</h2>
+  <ul>
+    <li>All KRA traffic is server-to-server over TLS 1.2+; the browser never handles KRA endpoints, tokens or the device key.</li>
+    <li>OAuth 2.0 client-credentials grant; short-lived Bearer tokens; per-request headers <code>Authorization</code>, <code>tin</code>, <code>bhfId</code>, <code>cmcKey</code>, <code>apigee_app_id</code>.</li>
+    <li>Application authentication via NextAuth (credentials + OTP) with bcrypt-hashed passwords and role-based access control.</li>
+    <li>Secrets stored as encrypted environment variables; least-privilege database access.</li>
+  </ul>
+
+  <h2>6.2 Reliability, Error Handling &amp; Monitoring</h2>
+  <ul>
+    <li><b>Idempotency</b> — accepted invoices are never re-transmitted; sequence numbers self-correct to KRA's expected value on conflict.</li>
+    <li><b>Resilience</b> — during an eTIMS outage, documents are queued as PENDING and retried automatically on recovery; failed submissions can be resubmitted from the UI.</li>
+    <li><b>Observability</b> — every request/response is logged with timestamp, receipt number and signature; failures are surfaced to operators.</li>
+  </ul>
+
+  <h2>6.3 Assumptions, Constraints &amp; Risks</h2>
+  <table>
+    <tr><th style="width:30%">Item</th><th>Description</th></tr>
+    <tr><td>Assumption</td><td>KRA eTIMS OSCU sandbox/production endpoints and the GavaConnect gateway are available per KRA SLAs.</td></tr>
+    <tr><td>Constraint</td><td>Item codes and invoice sequences are governed by KRA's validation rules and are maintained per taxpayer.</td></tr>
+    <tr><td>Risk &amp; mitigation</td><td>Temporary KRA downtime → automatic queue-and-retry with PENDING status, preventing data loss.</td></tr>
+    <tr><td>Dependency</td><td>Valid Consumer credentials, device key (cmcKey) and registered application (apigee_app_id).</td></tr>
+  </table>
+
+  <div class="callout"><span class="t">Validation status</span>PesaNest has completed the KRA eTIMS OSCU automated test suite (all 23 test cases passed) and produces genuine KRA-signed invoices, credit notes and item registrations from its user interface.</div>
+
+  <div class="foot"><span>Figbloom Digital Group Limited · KRA PIN P052552232W</span><span>PesaNest · eTIMS OSCU Go-Live · v1.0</span></div>
+</div>
+
+</body>
+</html>

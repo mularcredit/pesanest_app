@@ -113,15 +113,19 @@ function FinanceStudioContent() {
                     const data = await res.json();
                     setSettings(data);
                     try {
-                        if (data.studio_draft_credit_note) {
+                        // When opening a SPECIFIC document (has a type param), use that document's
+                        // data — do NOT restore the generic saved draft, which would overwrite the
+                        // real credit note (including its KRA eTIMS signature).
+                        const openingSpecificDoc = !!searchParams.get('type');
+                        if (data.studio_draft_credit_note && !openingSpecificDoc) {
                             const cn = JSON.parse(data.studio_draft_credit_note);
                             setCreditNoteData(prev => ({ ...prev, ...cn, date: new Date(cn.date) }));
                         }
-                        if (data.studio_draft_receipt) {
+                        if (data.studio_draft_receipt && !openingSpecificDoc) {
                             const r = JSON.parse(data.studio_draft_receipt);
                             setReceiptData(prev => ({ ...prev, ...r, receiptDate: new Date(r.receiptDate), paymentDate: new Date(r.paymentDate) }));
                         }
-                        if (data.studio_draft_statement) {
+                        if (data.studio_draft_statement && !openingSpecificDoc) {
                             const s = JSON.parse(data.studio_draft_statement);
                             setStatementData(prev => ({
                                 ...prev, ...s, date: new Date(s.date),
@@ -162,7 +166,12 @@ function FinanceStudioContent() {
                 amount: parseFloat(searchParams.get('amount') || '0') || prev.amount,
                 reason: searchParams.get('reason') || prev.reason,
                 date: searchParams.get('date') ? new Date(searchParams.get('date')!) : new Date(),
-                customer: { ...prev.customer, name: searchParams.get('customerName') || prev.customer.name }
+                customer: { ...prev.customer, name: searchParams.get('customerName') || prev.customer.name },
+                etims: {
+                    receiptNo: searchParams.get('etimsReceiptNo') || prev.etims?.receiptNo || '',
+                    controlUnit: searchParams.get('etimsControlUnit') || prev.etims?.controlUnit || '',
+                    pin: searchParams.get('etimsPin') || prev.etims?.pin || '',
+                },
             }));
         } else if (type === 'RECEIPT') {
             setActiveTab('RECEIPT');
@@ -196,7 +205,8 @@ function FinanceStudioContent() {
         amount: 0,
         reason: '',
         date: new Date(),
-        customer: { name: '', address: '', tin: '' }
+        customer: { name: '', address: '', tin: '' },
+        etims: { receiptNo: '', controlUnit: '', pin: '' } as { receiptNo?: string; controlUnit?: string; pin?: string },
     });
 
     const [receiptData, setReceiptData] = useState({

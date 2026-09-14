@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+import { EtimsService } from "@/lib/tax/etims";
 
 // POST /api/accounting/credit-notes - Create a credit note
 export async function POST(req: NextRequest) {
@@ -236,7 +237,24 @@ export async function POST(req: NextRequest) {
             // You might want to handle this differently in production
         }
 
-        return NextResponse.json(creditNote, { status: 201 });
+        // Submit the credit note to KRA eTIMS (rcptTyCd "R"). Non-fatal on failure —
+        // the credit note + GL entry are already saved; it can be resubmitted.
+        let etimsResult = null;
+        try {
+            etimsResult = await EtimsService.submitCreditNote(creditNote.id);
+            if (!etimsResult.success) {
+                console.error(`[eTIMS] Credit note ${cnNumber} submission failed: ${etimsResult.error}`);
+            }
+        } catch (etimsErr) {
+            console.error(`[eTIMS] Credit note ${cnNumber} submission threw:`, etimsErr);
+        }
+
+        const refreshed = await prisma.creditNote.findUnique({
+            where: { id: creditNote.id },
+            include: { customer: { select: { name: true, currency: true } } },
+        });
+
+        return NextResponse.json({ ...(refreshed || creditNote), etims: etimsResult }, { status: 201 });
 
     } catch (error: any) {
         console.error("Error creating credit note:", error);

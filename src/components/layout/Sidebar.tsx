@@ -42,6 +42,7 @@ import {
     PiTag,
     PiLock,
     PiDeviceMobile,
+    PiCopySimple,
 } from "react-icons/pi";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useMemo } from "react";
@@ -106,6 +107,7 @@ const menuCategories: MenuCategory[] = [
             { name: "AR / AP Aging", href: "/dashboard/accounting/aging", icon: PiCoins },
             { name: "General Ledger", href: "/dashboard/accounting/ledger", icon: PiBookOpenText },
             { name: "Journal Approvals", href: "/dashboard/accounting/journal-approvals", icon: PiCheckCircle },
+            { name: "Duplicate Entries", href: "/dashboard/accounting/duplicate-entries", icon: PiCopySimple },
             { name: "Accrual Schedules", href: "/dashboard/accounting/accruals", icon: PiCalendarBlank },
             { name: "Recurring Journals", href: "/dashboard/accounting/recurring-journals", icon: PiClockCounterClockwise },
             { name: "Close Binder", href: "/dashboard/accounting/close-binder", icon: PiFileText },
@@ -113,6 +115,7 @@ const menuCategories: MenuCategory[] = [
             { name: "Cost Centre Report", href: "/dashboard/accounting/reports/by-dimension", icon: PiChartPieSlice },
             { name: "Customers", href: "/dashboard/accounting/customers", icon: PiUsersThree },
             { name: "Sales & Income", href: "/dashboard/accounting/sales", icon: PiBookOpenText },
+            { name: "Products & Items", href: "/dashboard/accounting/products", icon: PiPackage },
             { name: "Accounts Payable", href: "/dashboard/accounting/payables", icon: PiInvoice },
             { name: "Period Management", href: "/dashboard/accounting/periods", icon: PiCalendarBlank },
             { name: "Tax Rates", href: "/dashboard/accounting/tax-rates", icon: PiPercent },

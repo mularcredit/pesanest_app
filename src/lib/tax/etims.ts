@@ -13,10 +13,24 @@
 import prisma from "@/lib/prisma";
 
 const ETIMS_ENABLED = process.env.ETIMS_ENABLED === 'true';
-const ETIMS_BASE_URL = process.env.ETIMS_BASE_URL || 'https://etims-api.kra.go.ke/etims-api';
+// OSCU sandbox base by default; override with ETIMS_BASE_URL for production (api.kra.go.ke)
+const ETIMS_BASE_URL = process.env.ETIMS_BASE_URL || 'https://sbx.kra.go.ke/etims-oscu/api/v1';
 const ETIMS_PIN = process.env.ETIMS_PIN || '';
 const ETIMS_DEVICE_SERIAL = process.env.ETIMS_DEVICE_SERIAL || '';
-const ETIMS_API_KEY = process.env.ETIMS_API_KEY || '';
+const ETIMS_API_KEY = process.env.ETIMS_API_KEY || ''; // used as the cmcKey header
+// --- GavaConnect OSCU integration config ---
+const ETIMS_TOKEN_URL = process.env.ETIMS_TOKEN_URL || 'https://sbx.kra.go.ke/v1/token/generate?grant_type=client_credentials';
+const ETIMS_CONSUMER_KEY = process.env.ETIMS_CONSUMER_KEY || '';
+const ETIMS_CONSUMER_SECRET = process.env.ETIMS_CONSUMER_SECRET || '';
+const ETIMS_APIGEE_APP_ID = process.env.ETIMS_APIGEE_APP_ID || '';
+const ETIMS_ITEM_CODE = process.env.ETIMS_ITEM_CODE || 'KE2BGBX0000001';
+const ETIMS_ITEM_CLS_CD = process.env.ETIMS_ITEM_CLS_CD || '1010150100';
+const ETIMS_VAT_RATE = 16;
+const round2 = (n: number) => Math.round(n * 100) / 100;
+const pad2 = (n: number) => String(n).padStart(2, '0');
+function etimsDateTime(d: Date) {
+    return `${d.getFullYear()}${pad2(d.getMonth() + 1)}${pad2(d.getDate())}${pad2(d.getHours())}${pad2(d.getMinutes())}${pad2(d.getSeconds())}`;
+}
 
 export type EtimsStatus = 'NOT_REQUIRED' | 'PENDING' | 'SUBMITTED' | 'ACCEPTED' | 'FAILED';
 
@@ -316,74 +330,310 @@ export class EtimsService {
         return { success: true, status: 'ACCEPTED', etimsInvoiceNumber, controlUnit };
     }
 
+    private static async _getToken(): Promise<string> {
+        const basic = Buffer.from(`${ETIMS_CONSUMER_KEY}:${ETIMS_CONSUMER_SECRET}`).toString('base64');
+        const res = await fetch(ETIMS_TOKEN_URL, { method: 'GET', headers: { Authorization: `Basic ${basic}` } });
+        const data = await res.json();
+        if (!data.access_token) throw new Error('eTIMS token request failed');
+        return data.access_token as string;
+    }
+
     /**
-     * Live KRA eTIMS OSCU/VSCU submission.
-     * Implements the KRA eTIMS API v1 invoice transmission endpoint.
+     * Live KRA eTIMS OSCU submission via GavaConnect (sbx.kra.go.ke/etims-oscu/api/v1).
+     * Posts /saveTrnsSalesOsdc and stores the returned KRA receipt number + signature.
+     * PesaNest amounts are VAT-EXCLUSIVE, so each line is grossed up by 16% (tax type B):
+     * taxblAmt = net, taxAmt = net*0.16, totAmt = net*1.16.
      */
     private static async _liveSubmit(saleId: string, sale: any): Promise<EtimsSubmissionResult> {
         try {
             await prisma.sale.update({ where: { id: saleId }, data: { etimsStatus: 'PENDING' } });
 
-            const payload = {
-                tin: ETIMS_PIN,
-                bhfId: '00',
-                dvcSrlNo: ETIMS_DEVICE_SERIAL,
-                tyCd: 'S',
-                invcNo: sale.invoiceNumber,
-                salesDt: sale.issueDate.toISOString().slice(0, 10).replace(/-/g, ''),
-                custTin: sale.customer?.taxId || null,
-                custNm: sale.customer?.name || null,
-                taxblAmtA: Number(sale.subtotal),
-                taxblAmtB: 0,
-                taxblAmtC: 0,
-                taxblAmtD: 0,
-                taxAmtA: Number(sale.taxAmount),
-                taxAmtB: 0,
-                taxAmtC: 0,
-                taxAmtD: 0,
-                totTaxblAmt: Number(sale.subtotal),
-                totTaxAmt: Number(sale.taxAmount),
-                totAmt: Number(sale.totalAmount),
-                itemList: sale.items.map((item: any, i: number) => ({
-                    itemSeq: i + 1,
-                    itemNm: item.description,
-                    qty: item.quantity,
-                    prc: Number(item.unitPrice),
-                    totAmt: Number(item.total),
-                    taxTyCd: 'A',
-                }))
+            const token = await this._getToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'tin': ETIMS_PIN,
+                'bhfId': '00',
+                'cmcKey': ETIMS_API_KEY,
+                'apigee_app_id': ETIMS_APIGEE_APP_ID,
             };
 
-            const response = await fetch(`${ETIMS_BASE_URL}/trnsSalesSaveWr`, {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'tin': ETIMS_PIN,
-                    'bhfId': '00',
-                    'cmcKey': ETIMS_API_KEY,
+            const now = new Date();
+            const dt = etimsDateTime(now);
+            const salesDt = dt.slice(0, 8);
+
+            const itemList = sale.items.map((item: any, i: number) => {
+                // PesaNest stores amounts VAT-EXCLUSIVE: item.total is the NET (pre-VAT) line total.
+                // eTIMS expects VAT-inclusive figures, so gross up by 16% (tax type B).
+                const lineNet = round2(Number(item.total));                       // taxable base
+                const lineTax = round2(lineNet * (ETIMS_VAT_RATE / 100));         // VAT
+                const lineGross = round2(lineNet + lineTax);                      // VAT-inclusive total
+                const grossUnitPrice = round2(Number(item.unitPrice) * (1 + ETIMS_VAT_RATE / 100));
+                return {
+                    itemSeq: i + 1,
+                    itemCd: ETIMS_ITEM_CODE,
+                    itemClsCd: ETIMS_ITEM_CLS_CD,
+                    itemNm: item.description,
+                    bcd: null,
+                    pkgUnitCd: 'BG', pkg: Number(item.quantity),
+                    qtyUnitCd: 'BX', qty: Number(item.quantity),
+                    prc: grossUnitPrice,
+                    splyAmt: lineGross, dcRt: 0, dcAmt: 0,
+                    isrccCd: null, isrccNm: null, isrcRt: null, isrcAmt: null,
+                    taxTyCd: 'B', taxblAmt: lineNet, taxAmt: lineTax, totAmt: lineGross,
+                };
+            });
+            const totAmt = round2(itemList.reduce((s: number, it: any) => s + it.totAmt, 0));
+            const totTaxblAmt = round2(itemList.reduce((s: number, it: any) => s + it.taxblAmt, 0));
+            const totTaxAmt = round2(totAmt - totTaxblAmt);
+
+            const buildPayload = (invcNo: number) => ({
+                invcNo, orgInvcNo: 0,
+                custTin: sale.customer?.taxId || null,
+                custNm: sale.customer?.name || 'Walk-in Customer',
+                salesTyCd: 'N', rcptTyCd: 'S', pmtTyCd: '01', salesSttsCd: '02',
+                cfmDt: dt, salesDt, stockRlsDt: dt,
+                totItemCnt: itemList.length,
+                taxblAmtA: 0, taxblAmtB: totTaxblAmt, taxblAmtC: 0, taxblAmtD: 0, taxblAmtE: 0,
+                taxRtA: 0, taxRtB: ETIMS_VAT_RATE, taxRtC: 0, taxRtD: 0, taxRtE: 0,
+                taxAmtA: 0, taxAmtB: totTaxAmt, taxAmtC: 0, taxAmtD: 0, taxAmtE: 0,
+                totTaxblAmt, totTaxAmt, totAmt, prchrAcptcYn: 'N',
+                regrId: 'Admin', regrNm: 'Admin', modrId: 'Admin', modrNm: 'Admin',
+                receipt: {
+                    custTin: sale.customer?.taxId || null, custMblNo: null,
+                    rptNo: invcNo, rcptPbctDt: dt,
+                    trdeNm: process.env.NEXT_PUBLIC_APP_NAME || 'PesaNest',
+                    adrs: 'Nairobi', topMsg: 'Thank you', btmMsg: 'Powered by PesaNest', prchrAcptcYn: 'N',
                 },
-                body: JSON.stringify(payload),
+                itemList,
             });
 
-            const data = await response.json();
-
-            if (data.resultCd === '000') {
-                const etimsInvoiceNumber = data.data?.rcptNo || sale.invoiceNumber;
-                const controlUnit = data.data?.intrlData || ETIMS_DEVICE_SERIAL;
-
-                await prisma.sale.update({
-                    where: { id: saleId },
-                    data: { etimsInvoiceNumber, etimsControlUnit: controlUnit, etimsStatus: 'ACCEPTED' }
+            // Device invoice numbers are sequential; start from a local counter and
+            // self-correct if KRA reports the expected next number.
+            const seq = await (prisma as any).documentSequence.upsert({
+                where: { prefix: 'ETIMS_OSCU' },
+                update: { lastNumber: { increment: 1 } },
+                create: { prefix: 'ETIMS_OSCU', lastNumber: 1 },
+            });
+            let invcNo: number = seq.lastNumber;
+            let data: any = null;
+            for (let attempt = 0; attempt < 6; attempt++) {
+                const response = await fetch(`${ETIMS_BASE_URL}/saveTrnsSalesOsdc`, {
+                    method: 'POST', headers, body: JSON.stringify(buildPayload(invcNo)),
                 });
-
-                return { success: true, status: 'ACCEPTED', etimsInvoiceNumber, controlUnit };
-            } else {
+                data = await response.json();
+                const body = data.responseBody || data;
+                if (body?.resultCd === '000') {
+                    const info = body.data || {};
+                    const etimsInvoiceNumber = String(info.curRcptNo ?? invcNo);
+                    const controlUnit = info.rcptSign || info.intrlData || ETIMS_DEVICE_SERIAL;
+                    await (prisma as any).documentSequence.update({ where: { prefix: 'ETIMS_OSCU' }, data: { lastNumber: invcNo } });
+                    await prisma.sale.update({
+                        where: { id: saleId },
+                        data: { etimsInvoiceNumber, etimsControlUnit: controlUnit, etimsStatus: 'ACCEPTED' },
+                    });
+                    return { success: true, status: 'ACCEPTED', etimsInvoiceNumber, controlUnit, qrCode: info.intrlData };
+                }
+                const msg = data.responseHeader?.customerMessage || body?.resultMsg || '';
+                const expected = /expected:\s*(\d+)/i.exec(msg);
+                if (expected) { invcNo = parseInt(expected[1], 10); continue; }
+                if (/already exists/i.test(msg)) { invcNo += 1; continue; }
                 await prisma.sale.update({ where: { id: saleId }, data: { etimsStatus: 'FAILED' } });
-                return { success: false, status: 'FAILED', error: `KRA eTIMS error ${data.resultCd}: ${data.resultMsg}` };
+                return { success: false, status: 'FAILED', error: `KRA eTIMS: ${msg || 'submission failed'}` };
             }
-
+            await prisma.sale.update({ where: { id: saleId }, data: { etimsStatus: 'FAILED' } });
+            return { success: false, status: 'FAILED', error: 'Could not resolve eTIMS invoice sequence' };
         } catch (error: any) {
             await prisma.sale.update({ where: { id: saleId }, data: { etimsStatus: 'FAILED' } }).catch(() => {});
+            return { success: false, status: 'FAILED', error: error.message };
+        }
+    }
+
+    /**
+     * Register a new item with KRA eTIMS OSCU (saveItem). Item codes must be
+     * sequential per taxpayer (KE2BGBX + 7-digit seq); we self-correct if KRA
+     * reports the expected next sequence number.
+     */
+    static async registerItem(opts: { name: string; unitPrice: number; taxTyCd?: string }): Promise<{ success: boolean; itemCd?: string; itemClsCd?: string; taxTyCd?: string; error?: string }> {
+        const name = (opts.name || '').toString().trim().slice(0, 200);
+        const unitPrice = Number(opts.unitPrice) || 0;
+        const taxTyCd = opts.taxTyCd || 'B';
+        if (!name) return { success: false, error: 'Item name is required' };
+
+        if (!ETIMS_ENABLED) {
+            const seq = await (prisma as any).documentSequence.upsert({ where: { prefix: 'ETIMS_ITEM' }, update: { lastNumber: { increment: 1 } }, create: { prefix: 'ETIMS_ITEM', lastNumber: 1 } });
+            return { success: true, itemCd: `KE2BGBX${String(seq.lastNumber + 1).padStart(7, '0')}`, itemClsCd: ETIMS_ITEM_CLS_CD, taxTyCd };
+        }
+
+        try {
+            const token = await this._getToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'tin': ETIMS_PIN,
+                'bhfId': '00',
+                'cmcKey': ETIMS_API_KEY,
+                'apigee_app_id': ETIMS_APIGEE_APP_ID,
+            };
+            const seq = await (prisma as any).documentSequence.upsert({
+                where: { prefix: 'ETIMS_ITEM' },
+                update: { lastNumber: { increment: 1 } },
+                create: { prefix: 'ETIMS_ITEM', lastNumber: 1 },
+            });
+            let n: number = (seq.lastNumber || 1) + 1; // existing seed item is 0000001
+            let data: any = null;
+            for (let attempt = 0; attempt < 8; attempt++) {
+                const itemCd = `KE2BGBX${String(n).padStart(7, '0')}`;
+                const payload = {
+                    tin: ETIMS_PIN, bhfId: '00', itemCd, itemClsCd: ETIMS_ITEM_CLS_CD,
+                    itemTyCd: '2', itemNm: name, orgnNatCd: 'KE', pkgUnitCd: 'BG', qtyUnitCd: 'BX',
+                    taxTyCd, dftPrc: unitPrice, grpPrcL1: unitPrice, grpPrcL2: unitPrice, grpPrcL3: unitPrice, grpPrcL4: unitPrice,
+                    isrcAplcbYn: 'N', useYn: 'Y', regrNm: 'Admin', regrId: 'Admin', modrNm: 'Admin', modrId: 'Admin',
+                };
+                const response = await fetch(`${ETIMS_BASE_URL}/saveItem`, { method: 'POST', headers, body: JSON.stringify(payload) });
+                data = await response.json();
+                const body = data.responseBody || data;
+                const msg = data.responseHeader?.customerMessage || data.responseHeader?.debugMessage || body?.resultMsg || '';
+                if (body?.resultCd === '000' || /success/i.test(data.responseHeader?.customerMessage || '')) {
+                    await (prisma as any).documentSequence.update({ where: { prefix: 'ETIMS_ITEM' }, data: { lastNumber: n } });
+                    return { success: true, itemCd, itemClsCd: ETIMS_ITEM_CLS_CD, taxTyCd };
+                }
+                const expected = /ending with[^0-9]*(\d+)/i.exec(msg) || /expected:?\s*(\d+)/i.exec(msg);
+                if (expected) { n = parseInt(expected[1], 10); continue; }
+                if (/already exist/i.test(msg)) { n += 1; continue; }
+                return { success: false, error: `KRA eTIMS: ${msg || 'item registration failed'}` };
+            }
+            return { success: false, error: 'Could not resolve item code sequence' };
+        } catch (error: any) {
+            return { success: false, error: error.message };
+        }
+    }
+
+    /**
+     * Submit a CREDIT NOTE to KRA eTIMS OSCU (rcptTyCd "R") against the original invoice.
+     * KRA quirks handled: amounts must be POSITIVE (the R type marks it a credit),
+     * a refund date (rfdDt) is required, and KRA's rfdDt parser reads the hour as
+     * 12-hour — so we send it at noon (120000) to stay in the 1–12 range.
+     */
+    static async submitCreditNote(creditNoteId: string): Promise<EtimsSubmissionResult> {
+        const cn = await (prisma as any).creditNote.findUnique({ where: { id: creditNoteId }, include: { customer: true } });
+        if (!cn) return { success: false, status: 'FAILED', error: 'Credit note not found' };
+        if (cn.etimsStatus === 'ACCEPTED' && cn.etimsReceiptNo) {
+            return { success: true, status: 'ACCEPTED', etimsInvoiceNumber: cn.etimsReceiptNo, controlUnit: cn.etimsControlUnit || undefined };
+        }
+        if (!ETIMS_ENABLED) {
+            const seq = await (prisma as any).documentSequence.upsert({ where: { prefix: 'ETIMS' }, update: { lastNumber: { increment: 1 } }, create: { prefix: 'ETIMS', lastNumber: 1 } });
+            const receiptNo = `ETIMS-STUB-${String(seq.lastNumber).padStart(8, '0')}`;
+            await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'ACCEPTED', etimsReceiptNo: receiptNo, etimsControlUnit: `CU-STUB-${ETIMS_DEVICE_SERIAL || '00000'}` } });
+            return { success: true, status: 'ACCEPTED', etimsInvoiceNumber: receiptNo };
+        }
+        try {
+            await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'PENDING' } });
+
+            // A credit note reverses the ORIGINAL invoice. KRA requires the line unit
+            // price + customer details to match the original exactly, so we rebuild the
+            // lines from the original sale rather than from the free-form credit amount.
+            const origSale = await prisma.sale.findUnique({
+                where: { invoiceNumber: cn.invoiceRef },
+                include: { items: true, customer: true },
+            });
+            if (!origSale || !origSale.etimsInvoiceNumber || origSale.etimsStatus !== 'ACCEPTED') {
+                await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'FAILED' } });
+                return { success: false, status: 'FAILED', error: `Original invoice ${cn.invoiceRef} is not an eTIMS-accepted sale, so it cannot be credited` };
+            }
+            const orgInvcNo = parseInt(origSale.etimsInvoiceNumber, 10) || 0;
+            const cust = origSale.customer;
+
+            const token = await this._getToken();
+            const headers: Record<string, string> = {
+                'Content-Type': 'application/json',
+                'Authorization': `Bearer ${token}`,
+                'tin': ETIMS_PIN,
+                'bhfId': '00',
+                'cmcKey': ETIMS_API_KEY,
+                'apigee_app_id': ETIMS_APIGEE_APP_ID,
+            };
+
+            const now = new Date();
+            const dt = etimsDateTime(now);
+            const salesDt = dt.slice(0, 8);
+            const rfdDt = `${salesDt}120000`; // noon — dodges KRA's 12-hour rfdDt parser bug
+
+            // Rebuild the original invoice's lines (VAT-exclusive net grossed up 16%, tax type B).
+            const itemList = origSale.items.map((item: any, i: number) => {
+                const lineNet = round2(Number(item.total));
+                const lineTax = round2(lineNet * (ETIMS_VAT_RATE / 100));
+                const lineGross = round2(lineNet + lineTax);
+                const grossUnitPrice = round2(Number(item.unitPrice) * (1 + ETIMS_VAT_RATE / 100));
+                return {
+                    itemSeq: i + 1, itemCd: ETIMS_ITEM_CODE, itemClsCd: ETIMS_ITEM_CLS_CD,
+                    itemNm: item.description,
+                    bcd: null, pkgUnitCd: 'BG', pkg: Number(item.quantity), qtyUnitCd: 'BX', qty: Number(item.quantity),
+                    prc: grossUnitPrice, splyAmt: lineGross, dcRt: 0, dcAmt: 0,
+                    isrccCd: null, isrccNm: null, isrcRt: null, isrcAmt: null,
+                    taxTyCd: 'B', taxblAmt: lineNet, taxAmt: lineTax, totAmt: lineGross,
+                };
+            });
+            const totAmt = round2(itemList.reduce((s: number, it: any) => s + it.totAmt, 0));
+            const totTaxblAmt = round2(itemList.reduce((s: number, it: any) => s + it.taxblAmt, 0));
+            const totTaxAmt = round2(totAmt - totTaxblAmt);
+
+            const buildPayload = (invcNo: number) => ({
+                invcNo, orgInvcNo,
+                custTin: cust?.taxId || null,
+                custNm: cust?.name || 'Walk-in Customer',
+                salesTyCd: 'N', rcptTyCd: 'R', pmtTyCd: '01', salesSttsCd: '02',
+                cfmDt: dt, salesDt, stockRlsDt: dt, rfdDt, rfdRsnCd: '05',
+                totItemCnt: itemList.length,
+                taxblAmtA: 0, taxblAmtB: totTaxblAmt, taxblAmtC: 0, taxblAmtD: 0, taxblAmtE: 0,
+                taxRtA: 0, taxRtB: ETIMS_VAT_RATE, taxRtC: 0, taxRtD: 0, taxRtE: 0,
+                taxAmtA: 0, taxAmtB: totTaxAmt, taxAmtC: 0, taxAmtD: 0, taxAmtE: 0,
+                totTaxblAmt, totTaxAmt, totAmt, prchrAcptcYn: 'N',
+                regrId: 'Admin', regrNm: 'Admin', modrId: 'Admin', modrNm: 'Admin',
+                receipt: {
+                    custTin: cust?.taxId || null, custMblNo: null,
+                    rptNo: invcNo, rcptPbctDt: dt,
+                    trdeNm: process.env.NEXT_PUBLIC_APP_NAME || 'PesaNest',
+                    adrs: 'Nairobi', topMsg: 'Thank you', btmMsg: 'Powered by PesaNest', prchrAcptcYn: 'N',
+                },
+                itemList,
+            });
+
+            const seq = await (prisma as any).documentSequence.upsert({
+                where: { prefix: 'ETIMS_OSCU' },
+                update: { lastNumber: { increment: 1 } },
+                create: { prefix: 'ETIMS_OSCU', lastNumber: 1 },
+            });
+            let invcNo: number = seq.lastNumber;
+            let data: any = null;
+            for (let attempt = 0; attempt < 6; attempt++) {
+                const response = await fetch(`${ETIMS_BASE_URL}/saveTrnsSalesOsdc`, {
+                    method: 'POST', headers, body: JSON.stringify(buildPayload(invcNo)),
+                });
+                data = await response.json();
+                const body = data.responseBody || data;
+                if (body?.resultCd === '000') {
+                    const info = body.data || {};
+                    const receiptNo = String(info.curRcptNo ?? invcNo);
+                    const controlUnit = info.rcptSign || info.intrlData || ETIMS_DEVICE_SERIAL;
+                    await (prisma as any).documentSequence.update({ where: { prefix: 'ETIMS_OSCU' }, data: { lastNumber: invcNo } });
+                    await (prisma as any).creditNote.update({
+                        where: { id: creditNoteId },
+                        data: { etimsReceiptNo: receiptNo, etimsControlUnit: controlUnit, etimsStatus: 'ACCEPTED' },
+                    });
+                    return { success: true, status: 'ACCEPTED', etimsInvoiceNumber: receiptNo, controlUnit, qrCode: info.intrlData };
+                }
+                const msg = data.responseHeader?.customerMessage || body?.resultMsg || '';
+                const expected = /expected:\s*(\d+)/i.exec(msg);
+                if (expected) { invcNo = parseInt(expected[1], 10); continue; }
+                if (/already exists/i.test(msg)) { invcNo += 1; continue; }
+                await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'FAILED' } });
+                return { success: false, status: 'FAILED', error: `KRA eTIMS: ${msg || 'submission failed'}` };
+            }
+            await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'FAILED' } });
+            return { success: false, status: 'FAILED', error: 'Could not resolve eTIMS invoice sequence' };
+        } catch (error: any) {
+            await (prisma as any).creditNote.update({ where: { id: creditNoteId }, data: { etimsStatus: 'FAILED' } }).catch(() => {});
             return { success: false, status: 'FAILED', error: error.message };
         }
     }

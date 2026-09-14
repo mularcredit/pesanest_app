@@ -29,7 +29,12 @@ export async function POST(req: Request) {
             (sum: number, item: any) => sum + (item.quantity * item.unitPrice),
             0
         );
-        const taxAmount = taxRate ? Math.round(subtotal * (taxRate.rate / 100) * 100) / 100 : 0;
+        // Default to Kenya standard 16% VAT when no explicit rate is chosen,
+        // so the invoice transmits to KRA eTIMS (which requires a tax component).
+        const DEFAULT_VAT_RATE = Number(process.env.ETIMS_DEFAULT_VAT_RATE ?? 16);
+        const applyVat = body.applyVat !== false; // default true; turn off for exempt/zero-rated sales
+        const effectiveRate = taxRate ? taxRate.rate : (applyVat ? DEFAULT_VAT_RATE : 0);
+        const taxAmount = Math.round(subtotal * (effectiveRate / 100) * 100) / 100;
         const totalAmount = subtotal + taxAmount;
 
         // 3. Generate invoice number if missing

@@ -672,6 +672,9 @@ model CreditNote {
   status         String         @default("DRAFT")
   invoiceUrl     String?
   createdAt      DateTime       @default(now())
+  etimsStatus        String     @default("NOT_REQUIRED")
+  etimsReceiptNo     String?
+  etimsControlUnit   String?
   customer       Customer       @relation(fields: [customerId], references: [id])
   journalEntries JournalEntry[]
 

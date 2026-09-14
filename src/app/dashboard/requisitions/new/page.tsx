@@ -3,7 +3,7 @@
 import { useState, useEffect, Suspense } from "react";
 import Link from "next/link";
 import Image from "next/image";
-import { useSearchParams } from "next/navigation";
+import { useSearchParams, unstable_rethrow } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
 import { Select } from "@/components/ui/Select";
 import {
@@ -265,6 +265,11 @@ function NewRequisitionForm() {
                 return;
             }
         } catch (err) {
+            // A successful submission ends in redirect(), which Next.js implements by
+            // throwing a special NEXT_REDIRECT error for the framework to catch further
+            // up — rethrow it here so the redirect actually happens, instead of treating
+            // a successful save as a failed one.
+            unstable_rethrow(err);
             console.error(err);
             showToast("Something went wrong.", "error", "Submission Failed");
             setIsSubmitting(false);
