@@ -97,8 +97,11 @@ export async function GET(req: Request) {
         const arAccount = await prisma.account.findFirst({ where: { code: '1200' } });
         let glBalance = 0;
         if (arAccount) {
+            // POSTED and VOID both count — voiding posts an equal-and-opposite
+            // reversal rather than erasing the entry, so excluding the voided
+            // original would count that reversal's correction twice.
             const agg = await prisma.journalLine.aggregate({
-                where: { accountId: arAccount.id, entry: { status: 'POSTED' } },
+                where: { accountId: arAccount.id, entry: { status: { in: ['POSTED', 'VOID'] } } },
                 _sum: { debit: true, credit: true }
             });
             glBalance = (agg._sum.debit || 0) - (agg._sum.credit || 0);
@@ -148,8 +151,11 @@ export async function GET(req: Request) {
     const apAccount = await prisma.account.findFirst({ where: { code: '2000' } });
     let glBalance = 0;
     if (apAccount) {
+        // POSTED and VOID both count — voiding posts an equal-and-opposite
+        // reversal rather than erasing the entry, so excluding the voided
+        // original would count that reversal's correction twice.
         const agg = await prisma.journalLine.aggregate({
-            where: { accountId: apAccount.id, entry: { status: 'POSTED' } },
+            where: { accountId: apAccount.id, entry: { status: { in: ['POSTED', 'VOID'] } } },
             _sum: { debit: true, credit: true }
         });
         glBalance = (agg._sum.credit || 0) - (agg._sum.debit || 0);

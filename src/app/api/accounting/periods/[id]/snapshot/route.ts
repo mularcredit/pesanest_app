@@ -22,14 +22,18 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
     const period = await prisma.accountingPeriod.findUnique({ where: { id: periodId } });
     if (!period) return NextResponse.json({ error: "Period not found" }, { status: 404 });
 
-    // Get all accounts
-    const accounts = await prisma.account.findMany({ where: { isArchived: false } } as any);
+    // Get all accounts — not filtered by isArchived: an archived account can
+    // still carry posted history for this period, and dropping it would leave
+    // that account out of the snapshot entirely.
+    const accounts = await prisma.account.findMany();
 
-    // Lines in this period
+    // Lines in this period. POSTED and VOID both count — voiding posts an
+    // equal-and-opposite reversal rather than erasing the entry, so excluding
+    // the voided original would count that reversal's correction twice.
     const periodLines = await (prisma as any).journalLine.findMany({
         where: {
             entry: {
-                status: 'POSTED',
+                status: { in: ['POSTED', 'VOID'] },
                 date: { gte: period.startDate, lte: period.endDate }
             }
         },
@@ -40,7 +44,7 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
     const priorLines = await (prisma as any).journalLine.findMany({
         where: {
             entry: {
-                status: 'POSTED',
+                status: { in: ['POSTED', 'VOID'] },
                 date: { lt: period.startDate }
             }
         },

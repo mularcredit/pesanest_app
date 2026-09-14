@@ -58,7 +58,10 @@ async function fetchPL(from?: string, to?: string) {
             journalLines: {
                 where: {
                     entry: {
-                        status: 'POSTED',
+                        // POSTED and VOID both count — voiding posts an equal-and-opposite
+                        // reversal rather than erasing the entry, so excluding the voided
+                        // original would count that reversal's correction twice.
+                        status: { in: ['POSTED', 'VOID'] },
                         ...(entryDateFilter ? { date: entryDateFilter } : {}),
                     },
                 },

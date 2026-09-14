@@ -46,8 +46,11 @@ export async function GET(req: Request) {
     const { startDate, endDate } = period;
 
     // 1. Trial balance for the period
+    // POSTED and VOID both count — voiding posts an equal-and-opposite reversal
+    // rather than erasing the entry, so excluding the voided original would
+    // count that reversal's correction twice.
     const periodEntries = await prisma.journalEntry.findMany({
-        where: { date: { gte: startDate, lte: endDate }, status: 'POSTED' },
+        where: { date: { gte: startDate, lte: endDate }, status: { in: ['POSTED', 'VOID'] } },
         include: { lines: { include: { account: { select: { id: true, code: true, name: true, type: true } } } } }
     });
 

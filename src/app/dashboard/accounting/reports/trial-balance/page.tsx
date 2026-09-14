@@ -33,10 +33,13 @@ export default async function TrialBalancePage() {
     // history — dropping it here would leave the report's own totals unbalanced
     // even though the underlying ledger is fine (debits still equal credits across
     // all accounts). The `.filter` below already excludes anything with no activity.
+    // status is POSTED or VOID, never both excluded: voiding an entry doesn't
+    // erase it, it posts an equal-and-opposite reversal alongside it — leaving
+    // the voided original out here would count the reversal's correction twice.
     const accounts = await prisma.account.findMany({
         include: {
             journalLines: {
-                where: { entry: { status: 'POSTED' } },
+                where: { entry: { status: { in: ['POSTED', 'VOID'] } } },
             },
         },
         orderBy: { code: 'asc' },

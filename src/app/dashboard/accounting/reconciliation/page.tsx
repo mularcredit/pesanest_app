@@ -68,8 +68,11 @@ export default async function BankReconciliationPage({
 
     const account = accounts.find(a => a.id === requestedId) || accounts[0];
 
+    // POSTED and VOID both count here: voiding posts an equal-and-opposite
+    // reversal rather than erasing the entry, so excluding the voided original
+    // would count that reversal's correction twice.
     const glBalanceAgg = await prisma.journalLine.aggregate({
-        where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
+        where: { accountId: account.glAccountId, entry: { status: { in: ['POSTED', 'VOID'] } } },
         _sum: { debit: true, credit: true },
     });
     const glBalance = (glBalanceAgg._sum.debit || 0) - (glBalanceAgg._sum.credit || 0);

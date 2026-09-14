@@ -32,10 +32,13 @@ export default async function CashFlowPage() {
     // Not filtered by isActive/isArchived — Petty Cash and similar cash accounts
     // can be archived after the fact while still holding real historical postings,
     // and dropping them here would misstate cash movements for the period.
+    // POSTED and VOID both count: voiding doesn't erase an entry, it posts an
+    // equal-and-opposite reversal next to it — excluding the voided original
+    // would count that reversal's correction twice.
     const accounts = await prisma.account.findMany({
         include: {
             journalLines: {
-                where: { entry: { status: 'POSTED' } },
+                where: { entry: { status: { in: ['POSTED', 'VOID'] } } },
                 include: { entry: true },
             },
         },

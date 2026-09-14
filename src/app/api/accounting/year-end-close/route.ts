@@ -58,9 +58,12 @@ export async function POST(req: Request) {
     const fyStart = fiscalYear.startDate;
     const fyEnd = fiscalYear.endDate;
 
-    // Compute period balances for all P&L accounts
+    // Compute period balances for all P&L accounts. POSTED and VOID both count
+    // — voiding posts an equal-and-opposite reversal rather than erasing the
+    // entry, so excluding the voided original would count that reversal's
+    // correction twice, understating what actually gets closed to retained earnings.
     const lines = await prisma.journalLine.findMany({
-        where: { entry: { date: { gte: fyStart, lte: fyEnd }, status: 'POSTED' } },
+        where: { entry: { date: { gte: fyStart, lte: fyEnd }, status: { in: ['POSTED', 'VOID'] } } },
         include: { account: { select: { id: true, code: true, name: true, type: true } } }
     });
 

@@ -85,7 +85,10 @@ export async function getPettyCashWallet() {
     // Trial Balance, and Nuri already use.
     const agg = wallet.glAccountId
         ? await prisma.journalLine.aggregate({
-            where: { accountId: wallet.glAccountId, entry: { status: "POSTED" } },
+            // POSTED and VOID both count — voiding posts an equal-and-opposite
+            // reversal rather than erasing the entry, so excluding the voided
+            // original would count that reversal's correction twice.
+            where: { accountId: wallet.glAccountId, entry: { status: { in: ["POSTED", "VOID"] } } },
             _sum: { debit: true, credit: true },
         })
         : null;

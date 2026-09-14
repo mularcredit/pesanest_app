@@ -14,9 +14,12 @@ export async function GET(req: Request) {
 
     const costCentres = await (prisma as any).costCentre.findMany({ orderBy: { code: 'asc' } });
 
-    // Build the where clause for journal lines via entries
+    // Build the where clause for journal lines via entries. POSTED and VOID
+    // both count — voiding posts an equal-and-opposite reversal rather than
+    // erasing the entry, so excluding the voided original would count that
+    // reversal's correction twice.
     const entryWhere: any = {
-        status: 'POSTED',
+        status: { in: ['POSTED', 'VOID'] },
         date: { gte: startDate, lte: endDate }
     };
 

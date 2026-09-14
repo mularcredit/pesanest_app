@@ -91,10 +91,13 @@ export default async function BalanceSheetPage() {
     // historical posted balances, and dropping those here would misstate Assets
     // vs Liabilities+Equity by exactly that account's balance. Zero-balance
     // accounts are already excluded below (`balance !== 0`).
+    // POSTED and VOID both count: voiding doesn't erase an entry, it posts an
+    // equal-and-opposite reversal next to it — excluding the voided original
+    // would count that reversal's correction twice.
     const accounts = await prisma.account.findMany({
         include: {
             journalLines: {
-                where: { entry: { status: 'POSTED' } },
+                where: { entry: { status: { in: ['POSTED', 'VOID'] } } },
             },
         },
         orderBy: { code: 'asc' },

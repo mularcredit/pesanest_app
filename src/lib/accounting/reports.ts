@@ -15,7 +15,10 @@ export class FinancialReports {
                     where: {
                         entry: {
                             date: { gte: startDate, lte: endDate },
-                            status: 'POSTED'
+                            // POSTED and VOID both count — voiding posts an equal-and-opposite
+                            // reversal rather than erasing the entry, so excluding the voided
+                            // original would count that reversal's correction twice.
+                            status: { in: ['POSTED', 'VOID'] }
                         }
                     }
                 }
@@ -128,7 +131,7 @@ export class FinancialReports {
                     where: {
                         entry: {
                             date: { lte: asOfDate },
-                            status: 'POSTED'
+                            status: { in: ['POSTED', 'VOID'] }
                         }
                     }
                 }

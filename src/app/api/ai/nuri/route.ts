@@ -48,8 +48,11 @@ async function isAdmin(userId: string) {
 }
 
 async function glBalance(accountId: string) {
+    // POSTED and VOID both count — voiding posts an equal-and-opposite reversal
+    // rather than erasing the entry, so excluding the voided original would
+    // count that reversal's correction twice.
     const agg = await prisma.journalLine.aggregate({
-        where: { accountId, entry: { status: 'POSTED' } },
+        where: { accountId, entry: { status: { in: ['POSTED', 'VOID'] } } },
         _sum: { debit: true, credit: true },
     });
     return (agg._sum.debit || 0) - (agg._sum.credit || 0);
