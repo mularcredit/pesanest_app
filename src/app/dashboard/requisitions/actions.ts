@@ -352,22 +352,31 @@ export async function reclassifyRequisitionAccount(requisitionId: string, newAcc
     };
 }
 
+const COST_OF_SALES_SUB_ACCOUNTS = ['Wifi Equipment', 'Starlink'];
+
+async function nextAccountCode(): Promise<string> {
+    const accounts = await prisma.account.findMany({ select: { code: true } });
+    const maxCode = accounts.reduce((max, a) => {
+        const n = parseInt(a.code, 10);
+        return !isNaN(n) && n > max ? n : max;
+    }, 0);
+    return String(maxCode + 1);
+}
+
 /**
- * Returns (creating it once, if missing) the Cost of Sales account — the
- * quick-pick target for the "Move to account" action. Mirrors the P&L's own
- * lookup: type EXPENSE + subtype COST_OF_SALES (see income-statement report).
+ * Returns the Cost of Sales account and its sub-accounts (Wifi Equipment,
+ * Starlink), creating any that are missing. These are the quick-pick targets
+ * for the "Move to account" action. All share subtype COST_OF_SALES, which is
+ * what the P&L's own lookup groups by (see income-statement report) — the
+ * parent/child link is only for chart-of-accounts display, not required for
+ * them to roll up into Cost of Sales.
  */
-export async function getOrCreateCostOfSalesAccount() {
-    let account = await prisma.account.findFirst({ where: { type: 'EXPENSE', subtype: 'COST_OF_SALES' } });
-    if (!account) {
-        const accounts = await prisma.account.findMany({ select: { code: true } });
-        const maxCode = accounts.reduce((max, a) => {
-            const n = parseInt(a.code, 10);
-            return !isNaN(n) && n > max ? n : max;
-        }, 0);
-        account = await prisma.account.create({
+export async function getCostOfSalesAccounts() {
+    let parent = await prisma.account.findFirst({ where: { type: 'EXPENSE', subtype: 'COST_OF_SALES', parentId: null } });
+    if (!parent) {
+        parent = await prisma.account.create({
             data: {
-                code: String(maxCode + 1),
+                code: await nextAccountCode(),
                 name: 'Cost of Sales',
                 type: 'EXPENSE',
                 subtype: 'COST_OF_SALES',
@@ -375,7 +384,23 @@ export async function getOrCreateCostOfSalesAccount() {
             },
         });
     }
-    return account;
+
+    const children = await prisma.account.findMany({ where: { parentId: parent.id }, orderBy: { code: 'asc' } });
+    for (const name of COST_OF_SALES_SUB_ACCOUNTS) {
+        if (children.some(c => c.name.toLowerCase() === name.toLowerCase())) continue;
+        const created = await prisma.account.create({
+            data: {
+                code: await nextAccountCode(),
+                name,
+                type: 'EXPENSE',
+                subtype: 'COST_OF_SALES',
+                parentId: parent.id,
+            },
+        });
+        children.push(created);
+    }
+
+    return { parent, children: children.sort((a, b) => a.code.localeCompare(b.code)) };
 }
 
 export async function createItemPaymentBatch(itemId: string) {

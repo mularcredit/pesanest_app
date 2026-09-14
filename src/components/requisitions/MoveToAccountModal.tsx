@@ -3,11 +3,12 @@
 import { useEffect, useMemo, useState } from "react";
 import { createPortal } from "react-dom";
 import { BiX } from "react-icons/bi";
-import { PiArrowsLeftRight, PiWarning } from "react-icons/pi";
+import { PiWarning, PiCheck } from "react-icons/pi";
+import { cn } from "@/lib/utils";
 import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
-import { reclassifyRequisitionAccount, getOrCreateCostOfSalesAccount } from "@/app/dashboard/requisitions/actions";
+import { reclassifyRequisitionAccount, getCostOfSalesAccounts } from "@/app/dashboard/requisitions/actions";
 
 type Account = { id: string; code: string; name: string; type: string; subtype: string | null };
 
@@ -24,6 +25,8 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
     const [loading, setLoading] = useState(false);
     const [selectedAccountId, setSelectedAccountId] = useState("");
     const [saving, setSaving] = useState(false);
+    const [costOfSalesAccounts, setCostOfSalesAccounts] = useState<Account[]>([]);
+    const [loadingCostOfSales, setLoadingCostOfSales] = useState(false);
 
     useEffect(() => setMounted(true), []);
 
@@ -36,6 +39,12 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
             .then(data => setAccounts(Array.isArray(data) ? data : []))
             .catch(() => showToast("Failed to load accounts", "error"))
             .finally(() => setLoading(false));
+
+        setLoadingCostOfSales(true);
+        getCostOfSalesAccounts()
+            .then(({ parent, children }) => setCostOfSalesAccounts([parent as Account, ...children as Account[]]))
+            .catch(() => showToast("Failed to load Cost of Sales accounts", "error"))
+            .finally(() => setLoadingCostOfSales(false));
     }, [requisition]);
 
     const groups = useMemo(() => {
@@ -52,19 +61,6 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
                 .map(a => ({ value: a.id, label: `${a.code} — ${a.name}` })),
         }));
     }, [accounts]);
-
-    const handleQuickPickCostOfSales = async () => {
-        setLoading(true);
-        try {
-            const account = await getOrCreateCostOfSalesAccount();
-            setAccounts(prev => prev.some(a => a.id === account.id) ? prev : [...prev, account as Account]);
-            setSelectedAccountId(account.id);
-        } catch {
-            showToast("Failed to set up Cost of Sales account", "error");
-        } finally {
-            setLoading(false);
-        }
-    };
 
     const handleSave = async () => {
         if (!requisition || !selectedAccountId) return;
@@ -109,14 +105,32 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
                         </p>
                     </div>
 
-                    <button
-                        onClick={handleQuickPickCostOfSales}
-                        disabled={loading}
-                        className="w-full flex items-center justify-center gap-2 px-4 py-2.5 rounded-lg border border-[#6366F1]/30 bg-[#6366F1]/5 text-[#6366F1] text-sm font-medium hover:bg-[#6366F1]/10 transition-colors disabled:opacity-50"
-                    >
-                        <PiArrowsLeftRight />
-                        Move to Cost of Sales
-                    </button>
+                    <div>
+                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Cost of Sales</label>
+                        <div className="flex flex-wrap gap-1.5">
+                            {loadingCostOfSales && costOfSalesAccounts.length === 0 && (
+                                <span className="text-xs text-gray-400">Loading...</span>
+                            )}
+                            {costOfSalesAccounts.map(acc => {
+                                const isSelected = selectedAccountId === acc.id;
+                                return (
+                                    <button
+                                        key={acc.id}
+                                        onClick={() => setSelectedAccountId(acc.id)}
+                                        className={cn(
+                                            "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
+                                            isSelected
+                                                ? "border-[#6366F1] bg-[#6366F1]/10 text-[#6366F1]"
+                                                : "border-gray-200 bg-white text-gray-600 hover:border-[#6366F1]/40 hover:bg-[#6366F1]/5"
+                                        )}
+                                    >
+                                        {isSelected && <PiCheck />}
+                                        {acc.name}
+                                    </button>
+                                );
+                            })}
+                        </div>
+                    </div>
 
                     <div className="flex items-center gap-3 text-[10px] uppercase tracking-widest text-gray-300 font-semibold">
                         <div className="h-px bg-gray-100 flex-1" /> or choose any account <div className="h-px bg-gray-100 flex-1" />
