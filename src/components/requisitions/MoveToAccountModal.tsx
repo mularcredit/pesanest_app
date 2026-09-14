@@ -26,6 +26,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
     const [selectedAccountId, setSelectedAccountId] = useState("");
     const [saving, setSaving] = useState(false);
     const [costOfSalesAccounts, setCostOfSalesAccounts] = useState<Account[]>([]);
+    const [costOfSalesParentId, setCostOfSalesParentId] = useState<string | null>(null);
     const [loadingCostOfSales, setLoadingCostOfSales] = useState(false);
 
     useEffect(() => setMounted(true), []);
@@ -42,7 +43,10 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
 
         setLoadingCostOfSales(true);
         getCostOfSalesAccounts()
-            .then(({ parent, children }) => setCostOfSalesAccounts([parent as Account, ...children as Account[]]))
+            .then(({ parent, children }) => {
+                setCostOfSalesParentId(parent.id);
+                setCostOfSalesAccounts([parent as Account, ...children as Account[]]);
+            })
             .catch(() => showToast("Failed to load Cost of Sales accounts", "error"))
             .finally(() => setLoadingCostOfSales(false));
     }, [requisition]);
@@ -106,17 +110,19 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
                     </div>
 
                     <div>
-                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Cost of Sales</label>
+                        <label className="block text-[11px] font-semibold text-gray-500 uppercase tracking-widest mb-1.5">Quick pick: Cost of Sales</label>
                         <div className="flex flex-wrap gap-1.5">
                             {loadingCostOfSales && costOfSalesAccounts.length === 0 && (
                                 <span className="text-xs text-gray-400">Loading...</span>
                             )}
                             {costOfSalesAccounts.map(acc => {
                                 const isSelected = selectedAccountId === acc.id;
+                                const isParent = acc.id === costOfSalesParentId;
                                 return (
                                     <button
                                         key={acc.id}
                                         onClick={() => setSelectedAccountId(acc.id)}
+                                        title={isParent ? "Cost of Sales — not otherwise specified" : acc.name}
                                         className={cn(
                                             "flex items-center gap-1.5 px-3 py-1.5 rounded-lg border text-xs font-medium transition-colors",
                                             isSelected
@@ -125,7 +131,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
                                         )}
                                     >
                                         {isSelected && <PiCheck />}
-                                        {acc.name}
+                                        {isParent ? "General" : acc.name}
                                     </button>
                                 );
                             })}
