@@ -46,10 +46,12 @@ function dateRange(from?: string, to?: string) {
 async function fetchPL(from?: string, to?: string) {
     const entryDateFilter = dateRange(from, to);
 
+    // isActive/isArchived deliberately not filtered on — an archived account can
+    // still carry posted expense/revenue history for the period, and dropping it
+    // here would understate that account's P&L line (zero-balance lines are
+    // already excluded below via `balance !== 0`).
     const accounts = await prisma.account.findMany({
         where: {
-            isActive: true,
-            isArchived: false,
             type: { in: ['REVENUE', 'CONTRA_REVENUE', 'EXPENSE', 'OTHER_INCOME', 'OTHER_EXPENSE'] },
         },
         include: {

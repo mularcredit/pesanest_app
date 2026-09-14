@@ -87,8 +87,11 @@ export default async function BalanceSheetPage() {
     const session = await auth();
     if (!session?.user) return redirect('/login');
 
+    // Not filtered by isActive/isArchived — an archived account can still carry
+    // historical posted balances, and dropping those here would misstate Assets
+    // vs Liabilities+Equity by exactly that account's balance. Zero-balance
+    // accounts are already excluded below (`balance !== 0`).
     const accounts = await prisma.account.findMany({
-        where: { isActive: true },
         include: {
             journalLines: {
                 where: { entry: { status: 'POSTED' } },

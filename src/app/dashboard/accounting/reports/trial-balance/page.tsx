@@ -28,8 +28,12 @@ export default async function TrialBalancePage() {
     const session = await auth();
     if (!session?.user) return redirect('/login');
 
+    // Deliberately not filtered by isActive/isArchived: an account can be archived
+    // after it has posted history, and a trial balance must still include that
+    // history — dropping it here would leave the report's own totals unbalanced
+    // even though the underlying ledger is fine (debits still equal credits across
+    // all accounts). The `.filter` below already excludes anything with no activity.
     const accounts = await prisma.account.findMany({
-        where: { isActive: true },
         include: {
             journalLines: {
                 where: { entry: { status: 'POSTED' } },

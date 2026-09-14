@@ -29,8 +29,10 @@ export default async function CashFlowPage() {
     const session = await auth();
     if (!session?.user) return redirect('/login');
 
+    // Not filtered by isActive/isArchived — Petty Cash and similar cash accounts
+    // can be archived after the fact while still holding real historical postings,
+    // and dropping them here would misstate cash movements for the period.
     const accounts = await prisma.account.findMany({
-        where: { isActive: true },
         include: {
             journalLines: {
                 where: { entry: { status: 'POSTED' } },

@@ -352,7 +352,7 @@ export async function reclassifyRequisitionAccount(requisitionId: string, newAcc
     };
 }
 
-const COST_OF_SALES_SUB_ACCOUNTS = ['Wifi Equipment', 'Starlink'];
+const COST_OF_SALES_SUB_ACCOUNTS = ['Wifi Equipment', 'Starlink', 'Software and Subscriptions'];
 
 async function nextAccountCode(): Promise<string> {
     const accounts = await prisma.account.findMany({ select: { code: true } });
