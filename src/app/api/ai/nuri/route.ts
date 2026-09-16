@@ -153,6 +153,27 @@ const TOOLS = [
     {
         type: 'function',
         function: {
+            name: 'explainAccountBalance',
+            description:
+                'Explain what makes up a GL account\'s current balance: the balance itself plus its largest ' +
+                'contributing journal entries (date, description, entry number, amount, and whether each is a ' +
+                'reversal/void). Use this for "why does X account have this balance" or "what\'s driving X" ' +
+                'questions. Works for any chart-of-accounts account by code or name (e.g. "2000", "Luke", ' +
+                '"Accounts Payable", "Cash & Bank"), not just bank/paybill accounts — those are also GL accounts ' +
+                'and can be looked up the same way.',
+            parameters: {
+                type: 'object',
+                properties: {
+                    account: { type: 'string', description: 'Account code or name, partial match is fine (e.g. "2000", "Luke", "Accounts Payable")' },
+                    limit: { type: 'number', description: `Max contributing entries to return, default 15, capped at ${MAX_ROWS}` },
+                },
+                required: ['account'],
+            },
+        },
+    },
+    {
+        type: 'function',
+        function: {
             name: 'getReconciliationStatus',
             description: 'Unmatched bank-transaction and book-entry counts/totals for a specific bank or paybill account.',
             parameters: {
@@ -294,6 +315,58 @@ async function runTool(name: string, args: any): Promise<unknown> {
                 bankName: vendor.bankName, isActive: vendor.isActive,
                 outstandingInvoiceCount: vendor.invoices.length,
                 outstandingInvoiceTotal: vendor.invoices.reduce((s, i) => s + Number(i.amount), 0),
+            };
+        }
+
+        case 'explainAccountBalance': {
+            const q = String(args?.account || '').trim();
+            if (!q) return { found: false, error: 'No account specified' };
+
+            const account = await prisma.account.findFirst({
+                where: { OR: [{ code: q }, { name: { contains: q, mode: 'insensitive' } }] },
+            });
+            if (!account) return { found: false };
+
+            // POSTED and VOID both count — voiding posts an equal-and-opposite reversal
+            // rather than erasing the entry, so excluding the voided original would
+            // count that reversal's correction twice (same rule glBalance follows).
+            const lines = await prisma.journalLine.findMany({
+                where: { accountId: account.id, entry: { status: { in: ['POSTED', 'VOID'] } } },
+                include: { entry: { select: { entryNumber: true, date: true, description: true, reference: true, status: true, reversalOfId: true } } },
+            });
+
+            const isDebitNormal = ['ASSET', 'EXPENSE'].includes(account.type);
+            const totalDebit = lines.reduce((s, l) => s + l.debit, 0);
+            const totalCredit = lines.reduce((s, l) => s + l.credit, 0);
+            const balance = isDebitNormal ? totalDebit - totalCredit : totalCredit - totalDebit;
+
+            const topContributors = lines
+                .map(l => ({
+                    entryNumber: l.entry.entryNumber,
+                    date: l.entry.date,
+                    description: l.entry.description,
+                    reference: l.entry.reference || null,
+                    status: l.entry.status,
+                    isReversal: !!l.entry.reversalOfId,
+                    debit: l.debit,
+                    credit: l.credit,
+                }))
+                .sort((a, b) => Math.abs(b.debit - b.credit) - Math.abs(a.debit - a.credit))
+                .slice(0, limit(args?.limit, 15));
+
+            return {
+                found: true,
+                code: account.code,
+                name: account.name,
+                type: account.type,
+                subtype: account.subtype,
+                currency: account.currency,
+                balance,
+                balanceSide: isDebitNormal ? 'DR' : 'CR',
+                totalDebit,
+                totalCredit,
+                lineCount: lines.length,
+                topContributors,
             };
         }
 
