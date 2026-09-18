@@ -11,6 +11,7 @@ import { motion, AnimatePresence } from "framer-motion";
 import { Button } from "@/components/ui/Button";
 import { Input } from "@/components/ui/Input";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { Select } from "@/components/ui/Select";
 
 interface AccountingActionsProps {
     type: "NEW_ACCOUNT" | "MANUAL_JOURNAL" | "VOID_ENTRY" | "EDIT_ENTRY";
@@ -34,6 +35,7 @@ interface Account {
     code: string;
     name: string;
     type: string;
+    isArchived?: boolean;
 }
 
 interface JournalLine {
@@ -612,11 +614,12 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
                                         {journalData.lines.map(line => (
                                             <div key={line.id} className="p-4 grid grid-cols-12 gap-3 border-b border-gray-100 last:border-0">
                                                 <div className="col-span-6">
-                                                    <CustomSelect
+                                                    <Select
                                                         value={line.accountId}
                                                         onChange={val => updateLine(line.id, 'accountId', val)}
-                                                        options={accounts.map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
+                                                        options={accounts.filter(acc => !acc.isArchived).map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
                                                         placeholder="Select account..."
+                                                        searchable
                                                         className="w-full h-10 bg-white border border-gray-200 rounded-lg text-sm"
                                                     />
                                                 </div>
