@@ -141,8 +141,11 @@ export async function syncAssetsToLedger() {
 
         for (const asset of assets) {
             try {
-                const reference = `ASSET-${asset.id}`;
-                const existingEntry = await prisma.journalEntry.findFirst({ where: { reference } });
+                // Fast-path only — postAssetPurchase itself is the authoritative
+                // idempotency guard (real assetId relation, not text-matching).
+                const existingEntry = await prisma.journalEntry.findFirst({
+                    where: { assetId: asset.id, status: { not: 'VOID' } },
+                });
                 if (existingEntry) continue;
                 await AccountingEngine.postAssetPurchase(asset.id);
                 posted++;

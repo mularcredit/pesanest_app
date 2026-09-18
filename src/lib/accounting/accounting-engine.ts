@@ -81,6 +81,7 @@ export class AccountingEngine {
                 creditNoteId?: string;
                 requisitionId?: string;
                 monthlyBudgetId?: string;
+                assetId?: string;
             };
             userId?: string;
             reversalOfId?: string;
@@ -119,6 +120,7 @@ export class AccountingEngine {
                 creditNoteId: data.source?.creditNoteId,
                 requisitionId: data.source?.requisitionId,
                 monthlyBudgetId: data.source?.monthlyBudgetId,
+                assetId: data.source?.assetId,
                 reversalOfId: data.reversalOfId,
                 createdBy: data.userId,
                 status: 'POSTED',
@@ -384,6 +386,12 @@ export class AccountingEngine {
 
         if (!expense) throw new Error("Expense not found");
 
+        // Idempotency: skip if already posted
+        const existing = await (prisma as any).journalEntry.findFirst({
+            where: { expenseId: expense.id, reversalOfId: null }
+        });
+        if (existing) return existing;
+
         let expenseAccount = await prisma.account.findFirst({
             where: { name: expense.category, type: 'EXPENSE' }
         });
@@ -415,6 +423,12 @@ export class AccountingEngine {
         });
 
         if (!requisition) throw new Error("Requisition not found");
+
+        // Idempotency: skip if already posted
+        const existingReqEntry = await (prisma as any).journalEntry.findFirst({
+            where: { requisitionId: requisition.id, reversalOfId: null }
+        });
+        if (existingReqEntry) return existingReqEntry;
 
         let expenseAccount: any = null;
 
@@ -455,6 +469,12 @@ export class AccountingEngine {
         });
 
         if (!budget) throw new Error("Budget not found");
+
+        // Idempotency: skip if already posted
+        const existingBudgetEntry = await (prisma as any).journalEntry.findFirst({
+            where: { monthlyBudgetId: budget.id, reversalOfId: null }
+        });
+        if (existingBudgetEntry) return existingBudgetEntry;
 
         const expenseAccount = await prisma.account.findFirst({ where: { code: '6000' } });
         if (!expenseAccount) throw new Error("Operating Expenses (6000) Account not found");
@@ -546,6 +566,12 @@ export class AccountingEngine {
 
         if (!creditNote) throw new Error("Credit Note not found");
 
+        // Idempotency: skip if already posted
+        const existingCnEntry = await (prisma as any).journalEntry.findFirst({
+            where: { creditNoteId: creditNote.id, reversalOfId: null }
+        });
+        if (existingCnEntry) return existingCnEntry;
+
         const arAccount = await prisma.account.findFirst({ where: { code: '1200' } });
 
         let returnsAccount = await prisma.account.findFirst({ where: { code: '4100' } });
@@ -577,8 +603,15 @@ export class AccountingEngine {
         const asset = await (prisma as any).asset.findUnique({ where: { id: assetId } });
         if (!asset) throw new Error("Asset not found");
 
-        const reference = `ASSET-${asset.id}`;
-        const existingEntry = await prisma.journalEntry.findFirst({ where: { reference } });
+        // Idempotency via the real assetId relation, not text-matching a reference
+        // string — a reference-format change is exactly what let the 2026-08-06
+        // ledger re-sync double-post ~30 assets that were already journaled under
+        // an older format the string check no longer recognized. status != VOID
+        // (not reversalOfId: null) because voiding an entry only flips its status;
+        // it never clears reversalOfId on the original row.
+        const existingEntry = await prisma.journalEntry.findFirst({
+            where: { assetId: asset.id, status: { not: 'VOID' } },
+        });
         if (existingEntry) return existingEntry;
 
         let assetAccount = await prisma.account.findFirst({
@@ -610,16 +643,31 @@ export class AccountingEngine {
             }
         });
 
-        return this.postJournalEntry({
-            date: asset.purchaseDate,
-            description: `Asset Purchase: ${asset.name}`,
-            reference,
-            source: {},
-            lines: [
-                { accountId: assetAccount.id, debit: asset.purchasePrice, credit: 0 },
-                { accountId: bankAccount.id, debit: 0, credit: asset.purchasePrice }
-            ]
-        });
+        try {
+            return await this.postJournalEntry({
+                date: asset.purchaseDate,
+                description: `Asset Purchase: ${asset.name}`,
+                reference: `ASSET-${asset.id}`, // human-readable audit trail only — no longer load-bearing for dedup
+                source: { assetId: asset.id },
+                lines: [
+                    { accountId: assetAccount.id, debit: asset.purchasePrice, credit: 0 },
+                    { accountId: bankAccount.id, debit: 0, credit: asset.purchasePrice }
+                ]
+            });
+        } catch (e: any) {
+            // Lost a race against a concurrent post for the same asset (e.g. a
+            // double-click, or this running alongside syncAssetsToLedger) — the
+            // database's own uniqueness rule rejected our insert. Behave like the
+            // normal idempotency path: return whoever's insert won instead of
+            // surfacing a raw database error.
+            if (e?.code === 'P2002') {
+                const winner = await prisma.journalEntry.findFirst({
+                    where: { assetId: asset.id, status: { not: 'VOID' } },
+                });
+                if (winner) return winner;
+            }
+            throw e;
+        }
     }
 
     /**
@@ -785,14 +833,18 @@ export class AccountingEngine {
 
         if (!payment) throw new Error("Customer payment not found");
 
+        const reference = payment.sale
+            ? `PMT-${payment.sale.invoiceNumber}`
+            : `PMT-${payment.id.substring(0, 8)}`;
+
+        // Idempotency: skip if already posted
+        const existingPmtEntry = await (prisma as any).journalEntry.findFirst({ where: { reference } });
+        if (existingPmtEntry) return existingPmtEntry;
+
         const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
         const arAccount = await prisma.account.findFirst({ where: { code: '1200' } });
 
         if (!cashAccount || !arAccount) throw new Error("Missing Cash (1000) or AR (1200) Account");
-
-        const reference = payment.sale
-            ? `PMT-${payment.sale.invoiceNumber}`
-            : `PMT-${payment.id.substring(0, 8)}`;
 
         return this.postJournalEntry({
             date: payment.paymentDate,
