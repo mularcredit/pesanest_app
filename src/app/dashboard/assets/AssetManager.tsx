@@ -5,7 +5,7 @@ import { createPortal } from "react-dom";
 import { useRouter, useSearchParams } from "next/navigation";
 import { cn } from "@/lib/utils";
 import {
-    PiPlus, PiPackage, PiCheckCircle,
+    PiPlus, PiPackage, PiCheckCircle, PiWarningCircle,
     PiTrash, PiTag, PiUser, PiX, PiCaretDown,
     PiArrowsClockwise, PiFileText, PiPencil,
 } from "react-icons/pi";
@@ -61,6 +61,7 @@ type AssetRecord = {
     usefulLife?: number | null;
     salvageValue?: number | null;
     depreciationRate?: number | null;
+    isPosted?: boolean;
 };
 
 type AssetStats = {
@@ -584,6 +585,15 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                                                         <p className="text-[11px] text-gray-400 flex items-center gap-1 mt-0.5">
                                                             <PiTag className="text-[10px]" />
                                                             {asset.assetTag || asset.serialNumber || 'No tag'}
+                                                            {asset.isPosted ? (
+                                                                <span className="flex items-center gap-0.5 ml-1.5 text-emerald-600" title="Posted to the General Ledger">
+                                                                    <PiCheckCircle className="text-[11px]" /> Posted
+                                                                </span>
+                                                            ) : (
+                                                                <span className="flex items-center gap-0.5 ml-1.5 text-amber-600" title="Not yet posted to the General Ledger">
+                                                                    <PiWarningCircle className="text-[11px]" /> Not posted
+                                                                </span>
+                                                            )}
                                                         </p>
                                                     </div>
                                                 </div>

@@ -43,11 +43,22 @@ export async function getAssets(query: string = "") {
             include: {
                 assignedTo: {
                     select: { name: true, email: true }
-                }
+                },
+                journalEntries: {
+                    where: { status: { not: 'VOID' } },
+                    select: { id: true },
+                    take: 1,
+                },
             },
             orderBy: { createdAt: "desc" }
         });
-        return { success: true, data: assets };
+        // Flatten to a plain isPosted flag — the client only needs to know
+        // whether a ledger entry exists, not the entry itself.
+        const withPostedFlag = assets.map(({ journalEntries, ...a }) => ({
+            ...a,
+            isPosted: journalEntries.length > 0,
+        }));
+        return { success: true, data: withPostedFlag };
     } catch (error) {
         console.error("Failed to fetch assets:", error);
         return { success: false, error: "Failed to fetch assets" };
