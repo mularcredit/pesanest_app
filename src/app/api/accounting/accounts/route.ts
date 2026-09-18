@@ -12,9 +12,25 @@ export async function GET(req: Request) {
         const accounts = await prisma.account.findMany({
             orderBy: [
                 { code: 'asc' }
-            ]
+            ],
+            include: {
+                bankAccount: { select: { bankName: true } },
+                paystackAccount: { select: { name: true } },
+                paybillAccount: { select: { name: true } },
+            },
         });
-        return NextResponse.json(accounts);
+
+        // The GL account's own name (e.g. "Bank — Figbloom") is often generic —
+        // callers like the Manual Journal Entry picker need the everyday name
+        // people actually recognize (e.g. "Equity Bank") so it's findable by
+        // search and doesn't look unrelated to the same account shown elsewhere
+        // (Bank Reconciliation, Transfers) under its bank/provider name.
+        const withBankLabel = accounts.map(({ bankAccount, paystackAccount, paybillAccount, ...acc }) => ({
+            ...acc,
+            bankLabel: bankAccount?.bankName ?? paystackAccount?.name ?? paybillAccount?.name ?? null,
+        }));
+
+        return NextResponse.json(withBankLabel);
     } catch (error) {
         return NextResponse.json({ error: "Failed to fetch accounts" }, { status: 500 });
     }

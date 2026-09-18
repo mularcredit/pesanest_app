@@ -36,6 +36,7 @@ interface Account {
     name: string;
     type: string;
     isArchived?: boolean;
+    bankLabel?: string | null;
 }
 
 interface JournalLine {
@@ -617,7 +618,7 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
                                                     <Select
                                                         value={line.accountId}
                                                         onChange={val => updateLine(line.id, 'accountId', val)}
-                                                        options={accounts.filter(acc => !acc.isArchived).map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}` }))}
+                                                        options={accounts.filter(acc => !acc.isArchived).map(acc => ({ value: acc.id, label: `${acc.code} - ${acc.name}${acc.bankLabel ? ` (${acc.bankLabel})` : ''}` }))}
                                                         placeholder="Select account..."
                                                         searchable
                                                         className="w-full h-10 bg-white border border-gray-200 rounded-lg text-sm"
