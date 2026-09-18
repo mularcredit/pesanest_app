@@ -307,7 +307,12 @@ export async function reclassifyRequisitionAccount(requisitionId: string, newAcc
 
         try {
             await AccountingEngine.postJournalEntry({
-                date: new Date(),
+                // Same date as the original entry, not today — a reclass changes
+                // which account an expense sits in, not when it happened. Dating
+                // it "today" would move the amount into whatever period the Move
+                // button happened to be clicked in, silently vanishing it from the
+                // period it actually belongs to.
+                date: activeEntry.date,
                 description: `Reclass: ${requisition.title} moved from ${oldAccount.code} ${oldAccount.name} to ${newAccount.code} ${newAccount.name}`,
                 reference: `RECLASS-${requisitionId.slice(0, 8)}`,
                 source: { requisitionId },
