@@ -42,10 +42,22 @@ export default async function GeneralLedgerPage({
     const selectedCode = params.code || "";
     const pageSize    = 20;
 
-    const allAccounts = await prisma.account.findMany({
+    const allAccountsRaw = await prisma.account.findMany({
         where: { isActive: true },
         orderBy: { code: 'asc' },
+        include: {
+            bankAccount: { select: { bankName: true } },
+            paystackAccount: { select: { name: true } },
+            paybillAccount: { select: { name: true } },
+        },
     });
+    // Same everyday-name enrichment as /api/accounting/accounts — the GL name
+    // alone (e.g. "Bank — Figbloom") doesn't match what people search for
+    // (e.g. "Equity Bank"), which is shown elsewhere like Bank Reconciliation.
+    const allAccounts = allAccountsRaw.map(({ bankAccount, paystackAccount, paybillAccount, ...acc }) => ({
+        ...acc,
+        bankLabel: bankAccount?.bankName ?? paystackAccount?.name ?? paybillAccount?.name ?? null,
+    }));
 
     const whereClause: any = {};
     const orConditions: any[] = [];
