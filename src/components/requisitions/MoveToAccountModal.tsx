@@ -9,17 +9,22 @@ import { Select } from "@/components/ui/Select";
 import { useToast } from "@/components/ui/ToastProvider";
 import { useRouter } from "next/navigation";
 import { reclassifyRequisitionAccount, getCostOfSalesAccounts } from "@/app/dashboard/requisitions/actions";
+import { reclassifyJournalEntryAccount } from "@/app/dashboard/accounting/ledger/actions";
 
 type Account = { id: string; code: string; name: string; type: string; subtype: string | null };
 
 interface MoveToAccountModalProps {
-    requisition: { id: string; title: string; accountId?: string | null; category?: string | null } | null;
+    /** Reclassify via the requisition it's tied to (updates the requisition's own accountId/category too). */
+    requisition?: { id: string; title: string; accountId?: string | null; category?: string | null } | null;
+    /** Reclassify a journal entry directly — for entries with no requisition behind them (e.g. Manual Journal Entry). */
+    entry?: { id: string; title: string } | null;
     onClose: () => void;
 }
 
-export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalProps) {
+export function MoveToAccountModal({ requisition, entry, onClose }: MoveToAccountModalProps) {
     const { showToast } = useToast();
     const router = useRouter();
+    const target = requisition ?? entry;
     const [mounted, setMounted] = useState(false);
     const [accounts, setAccounts] = useState<Account[]>([]);
     const [loading, setLoading] = useState(false);
@@ -32,7 +37,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
     useEffect(() => setMounted(true), []);
 
     useEffect(() => {
-        if (!requisition) return;
+        if (!target) return;
         setSelectedAccountId("");
         setLoading(true);
         fetch("/api/accounting/accounts")
@@ -49,7 +54,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
             })
             .catch(() => showToast("Failed to load Cost of Sales accounts", "error"))
             .finally(() => setLoadingCostOfSales(false));
-    }, [requisition]);
+    }, [requisition, entry]);
 
     const groups = useMemo(() => {
         const byType = new Map<string, Account[]>();
@@ -67,10 +72,12 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
     }, [accounts]);
 
     const handleSave = async () => {
-        if (!requisition || !selectedAccountId) return;
+        if (!target || !selectedAccountId) return;
         setSaving(true);
         try {
-            const result = await reclassifyRequisitionAccount(requisition.id, selectedAccountId);
+            const result = requisition
+                ? await reclassifyRequisitionAccount(requisition.id, selectedAccountId)
+                : await reclassifyJournalEntryAccount(entry!.id, selectedAccountId);
             if (result.success) {
                 showToast(result.message, "success");
                 onClose();
@@ -85,7 +92,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
         }
     };
 
-    if (!requisition || !mounted) return null;
+    if (!target || !mounted) return null;
 
     return createPortal(
         <div className="fixed inset-0 z-[100] flex items-center justify-center p-4 bg-black/40 backdrop-blur-md animate-fade-in gpu-accel">
@@ -93,7 +100,7 @@ export function MoveToAccountModal({ requisition, onClose }: MoveToAccountModalP
                 <div className="px-6 py-5 flex items-start justify-between border-b border-gray-100">
                     <div>
                         <h2 className="text-base font-semibold text-gray-900">Move to Account</h2>
-                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">{requisition.title}</p>
+                        <p className="text-xs text-gray-400 mt-1 line-clamp-1">{target.title}</p>
                     </div>
                     <button onClick={onClose} className="p-2 rounded-lg hover:bg-gray-100 text-gray-400 hover:text-gray-900 transition-colors">
                         <BiX className="text-2xl" />

@@ -4,6 +4,7 @@ import { redirect } from "next/navigation";
 import { AccountingActions } from "@/components/accounting/AccountingActions";
 import { LedgerExportButton } from "@/components/accounting/LedgerExportButton";
 import { LedgerAccountSelect } from "./LedgerAccountSelect";
+import { LedgerMoveToAccount } from "./LedgerMoveToAccount";
 import { PiBookOpenText, PiCaretLeft, PiCaretRight, PiPlus } from "react-icons/pi";
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
@@ -250,6 +251,9 @@ export default async function GeneralLedgerPage({
                                                         })),
                                                     }}
                                                 />
+                                            )}
+                                            {status === 'POSTED' && (
+                                                <LedgerMoveToAccount entryId={entry.id} description={entry.description} />
                                             )}
                                             {status === 'POSTED' && (
                                                 <AccountingActions type="VOID_ENTRY" entryId={entry.id} entryNumber={entry.entryNumber} />
