@@ -2,6 +2,7 @@
 import { useRouter, useSearchParams, usePathname } from "next/navigation";
 import { useState } from "react";
 import { PiCalendarBlank, PiCaretDown } from "react-icons/pi";
+import { DatePicker } from "@/components/ui/DatePicker";
 
 const PRESETS = [
     { label: "This month",    key: "this_month" },
@@ -14,18 +15,37 @@ const PRESETS = [
     { label: "Custom…",       key: "custom" },
 ] as const;
 
+// Format a Date using its LOCAL y/m/d fields, not toISOString() (which converts
+// through UTC and silently shifts the date back a day for any timezone ahead of
+// UTC, e.g. Kenya/EAT — that was the cause of the presets being off by a day).
+function fmtLocal(d: Date): string {
+    const y = d.getFullYear();
+    const m = String(d.getMonth() + 1).padStart(2, "0");
+    const day = String(d.getDate()).padStart(2, "0");
+    return `${y}-${m}-${day}`;
+}
+
+// Parse a "YYYY-MM-DD" string as a local date, not UTC (new Date("YYYY-MM-DD")
+// parses as UTC midnight, which then displays as the previous day in the
+// picker for any timezone ahead of UTC).
+function parseLocalDate(s: string): Date | undefined {
+    if (!s) return undefined;
+    const [y, m, d] = s.split("-").map(Number);
+    if (!y || !m || !d) return undefined;
+    return new Date(y, m - 1, d);
+}
+
 function presetToDates(key: string): { from: string; to: string } {
     const now = new Date();
     const y = now.getFullYear(), m = now.getMonth();
-    const iso = (d: Date) => d.toISOString().slice(0, 10);
     const q = Math.floor(m / 3);
     switch (key) {
-        case "this_month":   return { from: iso(new Date(y, m, 1)),      to: iso(new Date(y, m + 1, 0)) };
-        case "last_month":   return { from: iso(new Date(y, m - 1, 1)),  to: iso(new Date(y, m, 0)) };
-        case "this_quarter": return { from: iso(new Date(y, q * 3, 1)),  to: iso(new Date(y, q * 3 + 3, 0)) };
-        case "last_quarter": return { from: iso(new Date(y, (q - 1) * 3, 1)), to: iso(new Date(y, q * 3, 0)) };
-        case "this_year":    return { from: iso(new Date(y, 0, 1)),       to: iso(new Date(y, 11, 31)) };
-        case "last_year":    return { from: iso(new Date(y - 1, 0, 1)),   to: iso(new Date(y - 1, 11, 31)) };
+        case "this_month":   return { from: fmtLocal(new Date(y, m, 1)),      to: fmtLocal(new Date(y, m + 1, 0)) };
+        case "last_month":   return { from: fmtLocal(new Date(y, m - 1, 1)),  to: fmtLocal(new Date(y, m, 0)) };
+        case "this_quarter": return { from: fmtLocal(new Date(y, q * 3, 1)),  to: fmtLocal(new Date(y, q * 3 + 3, 0)) };
+        case "last_quarter": return { from: fmtLocal(new Date(y, (q - 1) * 3, 1)), to: fmtLocal(new Date(y, q * 3, 0)) };
+        case "this_year":    return { from: fmtLocal(new Date(y, 0, 1)),       to: fmtLocal(new Date(y, 11, 31)) };
+        case "last_year":    return { from: fmtLocal(new Date(y - 1, 0, 1)),   to: fmtLocal(new Date(y - 1, 11, 31)) };
         default:             return { from: "", to: "" };
     }
 }
@@ -84,11 +104,19 @@ export function DateRangeBar() {
             {/* Custom date inputs (shown when Custom… clicked) */}
             {showCustom && (
                 <div className="flex items-center gap-2 ml-1">
-                    <input type="date" value={customFrom} onChange={e => setCustomFrom(e.target.value)}
-                        className="text-[12px] border border-gray-200 rounded-[6px] px-2 py-1.5 outline-none focus:border-indigo-400" />
+                    <DatePicker
+                        value={parseLocalDate(customFrom)}
+                        onChange={d => setCustomFrom(fmtLocal(d))}
+                        placeholder="From"
+                        className="!w-[150px] text-xs [&>div]:min-h-[36px] [&>div]:py-1.5"
+                    />
                     <span className="text-gray-400 text-[11px]">to</span>
-                    <input type="date" value={customTo} onChange={e => setCustomTo(e.target.value)}
-                        className="text-[12px] border border-gray-200 rounded-[6px] px-2 py-1.5 outline-none focus:border-indigo-400" />
+                    <DatePicker
+                        value={parseLocalDate(customTo)}
+                        onChange={d => setCustomTo(fmtLocal(d))}
+                        placeholder="To"
+                        className="!w-[150px] text-xs [&>div]:min-h-[36px] [&>div]:py-1.5"
+                    />
                     <button
                         onClick={() => { navigate({ from: customFrom, to: customTo }); setShowCustom(false); }}
                         disabled={!customFrom || !customTo}
