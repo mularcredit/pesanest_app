@@ -4,6 +4,7 @@ import { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PiDownloadSimple, PiFileCsv, PiFilePdf, PiPrinter, PiCaretDown, PiX } from "react-icons/pi";
+import { OUTFIT_REGULAR_BASE64, OUTFIT_BOLD_BASE64 } from "@/lib/pdf-fonts/outfit-font";
 
 // ── shared data model ─────────────────────────────────────────────────────────
 export interface ReportLine {
@@ -88,8 +89,18 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             const W = doc.internal.pageSize.getWidth();
             const H = doc.internal.pageSize.getHeight();
 
+            // Outfit — jsPDF only ships Helvetica/Times/Courier; register the
+            // app's actual brand font from the base64 TTFs fetched at build time
+            // (see src/lib/pdf-fonts/outfit-font.ts) so exported PDFs read as
+            // Pesanest documents, not generic Helvetica ones.
+            doc.addFileToVFS("Outfit-Regular.ttf", OUTFIT_REGULAR_BASE64);
+            doc.addFont("Outfit-Regular.ttf", "Outfit", "normal");
+            doc.addFileToVFS("Outfit-Bold.ttf", OUTFIT_BOLD_BASE64);
+            doc.addFont("Outfit-Bold.ttf", "Outfit", "bold");
+            doc.setFont("Outfit", "normal");
+
             // Watermark — drawn first, before anything else, so it sits behind
-            // the header band and the table rather than on top of them.
+            // everything else on the page.
             if (data.watermarkUrl) {
                 const wm = await loadImageForPdf(data.watermarkUrl);
                 if (wm) {
@@ -102,27 +113,53 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                 }
             }
 
-            // Header
-            doc.setFillColor(5, 150, 105);
-            doc.rect(0, 0, W, 28, "F");
-
-            let textX = 14;
-            if (data.logoUrl) {
-                const logo = await loadImageForPdf(data.logoUrl);
-                if (logo) {
-                    const boxH = 16;
-                    const w = (logo.width / logo.height) * boxH;
-                    doc.addImage(logo.dataUri, logo.format, 14, 6, w, boxH);
-                    textX = 14 + w + 6;
-                }
+            // ── Letterhead ──────────────────────────────────────────────────
+            // Logo row: brand mark (left), company name (center), the
+            // company's own uploaded logo (right, same image as the watermark).
+            const logo = data.logoUrl ? await loadImageForPdf(data.logoUrl) : null;
+            if (logo) {
+                const boxH = 14;
+                const w = (logo.width / logo.height) * boxH;
+                doc.addImage(logo.dataUri, logo.format, 14, 6, w, boxH);
             }
+            const companyLogo = data.watermarkUrl ? await loadImageForPdf(data.watermarkUrl) : null;
+            if (companyLogo) {
+                const boxH = 14;
+                const w = (companyLogo.width / companyLogo.height) * boxH;
+                doc.addImage(companyLogo.dataUri, companyLogo.format, W - 14 - w, 6, w, boxH);
+            }
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(12); doc.setFont("Outfit", "bold");
+            doc.text(data.company, W / 2, 14, { align: "center" });
 
+            // Thin rule under the logo row
+            doc.setDrawColor(220, 220, 220);
+            doc.line(8, 24, W - 8, 24);
+
+            // Metadata strip: three equal columns, small gray label over a
+            // black value — the same pattern this app's other letterheaded
+            // documents (Customer Statement, Payment Receipt) already use.
+            const metaY = 30;
+            const colW = (W - 16) / 3;
+            const metaCols: [string, string][] = [
+                ["Period", data.subtitle],
+                ["Generated", new Date().toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })],
+                ["Currency", currency],
+            ];
+            metaCols.forEach(([label, value], i) => {
+                const x = 8 + i * colW;
+                doc.setFontSize(7); doc.setFont("Outfit", "bold"); doc.setTextColor(150, 150, 150);
+                doc.text(label.toUpperCase(), x, metaY);
+                doc.setFontSize(9.5); doc.setFont("Outfit", "normal"); doc.setTextColor(30, 30, 30);
+                doc.text(value, x, metaY + 5.5, { maxWidth: colW - 4 });
+            });
+
+            // Title band
+            doc.setFillColor(5, 150, 105);
+            doc.rect(0, 40, W, 12, "F");
             doc.setTextColor(255, 255, 255);
-            doc.setFontSize(16); doc.setFont("helvetica", "bold");
-            doc.text(data.title, textX, 12);
-            doc.setFontSize(8); doc.setFont("helvetica", "normal");
-            doc.text(data.subtitle, textX, 19);
-            doc.text(`${data.company} · Generated ${new Date().toLocaleString("en-KE")}`, textX, 24);
+            doc.setFontSize(13); doc.setFont("Outfit", "bold");
+            doc.text(data.title.toUpperCase(), W / 2, 48, { align: "center" });
 
             const rows: (string | { content: string; styles: object })[][] = [];
 
@@ -169,22 +206,34 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                 : ["Description / Account", "", `${currency}`];
 
             autoTable(doc, {
-                startY: 32,
+                startY: 58,
                 head: [colHeader],
                 body: rows as any,
                 theme: "plain",
-                headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
-                bodyStyles: { fontSize: 8, minCellHeight: 5.5 },
+                headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", font: "Outfit" },
+                bodyStyles: { fontSize: 8, minCellHeight: 5.5, font: "Outfit" },
                 columnStyles: data.showPrior
                     ? { 0: { cellWidth: 100 }, 1: { cellWidth: 5 }, 2: { cellWidth: 35, halign: "right" }, 3: { cellWidth: 42, halign: "right" } }
                     : { 0: { cellWidth: 130 }, 1: { cellWidth: 5 }, 2: { cellWidth: 50, halign: "right" } },
-                margin: { left: 8, right: 8 },
-                styles: { overflow: "linebreak" },
-                didDrawPage: (d: any) => {
+                margin: { left: 8, right: 8, bottom: 22 },
+                styles: { overflow: "linebreak", font: "Outfit" },
+                didDrawPage: () => {
+                    // ── Footer: hairline rule, brand note, small brand mark, page number —
+                    // drawn on every page, matching the on-screen report's footer.
                     const pg = doc.getNumberOfPages();
-                    doc.setFontSize(7); doc.setTextColor(160);
-                    doc.text(`Page ${pg}`, W - 20, doc.internal.pageSize.getHeight() - 8);
-                    doc.text("Prepared in accordance with IFRS", 14, doc.internal.pageSize.getHeight() - 8);
+                    const footY = H - 16;
+                    doc.setDrawColor(220, 220, 220);
+                    doc.line(8, footY, W - 8, footY);
+
+                    if (logo) {
+                        const iconH = 6;
+                        const iconW = (logo.width / logo.height) * iconH;
+                        doc.addImage(logo.dataUri, logo.format, 8, footY + 4, iconW, iconH);
+                    }
+
+                    doc.setFontSize(7); doc.setFont("Outfit", "normal"); doc.setTextColor(140, 140, 140);
+                    doc.text(`Prepared by ${data.company} · Powered by Pesanest`, logo ? 20 : 8, footY + 8.5);
+                    doc.text(`Page ${pg}`, W - 20, footY + 8.5);
                 },
             });
 

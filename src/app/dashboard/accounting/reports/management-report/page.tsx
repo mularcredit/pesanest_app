@@ -119,16 +119,16 @@ export default async function ManagementReportPage({
         pl,
         bs,
         cashPosition,
-        companySettingRow,
-        watermarkSettingRow,
+        systemSettingRows,
         requisitionsInPeriod,
         activeBudgets,
     ] = await Promise.all([
         FinancialReports.getProfitAndLoss(fromDate, toDate),
         FinancialReports.getBalanceSheet(toDate),
         getCashPosition(toDate),
-        (prisma as any).systemSetting.findUnique({ where: { key: 'company_name' } }).catch(() => null),
-        (prisma as any).systemSetting.findUnique({ where: { key: 'watermark_logo' } }).catch(() => null),
+        (prisma as any).systemSetting.findMany({
+            where: { key: { in: ['company_name', 'registration_number', 'headquarters_address', 'watermark_logo'] } },
+        }).catch(() => [] as any[]),
         prisma.requisition.findMany({ where: { createdAt: { gte: fromDate, lte: toDate } } }),
         prisma.monthlyBudget.findMany({
             where: { month: toDate.getUTCMonth() + 1, year: toDate.getUTCFullYear(), status: 'APPROVED' },
@@ -136,11 +136,16 @@ export default async function ManagementReportPage({
         }),
     ]);
 
-    const companyName = companySettingRow?.value || 'Company';
+    const settingsMap: Record<string, string> = {};
+    for (const row of systemSettingRows as any[]) settingsMap[row.key] = row.value;
+
+    const companyName = settingsMap['company_name'] || 'Company';
+    const registrationNumber = settingsMap['registration_number'] || null;
+    const headquartersAddress = settingsMap['headquarters_address'] || null;
     // '__REMOVE__' is EditableImage's sentinel for "logo was explicitly cleared" —
     // treat that the same as "never uploaded" (no watermark), not as a real URL.
-    const watermarkUrl = watermarkSettingRow?.value && watermarkSettingRow.value !== '__REMOVE__'
-        ? watermarkSettingRow.value
+    const watermarkUrl = settingsMap['watermark_logo'] && settingsMap['watermark_logo'] !== '__REMOVE__'
+        ? settingsMap['watermark_logo']
         : null;
 
     // ── Requisition pipeline ──
@@ -167,9 +172,9 @@ export default async function ManagementReportPage({
         catMap[r.category].amount += r.amount;
         catMap[r.category].count += 1;
     }
+    const totalCategorySpend = Object.values(catMap).reduce((s, v) => s + v.amount, 0);
     const topCategories = Object.entries(catMap)
         .sort(([, a], [, b]) => b.amount - a.amount)
-        .slice(0, 8)
         .map(([category, v]) => ({ category, ...v }));
 
     // ── Budget utilization ──
@@ -226,8 +231,8 @@ export default async function ManagementReportPage({
                 ],
             },
             {
-                title: 'Top Spending Categories',
-                lines: topCategories.map(c => ({ name: `${c.category} (${c.count})`, current: c.amount })),
+                title: 'Spending by Category',
+                lines: topCategories.map(c => ({ name: `${c.category} (${c.count}, ${pct(c.amount, totalCategorySpend)})`, current: c.amount })),
             },
             {
                 title: 'Requisition Pipeline',
@@ -260,28 +265,61 @@ export default async function ManagementReportPage({
                 />
             )}
 
-            {/* ── Letterhead: Pesanest mark + the company's own uploadable logo ── */}
-            <div className="flex items-center justify-between gap-4 pb-4" style={{ borderBottom: HAIRLINE }}>
-                <BrandLogo width={130} height={34} color="#111827" />
-                <EditableImage
-                    settingKey="watermark_logo"
-                    defaultSrc=""
-                    alt="Company Logo"
-                    className="w-[100px] h-[50px]"
-                />
+            {/* ── Letterhead ── */}
+            <div className="relative z-10 bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
+
+                {/* Logo row: Pesanest mark (left), company name (center), the
+                    company's own uploadable logo (right) */}
+                <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-3">
+                    <BrandLogo width={110} height={30} color="#111827" />
+                    <h2 className="text-[13px] font-[700] text-gray-900 text-center flex-1 truncate px-2">{companyName}</h2>
+                    <EditableImage
+                        settingKey="watermark_logo"
+                        defaultSrc=""
+                        alt="Company Logo"
+                        className="w-[90px] h-[42px] shrink-0"
+                    />
+                </div>
+
+                {/* Metadata strip */}
+                <div className="grid grid-cols-3 gap-4 px-5 py-3" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                    <div>
+                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Period</p>
+                        <p className="text-[12px] font-[500] text-gray-800">{periodLabel}</p>
+                    </div>
+                    <div>
+                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Generated</p>
+                        <p className="text-[12px] font-[500] text-gray-800">{now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                    </div>
+                    <div>
+                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Currency</p>
+                        <p className="text-[12px] font-[500] text-gray-800">KES</p>
+                    </div>
+                </div>
+
+                {/* Title band */}
+                <div className="flex items-center gap-2.5 px-5 py-3" style={{ background: '#059669' }}>
+                    <div className="w-[26px] h-[26px] rounded-[6px] bg-white/15 flex items-center justify-center shrink-0">
+                        <PiFileText className="text-white text-[13px]" />
+                    </div>
+                    <h1 className="text-[15px] font-[700] text-white uppercase tracking-[0.04em]">Management Report</h1>
+                </div>
+
+                {/* Company details */}
+                {(registrationNumber || headquartersAddress) && (
+                    <div className="px-5 py-2.5 flex flex-wrap gap-x-6 gap-y-1" style={{ borderTop: HAIRLINE }}>
+                        {registrationNumber && (
+                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
+                        )}
+                        {headquartersAddress && (
+                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
+                        )}
+                    </div>
+                )}
             </div>
 
-            {/* ── Header ── */}
-            <div className="flex items-start justify-between gap-4 flex-wrap">
-                <div>
-                    <div className="flex items-center gap-2 mb-1">
-                        <div className="w-[30px] h-[30px] rounded-[7px] bg-[#059669] flex items-center justify-center shrink-0">
-                            <PiFileText className="text-white text-[15px]" />
-                        </div>
-                        <h1 className="text-[19px] font-[600] text-gray-900 tracking-tight">Management Report</h1>
-                    </div>
-                    <p className="text-[12px] text-gray-400 pl-[38px]">Business overview · {periodLabel}</p>
-                </div>
+            {/* ── Toolbar: export ── */}
+            <div className="relative z-10 flex items-center justify-end">
                 <ReportExportButton data={exportData} />
             </div>
 
@@ -329,10 +367,14 @@ export default async function ManagementReportPage({
             {/* ── Two-column: categories + pipeline ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Top Spending Categories" color="#6366f1" />
+                    <SectionHeader title="Spending by Category" color="#6366f1" />
                     {topCategories.length === 0
                         ? <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending recorded this period</p>
-                        : topCategories.map(c => <Row key={c.category} label={c.category} sub={`${c.count} expense${c.count !== 1 ? 's' : ''}`} value={c.amount} />)
+                        : topCategories.map(c => (
+                            <Row key={c.category} label={c.category}
+                                sub={`${c.count} expense${c.count !== 1 ? 's' : ''} · ${pct(c.amount, totalCategorySpend)} of total`}
+                                value={c.amount} />
+                        ))
                     }
                 </div>
 
@@ -380,9 +422,18 @@ export default async function ManagementReportPage({
                 </div>
             )}
 
-            <p className="text-[11px] text-gray-400 text-center">
-                {companyName} · Management Report · All amounts in KES · Figures rounded to 2 decimal places
-            </p>
+            {/* ── Footer ── */}
+            <div className="relative z-10 pt-4 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
+                <div className="flex items-center gap-2.5">
+                    <BrandLogo width={70} height={19} color="#9ca3af" />
+                    <p className="text-[10.5px] text-gray-400">
+                        Prepared by {companyName} · Powered by Pesanest
+                    </p>
+                </div>
+                <p className="text-[10.5px] text-gray-400">
+                    All amounts in KES · Figures rounded to 2 decimal places
+                </p>
+            </div>
         </div>
     );
 }
