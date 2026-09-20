@@ -43,6 +43,7 @@ import {
     PiLock,
     PiDeviceMobile,
     PiCopySimple,
+    PiClipboardText,
 } from "react-icons/pi";
 import { useSession, signOut } from "next-auth/react";
 import { useState, useEffect, useMemo } from "react";
@@ -104,6 +105,7 @@ const menuCategories: MenuCategory[] = [
             { name: "Balance Sheet", href: "/dashboard/accounting/reports/balance-sheet", icon: PiFileText },
             { name: "Comparative Reports", href: "/dashboard/accounting/reports/comparative", icon: PiArrowsLeftRight },
             { name: "Cash Flow Statement", href: "/dashboard/accounting/reports/cash-flow", icon: PiArrowsLeftRight },
+            { name: "Management Report", href: "/dashboard/accounting/reports/management-report", icon: PiClipboardText },
             { name: "AR / AP Aging", href: "/dashboard/accounting/aging", icon: PiCoins },
             { name: "General Ledger", href: "/dashboard/accounting/ledger", icon: PiBookOpenText },
             { name: "Journal Approvals", href: "/dashboard/accounting/journal-approvals", icon: PiCheckCircle },
@@ -226,6 +228,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
             "/dashboard/accounting/reports/balance-sheet": ["ACCOUNTING.VIEW", "REPORTS.VIEW"],
             "/dashboard/accounting/reports/income-statement": ["ACCOUNTING.VIEW", "REPORTS.VIEW"],
             "/dashboard/accounting/reports/cash-flow": ["ACCOUNTING.VIEW", "REPORTS.VIEW"],
+            "/dashboard/accounting/reports/management-report": ["ACCOUNTING.VIEW", "REPORTS.VIEW"],
 
             "/finance-studio": ["STUDIO.VIEW", "FINANCE.VIEW", "REPORTS.VIEW"],
             "/dashboard/workflow-analytics": ["ANALYTICS.VIEW", "REPORTS.VIEW"],
