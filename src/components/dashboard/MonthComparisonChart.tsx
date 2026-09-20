@@ -16,11 +16,13 @@ interface MonthComparisonChartProps {
     lastMonthLabel: string;
 }
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 function Tip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-white px-4 py-3 rounded-[8px]"
-            style={{ border: '1px solid rgba(0,0,0,0.09)', boxShadow: '0 4px 16px rgba(0,0,0,0.08)' }}>
+            style={{ border: HAIRLINE }}>
             <p className="text-[11px] font-[600] text-gray-500 mb-2">{label}</p>
             {payload.map((p: any) => (
                 <div key={p.dataKey} className="flex items-center justify-between gap-6 mb-1 last:mb-0">
@@ -39,7 +41,7 @@ function Tip({ active, payload, label }: any) {
 
 export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: MonthComparisonChartProps) {
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             <div className="mb-5">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">Month-over-Month</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">Category spending comparison</p>
@@ -69,7 +71,7 @@ export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: M
                         iconSize={8}
                         wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingBottom: 12 }}
                     />
-                    <Bar dataKey="thisMonth" name={thisMonthLabel} fill="#6366f1"            radius={[3, 3, 0, 0]} maxBarSize={24} />
+                    <Bar dataKey="thisMonth" name={thisMonthLabel} fill="#059669"            radius={[3, 3, 0, 0]} maxBarSize={24} />
                     <Bar dataKey="lastMonth" name={lastMonthLabel} fill="rgba(156,163,175,0.45)" radius={[3, 3, 0, 0]} maxBarSize={24} />
                 </BarChart>
             </ResponsiveContainer>

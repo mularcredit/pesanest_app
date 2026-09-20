@@ -1,3 +1,4 @@
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 export interface FunnelStage {
     name:  string;
@@ -21,7 +22,7 @@ export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
     const maxCount = Math.max(...stages.map(s => s.count), 1);
 
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
 
             {/* Header */}
             <div className="flex items-center justify-between mb-6">
@@ -63,9 +64,8 @@ export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
                             {/* Stage node */}
                             <div className="flex flex-col items-center flex-1 min-w-0">
                                 {/* Circle */}
-                                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all"
+                                <div className="w-10 h-10 rounded-full flex items-center justify-center mb-2 transition-all bg-white"
                                     style={{
-                                        background: active ? stage.bg : 'rgba(0,0,0,0.03)',
                                         border: `2px solid ${active ? stage.color + '60' : 'rgba(0,0,0,0.08)'}`,
                                     }}>
                                     <span className="text-[14px] font-[700] tabular-nums"

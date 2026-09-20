@@ -6,13 +6,14 @@ import {
     CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
 
-const LINE_COLOR = '#6366f1';
+const LINE_COLOR = '#059669';
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
         <div className="bg-white px-4 py-3 rounded-[8px]"
-            style={{ border: '1px solid rgba(0,0,0,0.09)', boxShadow: '0 4px 20px rgba(0,0,0,0.08)' }}>
+            style={{ border: HAIRLINE }}>
             <p className="text-[10px] font-[600] text-gray-400 uppercase tracking-[0.08em] mb-1.5">{label}</p>
             <p className="text-[13px] font-[700] text-gray-900 font-mono tabular-nums">
                 KES {Number(payload[0]?.value ?? 0).toLocaleString(undefined, { maximumFractionDigits: 0 })}
@@ -28,7 +29,7 @@ export function OverviewChart({ data }: { data: any[] }) {
     })), [data]);
 
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             <div className="flex items-start justify-between mb-5">
                 <div>
                     <h2 className="text-[13.5px] font-[600] text-gray-900">Activity Trends</h2>
@@ -63,7 +64,7 @@ export function OverviewChart({ data }: { data: any[] }) {
                         tickFormatter={v => v >= 1000 ? `${(v / 1000).toFixed(0)}k` : String(v)}
                         width={46}
                     />
-                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(99,102,241,0.25)', strokeWidth: 1 }} />
+                    <Tooltip content={<CustomTooltip />} cursor={{ stroke: 'rgba(5,150,105,0.25)', strokeWidth: 1 }} />
                     <Area
                         type="monotone"
                         dataKey="amount"

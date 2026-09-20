@@ -14,12 +14,14 @@ interface WeeklyExpenseChartProps {
     data: { week: string; amount: number; isCurrentWeek: boolean }[];
 }
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
     return (
         <div
             className="px-3 py-2 rounded-[8px] bg-white"
-            style={{ border: '1px solid rgba(0,0,0,0.09)' }}
+            style={{ border: HAIRLINE }}
         >
             <p className="text-[11px] text-gray-400 mb-0.5">{label}</p>
             <p className="text-[13px] font-[600] text-gray-900 font-mono">
@@ -31,7 +33,7 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             <div className="mb-4">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">This Month by Week</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">Current month expense breakdown</p>
@@ -57,7 +59,7 @@ export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
                         {data.map((entry, index) => (
                             <Cell
                                 key={`cell-${index}`}
-                                fill={entry.isCurrentWeek ? '#6366f1' : 'rgba(99,102,241,0.3)'}
+                                fill={entry.isCurrentWeek ? '#059669' : 'rgba(5,150,105,0.3)'}
                             />
                         ))}
                     </Bar>

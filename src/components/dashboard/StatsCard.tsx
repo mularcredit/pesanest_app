@@ -1,4 +1,3 @@
-import { cn } from "@/lib/utils";
 import { IconType } from "react-icons";
 import { PiArrowUp, PiArrowDown } from "react-icons/pi";
 import { SparklineMini } from "./SparklineMini";
@@ -17,32 +16,23 @@ interface StatsCardProps {
     bgColor?: string;
 }
 
-const iconBg: Record<string, string> = {
-    emerald: "bg-emerald-50 text-emerald-600",
-    purple:  "bg-indigo-50 text-[#6366F1]",
-    indigo:  "bg-indigo-50 text-[#6366F1]",
-    cyan:    "bg-cyan-50 text-cyan-600",
-    amber:   "bg-amber-50 text-amber-600",
-    blue:    "bg-blue-50 text-blue-600",
-    slate:   "bg-gray-50 text-slate-500",
-};
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 export function StatsCard({ title, value, trend, trendUp, icon: Icon, lastMonthLabel, color = "purple", sparkline }: StatsCardProps) {
-    const iconClass = iconBg[color] ?? iconBg.slate;
     const isUp = trendUp !== false;
 
     return (
-        <div className="card-premium p-5 flex flex-col gap-3 relative overflow-hidden">
+        <div className="bg-white rounded-[10px] p-5 flex flex-col gap-3 relative overflow-hidden" style={{ border: HAIRLINE }}>
 
             {sparkline && sparkline.length > 0 && (
                 <SparklineMini data={sparkline} color={color} />
             )}
 
             <div className="flex items-center gap-3 relative z-10">
-                <div className={cn("w-9 h-9 rounded-[7px] flex items-center justify-center shrink-0", iconClass)}>
+                <div className="w-9 h-9 rounded-[7px] flex items-center justify-center shrink-0 bg-gray-50" style={{ color: '#059669' }}>
                     <Icon className="text-[15px]" />
                 </div>
-                <p className="flex-1 text-[12.5px] font-[500] text-gray-500 truncate leading-tight">{title}</p>
+                <p className="flex-1 text-[10px] font-[600] uppercase tracking-[0.09em] text-gray-400 truncate leading-tight">{title}</p>
             </div>
 
             <div className="flex flex-col gap-2 min-w-0 relative z-10">
@@ -54,9 +44,9 @@ export function StatsCard({ title, value, trend, trendUp, icon: Icon, lastMonthL
                         {trend && (
                             <span className="inline-flex items-center gap-0.5 px-2 py-0.5 rounded-[4px] text-[10.5px] font-[500] shrink-0"
                                 style={{
-                                    background: isUp ? 'rgba(16,185,129,0.07)' : 'rgba(239,68,68,0.07)',
+                                    background: isUp ? 'rgba(5,150,105,0.07)' : 'rgba(220,38,38,0.07)',
                                     color:      isUp ? '#059669' : '#dc2626',
-                                    border:     isUp ? '1px solid rgba(16,185,129,0.2)' : '1px solid rgba(239,68,68,0.2)',
+                                    border:     isUp ? '1px solid rgba(5,150,105,0.2)' : '1px solid rgba(220,38,38,0.2)',
                                 }}>
                                 {isUp ? <PiArrowUp className="text-[10px]" /> : <PiArrowDown className="text-[10px]" />}
                                 {trend}

@@ -228,11 +228,11 @@ export default async function DashboardPage() {
 
     // ── Funnel stages (requisition statuses) ──
     const FUNNEL_CFG: { name: string; key: string; color: string; bg: string }[] = [
-        { name: 'Draft',    key: 'DRAFT',    color: '#9ca3af', bg: 'rgba(156,163,175,0.08)' },
-        { name: 'Pending',  key: 'PENDING',  color: '#f59e0b', bg: 'rgba(245,158,11,0.08)'  },
-        { name: 'Approved', key: 'APPROVED', color: '#6366f1', bg: 'rgba(99,102,241,0.08)'  },
-        { name: 'Paid',     key: 'PAID',     color: '#10b981', bg: 'rgba(16,185,129,0.08)'  },
-        { name: 'Rejected', key: 'REJECTED', color: '#ef4444', bg: 'rgba(239,68,68,0.08)'   },
+        { name: 'Draft',    key: 'DRAFT',    color: '#6b7280', bg: 'rgba(107,114,128,0.08)' },
+        { name: 'Pending',  key: 'PENDING',  color: '#d97706', bg: 'rgba(217,119,6,0.08)'   },
+        { name: 'Approved', key: 'APPROVED', color: '#059669', bg: 'rgba(5,150,105,0.08)'   },
+        { name: 'Paid',     key: 'PAID',     color: '#059669', bg: 'rgba(5,150,105,0.08)'   },
+        { name: 'Rejected', key: 'REJECTED', color: '#dc2626', bg: 'rgba(220,38,38,0.08)'   },
     ];
     const funnelStages: FunnelStage[] = FUNNEL_CFG.map(cfg => ({
         name:   cfg.name,
@@ -281,7 +281,8 @@ export default async function DashboardPage() {
                     </p>
                 </div>
                 <Link href="/dashboard/reports"
-                    className="card-premium flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#6366F1] transition-colors">
+                    className="bg-white rounded-[10px] flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#059669] transition-colors"
+                    style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
                     <PiDownloadSimple className="text-[14px]" /> Export
                 </Link>
             </div>
@@ -361,10 +362,10 @@ export default async function DashboardPage() {
 
                     {/* Spending alerts */}
                     {recentLargeExpenses.length > 0 && (
-                        <div className="card-premium overflow-hidden">
+                        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
                             {/* Header */}
                             <div className="flex items-center justify-between px-5 py-3.5"
-                                style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                                style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 <div className="flex items-center gap-2.5">
                                     <span className="relative flex h-2 w-2 shrink-0">
                                         <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60" />
@@ -373,7 +374,7 @@ export default async function DashboardPage() {
                                     <span className="text-[13px] font-[600] text-gray-900">Spending Alerts</span>
                                 </div>
                                 <span className="text-[10.5px] font-[600] tabular-nums px-2 py-0.5 rounded-[4px]"
-                                    style={{ background: 'rgba(239,68,68,0.07)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.15)' }}>
+                                    style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)' }}>
                                     {recentLargeExpenses.length} {recentLargeExpenses.length === 1 ? 'anomaly' : 'anomalies'}
                                 </span>
                             </div>
@@ -384,10 +385,10 @@ export default async function DashboardPage() {
                                     const multiple = (exp.amount / avgDailySpend).toFixed(1);
                                     return (
                                         <div key={exp.id} className="flex items-center gap-4 px-5 py-3.5"
-                                            style={{ borderBottom: i < recentLargeExpenses.length - 1 ? '1px solid rgba(0,0,0,0.05)' : 'none' }}>
+                                            style={{ borderBottom: i < recentLargeExpenses.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
                                             {/* Icon */}
                                             <div className="w-8 h-8 rounded-[7px] shrink-0 flex items-center justify-center"
-                                                style={{ background: 'rgba(239,68,68,0.07)', border: '1px solid rgba(239,68,68,0.15)' }}>
+                                                style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)' }}>
                                                 <PiWarning className="text-rose-500 text-[14px]" />
                                             </div>
 
@@ -401,7 +402,7 @@ export default async function DashboardPage() {
 
                                             {/* Multiple badge */}
                                             <span className="text-[10px] font-[700] font-mono tabular-nums shrink-0 px-1.5 py-0.5 rounded-[4px]"
-                                                style={{ background: 'rgba(239,68,68,0.07)', color: '#ef4444', border: '1px solid rgba(239,68,68,0.12)' }}>
+                                                style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.12)' }}>
                                                 {multiple}× avg
                                             </span>
 
@@ -446,7 +447,7 @@ export default async function DashboardPage() {
 
                     {/* Active requisitions */}
                     {requisitions.length > 0 && (
-                        <div className="card-premium overflow-hidden">
+                        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
                             <div className="px-5 py-3.5 text-[10.5px] font-[500] uppercase tracking-[0.08em] text-gray-400"
                                 style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                                 Active Expenses

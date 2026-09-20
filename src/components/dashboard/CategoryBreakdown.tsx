@@ -17,12 +17,14 @@ const BAR_COLORS = [
     '#e34948', // red
 ];
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 export function CategoryBreakdown({ data, totalAmount }: CategoryBreakdownProps) {
     const maxAmount = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 1;
     const hasData = data.length > 0;
 
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             {/* Header */}
             <div className="mb-5">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">Spending by Category</h2>

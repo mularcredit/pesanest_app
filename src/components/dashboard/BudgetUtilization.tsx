@@ -11,24 +11,26 @@ function pct(spent: number, allocated: number) {
     return Math.min((spent / allocated) * 100, 100);
 }
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 function barColor(p: number) {
-    if (p >= 90) return '#ef4444';
-    if (p >= 70) return '#f59e0b';
-    return '#6366f1';
+    if (p >= 90) return '#dc2626';
+    if (p >= 70) return '#d97706';
+    return '#059669';
 }
 
 function barBg(p: number) {
-    if (p >= 90) return 'rgba(239,68,68,0.08)';
-    if (p >= 70) return 'rgba(245,158,11,0.08)';
-    return 'rgba(99,102,241,0.08)';
+    if (p >= 90) return 'rgba(220,38,38,0.08)';
+    if (p >= 70) return 'rgba(217,119,6,0.08)';
+    return 'rgba(5,150,105,0.08)';
 }
 
 export function BudgetUtilization({ budgets }: { budgets: BudgetRow[] }) {
     if (!budgets.length) return null;
 
     return (
-        <div className="card-premium overflow-hidden">
-            <div className="px-5 py-4" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
+            <div className="px-5 py-4" style={{ borderBottom: HAIRLINE }}>
                 <h2 className="text-[13px] font-[600] text-gray-900">Budget Utilization</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">This month · Allocated vs spent</p>
             </div>

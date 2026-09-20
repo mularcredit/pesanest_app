@@ -1,6 +1,8 @@
 "use client";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 interface ApprovalGaugeProps {
     approved: number;
     pending: number;
@@ -13,14 +15,14 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
 
     const slices = total > 0
         ? [
-            { name: 'Approved', value: approved, color: '#0ca30c' },
-            { name: 'Pending',  value: pending,  color: '#fab219' },
-            { name: 'Rejected', value: rejected, color: '#d03b3b' },
+            { name: 'Approved', value: approved, color: '#059669' },
+            { name: 'Pending',  value: pending,  color: '#d97706' },
+            { name: 'Rejected', value: rejected, color: '#dc2626' },
           ]
         : [{ name: 'Empty', value: 1, color: 'rgba(0,0,0,0.06)' }];
 
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             <div className="mb-1">
                 <h2 className="text-[13.5px] font-[600] text-gray-900">Approval Rate</h2>
                 <p className="text-[11.5px] text-gray-400 mt-0.5">All-time expense outcomes</p>
@@ -61,12 +63,15 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
             {/* Three legend tiles */}
             <div className="grid grid-cols-3 gap-2 mt-3">
                 {[
-                    { label: 'Approved', count: approved, color: '#0ca30c', bg: 'rgba(12,163,12,0.08)' },
-                    { label: 'Pending',  count: pending,  color: '#fab219', bg: 'rgba(250,178,25,0.10)' },
-                    { label: 'Rejected', count: rejected, color: '#d03b3b', bg: 'rgba(208,59,59,0.08)'  },
-                ].map(({ label, count, color, bg }) => (
-                    <div key={label} className="rounded-[6px] py-2 px-1 text-center" style={{ background: bg }}>
-                        <div className="text-[17px] font-[700] tabular-nums" style={{ color }}>{count}</div>
+                    { label: 'Approved', count: approved, color: '#059669' },
+                    { label: 'Pending',  count: pending,  color: '#d97706' },
+                    { label: 'Rejected', count: rejected, color: '#dc2626' },
+                ].map(({ label, count, color }) => (
+                    <div key={label} className="rounded-[6px] py-2 px-1 text-center" style={{ border: HAIRLINE }}>
+                        <div className="flex items-center justify-center gap-1">
+                            <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: color }} />
+                            <span className="text-[17px] font-[700] tabular-nums text-gray-900">{count}</span>
+                        </div>
                         <div className="text-[9.5px] font-[500] text-gray-400 mt-0.5">{label}</div>
                     </div>
                 ))}

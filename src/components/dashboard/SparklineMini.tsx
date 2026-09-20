@@ -1,4 +1,4 @@
-const STROKE = '#6366f1';
+const STROKE = '#059669';
 
 export function SparklineMini({ }: { data?: number[]; color?: string }) {
     return (

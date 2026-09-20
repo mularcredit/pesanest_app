@@ -17,12 +17,14 @@ interface ExpenseStatusSummaryProps {
     rejected:  StatusGroup;
 }
 
+const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+
 const ROWS = [
-    { key: 'draft',     label: 'Draft',     Icon: PiNotePencil,  color: '#9ca3af', light: 'rgba(156,163,175,0.1)'  },
-    { key: 'submitted', label: 'Pending',   Icon: PiHourglass,   color: '#f59e0b', light: 'rgba(245,158,11,0.1)'   },
-    { key: 'approved',  label: 'Approved',  Icon: PiCheckCircle, color: '#6366f1', light: 'rgba(99,102,241,0.1)'   },
-    { key: 'paid',      label: 'Paid',      Icon: PiCoins,       color: '#10b981', light: 'rgba(16,185,129,0.1)'   },
-    { key: 'rejected',  label: 'Rejected',  Icon: PiXCircle,     color: '#ef4444', light: 'rgba(239,68,68,0.1)'    },
+    { key: 'draft',     label: 'Draft',     Icon: PiNotePencil,  color: '#6b7280', light: 'rgba(107,114,128,0.1)'  },
+    { key: 'submitted', label: 'Pending',   Icon: PiHourglass,   color: '#d97706', light: 'rgba(217,119,6,0.1)'    },
+    { key: 'approved',  label: 'Approved',  Icon: PiCheckCircle, color: '#059669', light: 'rgba(5,150,105,0.1)'    },
+    { key: 'paid',      label: 'Paid',      Icon: PiCoins,       color: '#059669', light: 'rgba(5,150,105,0.1)'    },
+    { key: 'rejected',  label: 'Rejected',  Icon: PiXCircle,     color: '#dc2626', light: 'rgba(220,38,38,0.1)'    },
 ] as const;
 
 export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
@@ -32,7 +34,7 @@ export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
     const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
 
     return (
-        <div className="card-premium p-5">
+        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
             {/* Header */}
             <div className="flex items-start justify-between mb-5">
                 <div>
@@ -94,7 +96,7 @@ export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
 
             {/* Footer total */}
             <div className="mt-4 pt-3 flex items-center justify-between"
-                style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
+                style={{ borderTop: HAIRLINE }}>
                 <span className="text-[11px] text-gray-400">Total value</span>
                 <span className="text-[12.5px] font-[700] text-gray-900 font-mono tabular-nums">
                     KES {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
