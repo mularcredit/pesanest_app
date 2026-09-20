@@ -490,7 +490,7 @@
 /* ─────────────────────────────────────────────────────────────
    Sidebar light mode — nav items & sub-items
 ───────────────────────────────────────────────────────────── */
-[data-theme='light'] .sb { background: #3730a3 !important; border-right-color: rgba(255,255,255,0.06) !important; }
+[data-theme='light'] .sb { background: #016608 !important; border-right-color: rgba(255,255,255,0.06) !important; }
 [data-theme='light'] .sb-logo { background: transparent !important; }
 [data-theme='light'] .nav-sub-list::before { background: rgba(255,255,255,0.12) !important; }
 [data-theme='light'] .sb-foot { background: transparent !important; }
