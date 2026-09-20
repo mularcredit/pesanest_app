@@ -8,8 +8,8 @@
 }
 
 :root {
-  /* Dark Mode Core — cool dark indigo/purple-blue */
-  --page: #05050F;
+  /* Dark Mode Core — neutral base */
+  --page: #0A0A0A;
   --sidebar: rgba(0, 122, 61, 0.45);
   --sidebar-grad: linear-gradient(180deg, rgba(0, 110, 55, 0.55) 0%, rgba(0, 90, 45, 0.40) 100%);
   --card: #120F1F;
@@ -121,8 +121,8 @@
 }
 
 [data-theme='light'] {
-  /* Light Mode Surfaces — cool vivid orange tint */
-  --page: #ECEAFF;
+  /* Light Mode Surfaces — neutral base */
+  --page: #F5F5F5;
   --sidebar: #007A3D;
   --sidebar-grad: #007A3D;
   --card: #FFFFFF;
