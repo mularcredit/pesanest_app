@@ -10,8 +10,8 @@
 :root {
   /* Dark Mode Core — cool dark indigo/purple-blue */
   --page: #05050F;
-  --sidebar: rgba(1, 102, 8, 0.45);
-  --sidebar-grad: linear-gradient(180deg, rgba(2, 92, 12, 0.55) 0%, rgba(1, 70, 8, 0.40) 100%);
+  --sidebar: rgba(0, 122, 61, 0.45);
+  --sidebar-grad: linear-gradient(180deg, rgba(0, 110, 55, 0.55) 0%, rgba(0, 90, 45, 0.40) 100%);
   --card: #120F1F;
   --card-h: #1C1830;
   --bg-elevated: #120F1F;
@@ -53,6 +53,7 @@
   --sb-inactive: rgba(255, 255, 255, 0.78);
   --sb-active: #FFFFFF;
   --nav-line: rgba(255, 255, 255, 0.22);
+  --nav-accent: #A3E635;
 
   /* Effects */
   --shadow: 0 8px 32px rgba(0, 0, 0, 0.5);
@@ -122,8 +123,8 @@
 [data-theme='light'] {
   /* Light Mode Surfaces — cool vivid orange tint */
   --page: #ECEAFF;
-  --sidebar: #016608;
-  --sidebar-grad: #016608;
+  --sidebar: #007A3D;
+  --sidebar-grad: #007A3D;
   --card: #FFFFFF;
   --card-h: #F5F4FF;
   --bg-elevated: #FFFFFF;
@@ -152,10 +153,11 @@
   --t4: #888888;
   --t-muted: #555555;
 
-  /* Sidebar Dark Indigo Tones */
+  /* Sidebar Green Tones */
   --sb-inactive: #FFFFFF;
   --sb-active: #FFFFFF;
   --nav-line: rgba(255, 255, 255, 0.15);
+  --nav-accent: #A3E635;
 
   /* Subtle Light Mode Shadows */
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -490,7 +492,7 @@
 /* ─────────────────────────────────────────────────────────────
    Sidebar light mode — nav items & sub-items
 ───────────────────────────────────────────────────────────── */
-[data-theme='light'] .sb { background: #016608 !important; border-right-color: rgba(255,255,255,0.06) !important; }
+[data-theme='light'] .sb { background: #007A3D !important; border-right-color: rgba(255,255,255,0.06) !important; }
 [data-theme='light'] .sb-logo { background: transparent !important; }
 [data-theme='light'] .nav-sub-list::before { background: rgba(255,255,255,0.12) !important; }
 [data-theme='light'] .sb-foot { background: transparent !important; }
@@ -503,16 +505,16 @@
     background-color: #FFFFFF !important;
 }
 
-/* Dark indigo sidebar — hover & active overrides */
+/* Green sidebar — hover & active overrides */
 [data-theme='light'] .nav-item:hover {
     background: rgba(255,255,255,0.07) !important;
     border-left-color: transparent !important;
 }
 [data-theme='light'] .nav-item.on {
     background: rgba(255,255,255,0.11) !important;
-    border-left-color: rgba(255,255,255,0.55) !important;
+    border-left-color: var(--nav-accent) !important;
 }
-[data-theme='light'] .nav-item.on svg { color: #FFFFFF !important; opacity: 1 !important; }
+[data-theme='light'] .nav-item.on svg { color: var(--nav-accent) !important; opacity: 1 !important; }
 [data-theme='light'] .nav-group-trigger:hover {
     background: rgba(255,255,255,0.07) !important;
     border-left-color: transparent !important;
@@ -1446,7 +1448,7 @@ button { font-weight: 400 !important; }
 
 /* Sidebar & Nav */
 .sb {
-    width: 220px;
+    width: 240px;
     flex-shrink: 0;
     background: var(--sidebar);
     border-right: 1px solid rgba(0, 0, 0, 0.07);
@@ -1649,14 +1651,14 @@ button { font-weight: 400 !important; }
 }
 
 .nav-sub-item.on {
-    color: var(--p-bright);
+    color: var(--nav-accent);
     font-weight: 600;
     background: rgba(255, 255, 255, 0.12);
 }
 
 .nav-sub-item.on svg {
     opacity: 1;
-    color: var(--p-bright);
+    color: var(--nav-accent);
 }
 
 .nav-sub-item.on:hover {
@@ -1691,7 +1693,7 @@ button { font-weight: 400 !important; }
 .nav-item.on {
   color: var(--sb-active);
   font-weight: 600;
-  border-left-color: var(--t3);
+  border-left-color: var(--nav-accent);
   background: rgba(0, 0, 0, 0.05);
 }
 
@@ -1702,7 +1704,7 @@ button { font-weight: 400 !important; }
 }
 
 .nav-item.on svg {
-    color: var(--t2);
+    color: var(--nav-accent);
     opacity: 1;
 }
 
