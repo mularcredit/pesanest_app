@@ -5,6 +5,8 @@ import { FinancialReports } from '@/lib/accounting/reports';
 import { PiFileText, PiInfo } from 'react-icons/pi';
 import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
+import { BrandLogo } from '@/components/ui/BrandLogo';
+import { EditableImage } from '@/components/finance-studio/EditableImage';
 import Link from 'next/link';
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
@@ -118,6 +120,7 @@ export default async function ManagementReportPage({
         bs,
         cashPosition,
         companySettingRow,
+        watermarkSettingRow,
         requisitionsInPeriod,
         activeBudgets,
     ] = await Promise.all([
@@ -125,6 +128,7 @@ export default async function ManagementReportPage({
         FinancialReports.getBalanceSheet(toDate),
         getCashPosition(toDate),
         (prisma as any).systemSetting.findUnique({ where: { key: 'company_name' } }).catch(() => null),
+        (prisma as any).systemSetting.findUnique({ where: { key: 'watermark_logo' } }).catch(() => null),
         prisma.requisition.findMany({ where: { createdAt: { gte: fromDate, lte: toDate } } }),
         prisma.monthlyBudget.findMany({
             where: { month: toDate.getUTCMonth() + 1, year: toDate.getUTCFullYear(), status: 'APPROVED' },
@@ -133,6 +137,11 @@ export default async function ManagementReportPage({
     ]);
 
     const companyName = companySettingRow?.value || 'Company';
+    // '__REMOVE__' is EditableImage's sentinel for "logo was explicitly cleared" —
+    // treat that the same as "never uploaded" (no watermark), not as a real URL.
+    const watermarkUrl = watermarkSettingRow?.value && watermarkSettingRow.value !== '__REMOVE__'
+        ? watermarkSettingRow.value
+        : null;
 
     // ── Requisition pipeline ──
     const byStatus = (s: string) => requisitionsInPeriod.filter((r: any) => r.status === s);
@@ -234,7 +243,31 @@ export default async function ManagementReportPage({
     };
 
     return (
-        <div className="pb-20 space-y-5 max-w-[960px]">
+        <div className="pb-20 space-y-5 max-w-[960px] relative">
+
+            {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
+                 Negative z-index so it paints beneath normal-flow siblings regardless
+                 of DOM order (an absolutely-positioned z-index:0 element would actually
+                 paint ABOVE later static content per CSS stacking rules — this avoids that). ── */}
+            {watermarkUrl && (
+                <img
+                    src={watermarkUrl}
+                    alt=""
+                    aria-hidden="true"
+                    className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[520px] max-w-[85%] opacity-[0.05] pointer-events-none select-none print:opacity-[0.05] -z-10"
+                />
+            )}
+
+            {/* ── Letterhead: Pesanest mark + the company's own uploadable logo ── */}
+            <div className="flex items-center justify-between gap-4 pb-4" style={{ borderBottom: HAIRLINE }}>
+                <BrandLogo width={130} height={34} color="#111827" />
+                <EditableImage
+                    settingKey="watermark_logo"
+                    defaultSrc=""
+                    alt="Company Logo"
+                    className="w-[100px] h-[50px]"
+                />
+            </div>
 
             {/* ── Header ── */}
             <div className="flex items-start justify-between gap-4 flex-wrap">
