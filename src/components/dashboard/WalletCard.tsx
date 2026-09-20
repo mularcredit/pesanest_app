@@ -1,6 +1,7 @@
 "use client";
 
 import { useState, useRef, useEffect } from "react";
+import { Figtree } from "next/font/google";
 
 import {
     PiX, PiCheck, PiArrowsLeftRight,
@@ -11,6 +12,8 @@ import { useToast } from "@/components/ui/ToastProvider";
 import Image from "next/image";
 import { createPortal } from "react-dom";
 import Link from "next/link";
+
+const figtree = Figtree({ subsets: ["latin"], weight: ["400", "500", "600"] });
 
 interface WalletCardProps {
     balance: number;
@@ -42,7 +45,7 @@ export function WalletCard({
             <div className="w-full flex flex-col gap-2">
 
                 {/* ── CARD ── */}
-                <div className="w-full rounded-[16px] overflow-hidden relative transition-transform duration-300 ease-out hover:-translate-y-1"
+                <div className={`w-full rounded-[16px] overflow-hidden relative transition-transform duration-300 ease-out hover:-translate-y-1 ${figtree.className}`}
                     style={{
                         aspectRatio: '1.586 / 1',
                         boxShadow: `
@@ -95,7 +98,7 @@ export function WalletCard({
                                 WebkitMaskPosition: 'left center',
                                 maskPosition: 'left center',
                             }} />
-                            <span className="text-[8px] font-[700] uppercase tracking-[0.18em]"
+                            <span className="text-[8px] font-[600] uppercase tracking-[0.18em]"
                                 style={{ color: 'rgba(255,255,255,0.35)' }}>
                                 Corporate
                             </span>
@@ -124,14 +127,14 @@ export function WalletCard({
                                     style={{ color: 'rgba(255,255,255,0.4)' }}>
                                     Available Balance
                                 </p>
-                                <p className="text-[22px] font-[800] font-mono tabular-nums text-white leading-none"
+                                <p className="text-[22px] font-[600] tabular-nums text-white leading-none"
                                     style={{ letterSpacing: '-0.02em' }}>
                                     {currency} {balance.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                 </p>
                             </div>
 
                             {/* Card number */}
-                            <p className="font-mono text-[11.5px] font-[500] tracking-[0.2em]"
+                            <p className="text-[11.5px] font-[500] tracking-[0.2em]"
                                 style={{ color: 'rgba(255,255,255,0.75)' }}>
                                 •••• &nbsp;•••• &nbsp;•••• &nbsp;{last4}
                             </p>
@@ -143,7 +146,7 @@ export function WalletCard({
                                         style={{ color: 'rgba(255,255,255,0.35)' }}>
                                         Card Holder
                                     </p>
-                                    <p className="text-[10.5px] font-[700] uppercase tracking-[0.07em] text-white">
+                                    <p className="text-[10.5px] font-[600] uppercase tracking-[0.07em] text-white">
                                         {displayName}
                                     </p>
                                 </div>
@@ -152,7 +155,7 @@ export function WalletCard({
                                         style={{ color: 'rgba(255,255,255,0.35)' }}>
                                         Valid Thru
                                     </p>
-                                    <p className="font-mono text-[10.5px] font-[600]"
+                                    <p className="text-[10.5px] font-[600]"
                                         style={{ color: 'rgba(255,255,255,0.85)' }}>
                                         {expiry}
                                     </p>
