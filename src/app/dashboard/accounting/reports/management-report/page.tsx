@@ -196,6 +196,8 @@ export default async function ManagementReportPage({
         subtitle: `Business Overview · ${periodLabel}`,
         company: companyName,
         currency: 'KES',
+        logoUrl: '/pesanest/pesanest-light-new.png',
+        watermarkUrl: watermarkUrl ?? undefined,
         sections: [
             {
                 title: 'Key Metrics',

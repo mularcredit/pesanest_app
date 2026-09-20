@@ -31,6 +31,8 @@ export interface ReportExportData {
     sections: ReportSection[];
     showPrior?: boolean;
     currency?: string;       // default "KES"
+    logoUrl?: string;        // optional brand mark, top-left of the PDF header band
+    watermarkUrl?: string;   // optional low-opacity image centered behind the whole page
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -40,6 +42,37 @@ function fmt(n: number, neg = false): string {
 }
 
 function csvEsc(v: string) { return `"${v.replace(/"/g, '""')}"`; }
+
+// Fetches a same-origin image URL and returns it as a data URI plus its
+// natural dimensions/format, ready for jsPDF's addImage — which needs raw
+// image data, not a URL. Same-origin fetch carries the session cookie
+// automatically, so this works for both public files and auth-gated
+// uploaded logos. Returns null on any failure so a broken/missing image
+// never breaks the rest of the export.
+async function loadImageForPdf(url: string): Promise<{ dataUri: string; width: number; height: number; format: string } | null> {
+    try {
+        const res = await fetch(url);
+        if (!res.ok) return null;
+        const blob = await res.blob();
+        const dataUri = await new Promise<string>((resolve, reject) => {
+            const reader = new FileReader();
+            reader.onload = () => resolve(reader.result as string);
+            reader.onerror = reject;
+            reader.readAsDataURL(blob);
+        });
+        const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
+            const img = new Image();
+            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
+            img.onerror = reject;
+            img.src = dataUri;
+        });
+        if (!width || !height) return null;
+        const mime = dataUri.match(/^data:image\/(\w+);/)?.[1]?.toUpperCase() ?? 'PNG';
+        return { dataUri, width, height, format: mime === 'JPG' ? 'JPEG' : mime };
+    } catch {
+        return null;
+    }
+}
 
 // ── component ─────────────────────────────────────────────────────────────────
 export function ReportExportButton({ data }: { data: ReportExportData }) {
@@ -53,26 +86,53 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
         try {
             const doc = new jsPDF({ orientation: "portrait", unit: "mm", format: "a4" });
             const W = doc.internal.pageSize.getWidth();
+            const H = doc.internal.pageSize.getHeight();
+
+            // Watermark — drawn first, before anything else, so it sits behind
+            // the header band and the table rather than on top of them.
+            if (data.watermarkUrl) {
+                const wm = await loadImageForPdf(data.watermarkUrl);
+                if (wm) {
+                    const maxSize = 120;
+                    const scale = Math.min(maxSize / wm.width, maxSize / wm.height);
+                    const w = wm.width * scale, h = wm.height * scale;
+                    doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
+                    doc.addImage(wm.dataUri, wm.format, (W - w) / 2, (H - h) / 2, w, h);
+                    doc.setGState(new (doc as any).GState({ opacity: 1 }));
+                }
+            }
 
             // Header
-            doc.setFillColor(99, 102, 241);
+            doc.setFillColor(5, 150, 105);
             doc.rect(0, 0, W, 28, "F");
+
+            let textX = 14;
+            if (data.logoUrl) {
+                const logo = await loadImageForPdf(data.logoUrl);
+                if (logo) {
+                    const boxH = 16;
+                    const w = (logo.width / logo.height) * boxH;
+                    doc.addImage(logo.dataUri, logo.format, 14, 6, w, boxH);
+                    textX = 14 + w + 6;
+                }
+            }
+
             doc.setTextColor(255, 255, 255);
             doc.setFontSize(16); doc.setFont("helvetica", "bold");
-            doc.text(data.title, 14, 12);
+            doc.text(data.title, textX, 12);
             doc.setFontSize(8); doc.setFont("helvetica", "normal");
-            doc.text(data.subtitle, 14, 19);
-            doc.text(`${data.company} · Generated ${new Date().toLocaleString("en-KE")}`, 14, 24);
+            doc.text(data.subtitle, textX, 19);
+            doc.text(`${data.company} · Generated ${new Date().toLocaleString("en-KE")}`, textX, 24);
 
             const rows: (string | { content: string; styles: object })[][] = [];
 
             for (const section of data.sections) {
                 // Section header row
                 rows.push([
-                    { content: section.title.toUpperCase(), styles: { fillColor: [240, 240, 255], textColor: [99, 102, 241], fontStyle: "bold", fontSize: 7.5 } },
-                    { content: "", styles: { fillColor: [240, 240, 255] } },
-                    ...(data.showPrior ? [{ content: "", styles: { fillColor: [240, 240, 255] } }] : []),
-                    { content: "", styles: { fillColor: [240, 240, 255] } },
+                    { content: section.title.toUpperCase(), styles: { fillColor: [236, 253, 245], textColor: [5, 150, 105], fontStyle: "bold", fontSize: 7.5 } },
+                    { content: "", styles: { fillColor: [236, 253, 245] } },
+                    ...(data.showPrior ? [{ content: "", styles: { fillColor: [236, 253, 245] } }] : []),
+                    { content: "", styles: { fillColor: [236, 253, 245] } },
                 ]);
 
                 for (const line of section.lines) {
@@ -83,9 +143,9 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                     const priorStyle: any = { halign: "right", textColor: [180, 180, 180] };
 
                     if (line.isGrandTotal) {
-                        nameStyle.fillColor = [245, 245, 255]; nameStyle.fontStyle = "bold"; nameStyle.fontSize = 9;
-                        amtStyle.fillColor = [245, 245, 255]; amtStyle.fontStyle = "bold"; amtStyle.fontSize = 9;
-                        priorStyle.fillColor = [245, 245, 255];
+                        nameStyle.fillColor = [236, 253, 245]; nameStyle.fontStyle = "bold"; nameStyle.fontSize = 9;
+                        amtStyle.fillColor = [236, 253, 245]; amtStyle.fontStyle = "bold"; amtStyle.fontSize = 9;
+                        priorStyle.fillColor = [236, 253, 245];
                     } else if (line.isSubtotal || line.isBold) {
                         nameStyle.fontStyle = "bold"; amtStyle.fontStyle = "bold";
                     }
@@ -113,7 +173,7 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                 head: [colHeader],
                 body: rows as any,
                 theme: "plain",
-                headStyles: { fillColor: [99, 102, 241], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
+                headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold" },
                 bodyStyles: { fontSize: 8, minCellHeight: 5.5 },
                 columnStyles: data.showPrior
                     ? { 0: { cellWidth: 100 }, 1: { cellWidth: 5 }, 2: { cellWidth: 35, halign: "right" }, 3: { cellWidth: 42, halign: "right" } }
