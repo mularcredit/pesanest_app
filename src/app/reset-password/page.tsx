@@ -117,7 +117,7 @@ function ResetPasswordForm() {
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-8 text-center">
                         <Link href="/" className="inline-block">
-                            <BrandLogo width={120} height={28} color="#6366F1" />
+                            <BrandLogo width={120} height={28} color="#007A3D" />
                         </Link>
                     </div>
 

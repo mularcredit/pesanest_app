@@ -212,7 +212,7 @@ function ReceiptStudioContent() {
                         <PiArrowLeft className="text-[13px]" /> Back to Dashboard
                     </button>
                     <div style={isLoading ? { animation: 'logo-pulse 1.2s ease-in-out infinite' } : {}}>
-                        <BrandLogo width={140} height={32} color="#4338ca" />
+                        <BrandLogo width={140} height={32} color="#007A3D" />
                     </div>
                 </div>
 
