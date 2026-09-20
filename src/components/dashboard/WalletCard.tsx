@@ -42,16 +42,22 @@ export function WalletCard({
             <div className="w-full flex flex-col gap-2">
 
                 {/* ── CARD ── */}
-                <div className="w-full rounded-[16px] overflow-hidden relative"
+                <div className="w-full rounded-[16px] overflow-hidden relative transition-transform duration-300 ease-out hover:-translate-y-1"
                     style={{
                         aspectRatio: '1.586 / 1',
-                        boxShadow: '0 8px 32px rgba(0,0,0,0.4), 0 2px 8px rgba(0,0,0,0.2)',
+                        boxShadow: `
+                            0 20px 40px rgba(0,58,25,0.35),
+                            0 8px 16px rgba(0,0,0,0.3),
+                            0 2px 4px rgba(0,0,0,0.25),
+                            inset 0 1px 0 rgba(255,255,255,0.18),
+                            inset 0 -1px 0 rgba(0,0,0,0.3)
+                        `,
                     }}>
 
 
-                    {/* Indigo base */}
+                    {/* Green base */}
                     <div className="absolute inset-0"
-                        style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 35%, #1e1b4b 70%, #0a0618 100%)' }}
+                        style={{ background: 'linear-gradient(135deg, #14C46E 0%, #007A3D 35%, #054F27 70%, #021C0E 100%)' }}
                     />
                     {/* Wave pattern overlay */}
                     <div className="absolute inset-0" style={{
@@ -62,6 +68,14 @@ export function WalletCard({
                         opacity: 0.18,
                         mixBlendMode: 'screen',
                     }} />
+                    {/* Glossy light sheen — diagonal highlight band for a raised, glass-like surface */}
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                        background: 'linear-gradient(115deg, rgba(255,255,255,0.22) 0%, rgba(255,255,255,0.06) 22%, rgba(255,255,255,0) 40%)',
+                    }} />
+                    {/* Soft radial glow, upper-left — simulates a light source catching the surface */}
+                    <div className="absolute inset-0 pointer-events-none" style={{
+                        background: 'radial-gradient(120% 90% at 8% 0%, rgba(255,255,255,0.16) 0%, rgba(255,255,255,0) 55%)',
+                    }} />
 
                     {/* Card body */}
                     <div className="absolute inset-0 p-5 flex flex-col justify-between">
@@ -69,8 +83,8 @@ export function WalletCard({
                         {/* TOP: logo left · type label right */}
                         <div className="flex items-center justify-between">
                             <div style={{
-                                width: 110,
-                                height: 26,
+                                width: 150,
+                                height: 36,
                                 backgroundColor: 'rgba(255,255,255,0.90)',
                                 WebkitMaskImage: 'url(/off-logo.png)',
                                 maskImage: 'url(/off-logo.png)',
@@ -153,7 +167,7 @@ export function WalletCard({
                 <div className="grid grid-cols-2 gap-2">
                     <Link href="/dashboard/requisitions"
                         className="flex items-center justify-center gap-1.5 py-2.5 rounded-[8px] text-[12px] font-[600] transition-all hover:brightness-105 active:scale-[0.98]"
-                        style={{ background: '#6366f1', color: '#fff' }}>
+                        style={{ background: '#007A3D', color: '#fff' }}>
                         <PiHandCoins className="text-[13px]" />
                         Requests
                     </Link>
