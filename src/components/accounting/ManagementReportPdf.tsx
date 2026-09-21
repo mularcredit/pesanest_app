@@ -430,7 +430,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 const n = items.length;
                 const w = W - 2 * M;
                 const colW = w / n;
-                const boxH = 25;
+                apply({ size: 6.5, color: FAINT });
+                const subLinesByItem = items.map(k => k.sub ? (doc.splitTextToSize(k.sub, colW - 8) as string[]).slice(0, 2) : []);
+                const maxSubLines = Math.max(0, ...subLinesByItem.map(l => l.length));
+                const subLineH = 3.3;
+                const boxH = 21 + Math.max(1, maxSubLines) * subLineH + 2;
                 ensureSpace(boxH + 12);
                 const y0 = cursorY;
                 doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.25);
@@ -442,11 +446,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     doc.text(k.value, x + 5, y0 + 10.5);
                     apply({ weight: "bold", size: 6.5, color: FAINT });
                     doc.text(k.label.toUpperCase(), x + 5, y0 + 16.5);
-                    if (k.sub) {
-                        apply({ size: 6.5, color: FAINT });
-                        const subLines = doc.splitTextToSize(k.sub, colW - 8) as string[];
-                        doc.text(subLines[0] ?? "", x + 5, y0 + 21);
-                    }
+                    apply({ size: 6.5, color: FAINT });
+                    subLinesByItem[i].forEach((ln, li) => doc.text(ln, x + 5, y0 + 20.5 + li * subLineH));
                 });
                 cursorY = y0 + boxH + 12;
             }
@@ -694,7 +695,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             const marginOnly = (netResultKpi?.sub ?? "").split("  ·  ")[0];
             lead(`${data.meta.companyName} reported a net ${netIsLoss ? "loss" : "profit"} of ${netResultKpi?.value ?? fmtMoney(0)}, a ${marginOnly}, on cash reserves of ${cashKpi?.value ?? fmtMoney(0)}.`);
 
-            heading("Key Financial Metrics", 0, 37);
+            heading("Key Financial Metrics", 0, 45);
             kpiBand(data.kpis);
 
             heading("Executive Summary", 0, 17);
