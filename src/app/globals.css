@@ -1881,11 +1881,6 @@ button { font-weight: 400 !important; }
     color: rgba(255,255,255,0.3);
 }
 
-.sb-powered-name {
-    font-weight: 600;
-    color: rgba(255,255,255,0.4);
-}
-
 .btn-logout {
     width: 26px;
     height: 26px;

@@ -370,8 +370,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
 
                 <div className="sb-powered">
                     <span>Powered by</span>
-                    <BrandLogo width={14} height={14} color="rgba(255,255,255,0.35)" />
-                    <span className="sb-powered-name">Pesanest</span>
+                    <BrandLogo width={58} height={18} color="rgba(255,255,255,0.4)" />
                 </div>
             </div>
         </aside>
