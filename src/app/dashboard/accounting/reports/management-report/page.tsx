@@ -8,6 +8,12 @@ import { BrandLogo } from '@/components/ui/BrandLogo';
 import { EditableImage } from '@/components/finance-studio/EditableImage';
 import { EditableCompanyName } from '@/components/finance-studio/EditableCompanyName';
 import Link from 'next/link';
+import { Inter } from 'next/font/google';
+
+// Scoped to this page only — the rest of the app reads in Lexend/Outfit,
+// but a report meant to be printed and shared reads better set in Inter,
+// the same typeface the PDF export below now embeds for itself.
+const inter = Inter({ subsets: ['latin'], display: 'swap' });
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.08)';
 const SEV_COLOR: Record<string, string> = { high: '#dc2626', medium: '#d97706', low: '#059669' };
@@ -83,25 +89,28 @@ function presetToDates(key: string, now: Date): { from: string; to: string } {
 
 function LayerHeading({ n, title }: { n: number; title: string }) {
     return (
-        <div>
-            <div className="flex items-baseline gap-3">
-                <span className="text-[12px] font-[700] text-[#059669] tracking-[0.1em]">{String(n).padStart(2, '0')}</span>
-                <h2 className="text-[18px] font-[700] text-gray-900">{title}</h2>
-            </div>
-            <div className="h-px bg-gray-200 mt-3" />
+        <div className="flex items-baseline gap-4 pb-3.5" style={{ borderBottom: '2px solid #059669' }}>
+            <span className="text-[11px] font-[700] uppercase tracking-[0.1em] px-2.5 py-1 rounded-[5px] whitespace-nowrap" style={{ color: '#059669', background: '#ECFDF5' }}>
+                Section {String(n).padStart(2, '0')}
+            </span>
+            <h2 className="text-[26px] font-[700] text-gray-900 tracking-[-0.02em] leading-none">{title}</h2>
         </div>
     );
 }
 
 function SubTitle({ children }: { children: React.ReactNode }) {
-    return <h3 className="text-[13px] font-[700] text-gray-900 mb-3 mt-6 first:mt-0">{children}</h3>;
+    return (
+        <h3 className="text-[11.5px] font-[700] uppercase tracking-[0.1em] mb-3.5 mt-8 pb-2 first:mt-0" style={{ color: '#059669', borderBottom: HAIRLINE }}>
+            {children}
+        </h3>
+    );
 }
 
 // A page's point, stated first — a thin green rule, larger type than body
 // text, before the tables that back it up.
 function Lead({ children }: { children: React.ReactNode }) {
     return (
-        <p className="text-[14px] text-gray-900 leading-relaxed pl-4 py-1" style={{ borderLeft: '3px solid #059669' }}>
+        <p className="text-[16px] text-gray-900 leading-[1.6] pl-5 py-1" style={{ borderLeft: '3px solid #059669' }}>
             {children}
         </p>
     );
@@ -110,36 +119,35 @@ function Lead({ children }: { children: React.ReactNode }) {
 // A basis-of-preparation / methodology note — not just a plain paragraph.
 function Callout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="px-5 py-4" style={{ background: '#ECFDF5', borderLeft: '4px solid #059669' }}>
+        <div className="px-5 py-4" style={{ background: '#ECFDF5', borderLeft: '4px solid #059669', borderRadius: '0 10px 10px 0' }}>
             <p className="text-[10.5px] font-[700] uppercase tracking-[0.08em] text-[#047857] mb-1.5">Basis of Preparation</p>
             <p className="text-[12px] text-gray-700 leading-relaxed">{children}</p>
         </div>
     );
 }
 
-// A flat "Metric | KES" table — used for Key Financial Metrics, matching the
-// ruled-table treatment of every other section instead of a tile band.
-function MetricTable({ items }: { items: { label: string; value: string; sub: string }[] }) {
+// A band of stat tiles — big colored figures over a small caps label, the
+// way a set of headline numbers earns its own visual weight instead of
+// reading as just another two-column table.
+const KPI_TONE: Record<string, string> = { brand: '#059669', green: '#059669', red: '#dc2626', amber: '#d97706', dark: '#111827' };
+function kpiTone(label: string, value: string): string {
+    if (label === 'Net Result') return value.trim().startsWith('(') ? 'red' : 'green';
+    if (label === 'Pending Approvals') return 'amber';
+    if (label === 'Total Expenditure') return 'dark';
+    return 'brand';
+}
+function KpiBand({ items }: { items: { label: string; value: string; sub: string }[] }) {
     return (
-        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
-            <table className="w-full text-[12px]">
-                <thead>
-                    <tr style={{ background: '#059669' }}>
-                        <th className="text-left font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Metric</th>
-                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">KES</th>
-                    </tr>
-                </thead>
-                <tbody>
-                    {items.map((k, i) => (
-                        <tr key={k.label} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
-                            <td className="px-5 py-3 text-gray-700 leading-relaxed">
-                                {k.label}{k.sub && <span className="text-gray-400"> — {k.sub}</span>}
-                            </td>
-                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900 font-[600]">{k.value}</td>
-                        </tr>
-                    ))}
-                </tbody>
-            </table>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-5 divide-x divide-y divide-gray-100 overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
+            {items.map(k => (
+                <div key={k.label} className="px-5 py-4">
+                    <div className="font-mono tabular-nums font-[700] leading-none" style={{ fontSize: 22, letterSpacing: '-0.02em', color: KPI_TONE[kpiTone(k.label, k.value)] }}>
+                        {k.value}
+                    </div>
+                    <div className="text-[10.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mt-2.5">{k.label}</div>
+                    {k.sub && <div className="text-[10.5px] text-gray-400 mt-1 leading-snug">{k.sub}</div>}
+                </div>
+            ))}
         </div>
     );
 }
@@ -155,7 +163,7 @@ function StatementTable({ groups, totalLabel, totalAmount }: {
     totalAmount: number;
 }) {
     return (
-        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+        <div className="overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
@@ -214,7 +222,7 @@ function CategoryBar({ category, amount, share, count, maxAmount, rank }: { cate
 
 function PipelineTable({ stages }: { stages: { label: string; count: number; amount: number }[] }) {
     return (
-        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+        <div className="overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
@@ -242,7 +250,7 @@ function PipelineTable({ stages }: { stages: { label: string; count: number; amo
 // (MonthlyBudget/BudgetItem) but this report wasn't previously showing.
 function BudgetTable({ rows }: { rows: { category: string; allocated: number; spent: number; pctUsed: number }[] }) {
     return (
-        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+        <div className="overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
@@ -277,7 +285,7 @@ function BudgetTable({ rows }: { rows: { category: string; allocated: number; sp
 function BoardDecisions({ items }: { items: string[] }) {
     if (items.length === 0) return null;
     return (
-        <div className="px-5 py-4" style={{ background: '#FEF2F2', borderLeft: '4px solid #dc2626' }}>
+        <div className="px-5 py-4" style={{ background: '#FEF2F2', borderLeft: '4px solid #dc2626', borderRadius: '0 10px 10px 0' }}>
             <p className="text-[10.5px] font-[700] uppercase tracking-[0.08em] text-[#b91c1c] mb-2">Requires Board Decision</p>
             <ul className="space-y-1.5">
                 {items.map((item, i) => (
@@ -658,7 +666,7 @@ export default async function ManagementReportPage({
     };
 
     return (
-        <div className="pb-20 space-y-10 max-w-[1120px] relative">
+        <div className={`${inter.className} pb-20 space-y-10 max-w-[1120px] relative`}>
 
             {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
                  Negative z-index so it paints beneath normal-flow siblings regardless
@@ -674,11 +682,16 @@ export default async function ManagementReportPage({
             )}
 
             {/* ── Masthead ── */}
-            <div className="relative z-10 bg-white overflow-hidden" style={{ border: HAIRLINE, borderLeft: '3px solid #059669' }}>
+            <div className="relative z-10 bg-white overflow-hidden" style={{ border: HAIRLINE, borderRadius: 12 }}>
+
+                {/* A single accent band across the head of the letterhead —
+                    the report's identity mark, the way a letterhead's rule
+                    reads before any text does. */}
+                <div className="h-[5px] w-full" style={{ background: '#059669' }} />
 
                 {/* Logo row: Pesanest mark (left), company name (center), the
                     company's own uploadable logo (right) */}
-                <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-3">
+                <div className="flex items-center justify-between gap-4 px-6 pt-5 pb-3">
                     <BrandLogo width={110} height={30} color="#111827" />
                     <div className="flex-1 flex justify-center px-2 min-w-0">
                         <EditableCompanyName value={companyName} className="text-[13px] font-[700] text-gray-900 text-center truncate max-w-full" />
@@ -691,8 +704,22 @@ export default async function ManagementReportPage({
                     />
                 </div>
 
+                {/* Title band — the document's title, given the scale a
+                    letterhead masthead earns rather than an app toolbar's. */}
+                <div className="flex items-end justify-between gap-4 px-6 pt-2 pb-5" style={{ borderTop: HAIRLINE }}>
+                    <div>
+                        <span className="inline-block text-[10.5px] font-[700] uppercase tracking-[0.12em] px-2.5 py-1 rounded-[5px] mb-2" style={{ color: '#047857', background: '#ECFDF5' }}>
+                            {monthLabel}
+                        </span>
+                        <h1 className="text-[28px] font-[700] text-gray-900 tracking-[-0.02em] leading-none">Management Report</h1>
+                    </div>
+                    <p className="text-[11px] text-gray-400 text-right leading-[1.6] whitespace-nowrap">
+                        {companyName}<br />Financial &amp; Operational Performance
+                    </p>
+                </div>
+
                 {/* Metadata strip */}
-                <div className="grid grid-cols-3 gap-4 px-5 py-4" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                <div className="grid grid-cols-3 gap-4 px-6 py-4" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
                     <div>
                         <p className="text-[10px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-1">Period</p>
                         <p className="text-[12px] font-[500] text-gray-800">{periodLabel}</p>
@@ -707,16 +734,8 @@ export default async function ManagementReportPage({
                     </div>
                 </div>
 
-                {/* Title band — plain letterhead text, no filled color banner:
-                    a filled green bar with an icon reads as an app header, not
-                    a document title. */}
-                <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: HAIRLINE }}>
-                    <h1 className="text-[15px] font-[700] text-gray-900 uppercase tracking-[0.06em]">Management Report</h1>
-                    <span className="text-[10px] font-[700] uppercase tracking-[0.12em]" style={{ color: '#047857' }}>{monthLabel}</span>
-                </div>
-
                 {/* Company details + confidentiality mark */}
-                <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5" style={{ borderTop: HAIRLINE }}>
+                <div className="px-6 py-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5">
                     <div className="flex flex-wrap gap-x-6 gap-y-1.5">
                         {registrationNumber && (
                             <p className="text-[11.5px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
@@ -725,7 +744,7 @@ export default async function ManagementReportPage({
                             <p className="text-[11.5px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
                         )}
                     </div>
-                    <p className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-300">Confidential — Internal Management Use</p>
+                    <p className="text-[10px] font-[700] uppercase tracking-[0.08em]" style={{ color: '#dc2626' }}>Confidential — Internal Management Use</p>
                 </div>
             </div>
 
@@ -757,7 +776,7 @@ export default async function ManagementReportPage({
                 </Lead>
 
                 <SubTitle>Key Financial Metrics</SubTitle>
-                <MetricTable items={reportData.kpis} />
+                <KpiBand items={reportData.kpis} />
 
                 <SubTitle>Executive Summary</SubTitle>
                 <p className="text-[13px] text-gray-600 leading-[1.75]">{executiveSummary}</p>
@@ -851,7 +870,7 @@ export default async function ManagementReportPage({
 
                 <SubTitle>Spending Analysis</SubTitle>
                 <Lead>{spendingAnalysisLead}</Lead>
-                <div className="bg-white" style={{ border: HAIRLINE }}>
+                <div className="bg-white overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
                     {topCategories.length === 0
                         ? <p className="px-5 py-5 text-[12px] text-gray-400 italic">No spending recorded this period</p>
                         : topCategories.slice(0, 8).map((c, i) => (
@@ -882,7 +901,7 @@ export default async function ManagementReportPage({
                 <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                     <div>
                         <SubTitle>Risks & Alerts</SubTitle>
-                        <div className="bg-white" style={{ border: HAIRLINE }}>
+                        <div className="bg-white overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
                             {risks.length > 0
                                 ? risks.map((r, i) => <RiskRow key={i} {...r} />)
                                 : <p className="px-5 py-5 text-[12px] text-gray-400 italic">No spending alerts identified for this period.</p>
@@ -892,7 +911,7 @@ export default async function ManagementReportPage({
 
                     <div>
                         <SubTitle>Management Actions</SubTitle>
-                        <div className="bg-white" style={{ border: HAIRLINE }}>
+                        <div className="bg-white overflow-hidden" style={{ border: HAIRLINE, borderRadius: 10 }}>
                             {actions.length > 0 ? (
                                 <>
                                     <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2.5" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
@@ -916,7 +935,7 @@ export default async function ManagementReportPage({
                 <LayerHeading n={4} title="Appendices" />
                 <SubTitle>A — Detailed Transactions ({requisitionsInPeriod.length})</SubTitle>
                 <p className="text-[12px] text-gray-400 -mt-1 mb-2">Full itemized listing of every requisition recorded in the reporting period, for reference.</p>
-                <div className="bg-white overflow-x-auto" style={{ border: HAIRLINE }}>
+                <div className="bg-white overflow-x-auto" style={{ border: HAIRLINE, borderRadius: 10 }}>
                     {requisitionsInPeriod.length === 0 ? (
                         <p className="px-5 py-5 text-[12px] text-gray-400 italic">No requisitions recorded in this period.</p>
                     ) : (

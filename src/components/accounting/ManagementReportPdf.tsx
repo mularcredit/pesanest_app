@@ -4,7 +4,7 @@ import { useState } from "react";
 import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PiDownloadSimple, PiFileCsv, PiFilePdf, PiPrinter, PiCaretDown } from "react-icons/pi";
-import { OUTFIT_REGULAR_BASE64, OUTFIT_BOLD_BASE64 } from "@/lib/pdf-fonts/outfit-font";
+import { INTER_REGULAR_BASE64, INTER_BOLD_BASE64 } from "@/lib/pdf-fonts/inter-font";
 import { fmtMoney, csvEsc, loadImageForPdf } from "@/lib/pdf-report-utils";
 
 // ── data model ─────────────────────────────────────────────────────────────
@@ -111,11 +111,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             const W = doc.internal.pageSize.getWidth();
             const H = doc.internal.pageSize.getHeight();
 
-            doc.addFileToVFS("Outfit-Regular.ttf", OUTFIT_REGULAR_BASE64);
-            doc.addFont("Outfit-Regular.ttf", "Outfit", "normal");
-            doc.addFileToVFS("Outfit-Bold.ttf", OUTFIT_BOLD_BASE64);
-            doc.addFont("Outfit-Bold.ttf", "Outfit", "bold");
-            doc.setFont("Outfit", "normal");
+            doc.addFileToVFS("Inter-Regular.ttf", INTER_REGULAR_BASE64);
+            doc.addFont("Inter-Regular.ttf", "Inter", "normal");
+            doc.addFileToVFS("Inter-Bold.ttf", INTER_BOLD_BASE64);
+            doc.addFont("Inter-Bold.ttf", "Inter", "bold");
+            doc.setFont("Inter", "normal");
 
             const logo = data.meta.logoUrl ? await loadImageForPdf(data.meta.logoUrl) : null;
             const companyLogo = data.meta.watermarkUrl ? await loadImageForPdf(data.meta.watermarkUrl) : null;
@@ -125,7 +125,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
 
             type Style = { weight?: "normal" | "bold"; size: number; color: [number, number, number] };
             function apply(s: Style) {
-                doc.setFont("Outfit", s.weight ?? "normal");
+                doc.setFont("Inter", s.weight ?? "normal");
                 doc.setFontSize(s.size);
                 doc.setTextColor(s.color[0], s.color[1], s.color[2]);
             }
@@ -230,7 +230,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         ["Cash Position", { content: cashKpi?.value ?? "0.00", styles: { halign: "right" } }],
                     ],
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 9.5, textColor: DARK },
+                    styles: { font: "Inter", fontSize: 9.5, textColor: DARK },
                     headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8 },
                     columnStyles: { 0: { cellWidth: tw - 45 }, 1: { cellWidth: 45, halign: "right" } },
                 });
@@ -345,7 +345,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 ensureSpace(boxH + 5);
                 const y0 = cursorY;
                 doc.setFillColor(...GREEN_TINT);
-                doc.rect(M, y0, W - 2 * M, boxH, "F");
+                doc.roundedRect(M, y0, W - 2 * M, boxH, 1.5, 1.5, "F");
                 doc.setFillColor(...GREEN);
                 doc.rect(M, y0, 1.2, boxH, "F");
                 apply({ weight: "bold", size: 9, color: GREEN_DARK });
@@ -369,7 +369,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 ensureSpace(boxH + 5);
                 const y0 = cursorY;
                 doc.setFillColor(...RED_TINT);
-                doc.rect(M, y0, W - 2 * M, boxH, "F");
+                doc.roundedRect(M, y0, W - 2 * M, boxH, 1.5, 1.5, "F");
                 doc.setFillColor(...SEV_COLOR.high);
                 doc.rect(M, y0, 1.2, boxH, "F");
                 apply({ weight: "bold", size: 9, color: RED_DARK });
@@ -417,26 +417,38 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 }
             }
 
-            // ── a flat "Metric | KES" table (Key Financial Metrics) ─────────
-            function metricTable(items: { label: string; value: string; sub: string }[]) {
-                ensureSpace(20);
-                autoTable(doc, {
-                    startY: cursorY,
-                    head: [["Metric", currency]],
-                    body: items.map((k, i) => [
-                        { content: `${k.label}${k.sub ? `  —  ${k.sub}` : ""}`, styles: i % 2 === 1 ? { fillColor: ZEBRA } : {} },
-                        { content: k.value, styles: { halign: "right", ...(i % 2 === 1 ? { fillColor: ZEBRA } : {}) } },
-                    ]),
-                    theme: "plain",
-                    styles: { font: "Outfit", fontSize: 10, textColor: DARK, cellPadding: { top: 3.2, bottom: 3.2, left: 4, right: 4 } },
-                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
-                    columnStyles: { 0: { cellWidth: W - 2 * M - 50 }, 1: { cellWidth: 50, halign: "right" } },
-                    margin: { top: TOP, left: M, right: M, bottom: 22 },
-                    rowPageBreak: "avoid",
-                    showHead: "everyPage",
-                    didDrawPage: () => drawChrome(),
+            // A row of stat tiles (Key Financial Metrics) — big colored figures
+            // over a small-caps label, matching the on-screen report's KPI
+            // band, in place of a flat two-column table.
+            function kpiTone(label: string, value: string): [number, number, number] {
+                if (label === "Net Result") return value.trim().startsWith("(") ? SEV_COLOR.high : GREEN;
+                if (label === "Pending Approvals") return SEV_COLOR.medium;
+                if (label === "Total Expenditure") return DARK;
+                return GREEN;
+            }
+            function kpiBand(items: { label: string; value: string; sub: string }[]) {
+                const n = items.length;
+                const w = W - 2 * M;
+                const colW = w / n;
+                const boxH = 25;
+                ensureSpace(boxH + 12);
+                const y0 = cursorY;
+                doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.25);
+                doc.roundedRect(M, y0, w, boxH, 1.5, 1.5, "S");
+                items.forEach((k, i) => {
+                    const x = M + i * colW;
+                    if (i > 0) { doc.line(x, y0, x, y0 + boxH); }
+                    apply({ weight: "bold", size: 13, color: kpiTone(k.label, k.value) });
+                    doc.text(k.value, x + 5, y0 + 10.5);
+                    apply({ weight: "bold", size: 6.5, color: FAINT });
+                    doc.text(k.label.toUpperCase(), x + 5, y0 + 16.5);
+                    if (k.sub) {
+                        apply({ size: 6.5, color: FAINT });
+                        const subLines = doc.splitTextToSize(k.sub, colW - 8) as string[];
+                        doc.text(subLines[0] ?? "", x + 5, y0 + 21);
+                    }
                 });
-                cursorY = (doc as any).lastAutoTable.finalY + 12;
+                cursorY = y0 + boxH + 12;
             }
 
             // Body rows for one statement group (label/amount lines + an
@@ -485,7 +497,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 ensureSpace(13);
                 const h = 11;
                 doc.setFillColor(17, 24, 39);
-                doc.rect(M, cursorY, W - 2 * M, h, "F");
+                doc.roundedRect(M, cursorY, W - 2 * M, h, 1.5, 1.5, "F");
                 apply({ weight: "bold", size: 11.5, color: [255, 255, 255] });
                 doc.text(label.toUpperCase(), M + 5, cursorY + 7.3);
                 doc.text(fmtMoney(amount), W - M - 5, cursorY + 7.3, { align: "right" });
@@ -523,7 +535,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [[leftGroup.label, currency]],
                     body: groupRows(leftGroup),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
+                    styles: { font: "Inter", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
                     headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 1: { halign: "right" } },
                     rowPageBreak: "avoid",
@@ -543,7 +555,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [[g.label, currency]],
                         body: groupRows(g),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
+                        styles: { font: "Inter", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
                         headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                         columnStyles: { 1: { halign: "right" } },
                         rowPageBreak: "avoid",
@@ -605,7 +617,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [["Category", "Items", "Share", currency]],
                     body: categories.map(c => [c.category, String(c.count), `${c.pct.toFixed(1)}%`, fmtMoney(c.amount)]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 8.5, textColor: MID, cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 } },
+                    styles: { font: "Inter", fontSize: 8.5, textColor: MID, cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 } },
                     headStyles: { fontStyle: "bold", fontSize: 8, textColor: FAINT },
                     columnStyles: { 0: { cellWidth: colW - 62 }, 1: { cellWidth: 18, halign: "right" }, 2: { cellWidth: 18, halign: "right" }, 3: { cellWidth: 26, halign: "right" } },
                     rowPageBreak: "avoid",
@@ -628,7 +640,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         { content: fmtMoney(s.amount), styles: { halign: "right", ...(i % 2 === 1 ? { fillColor: ZEBRA } : {}) } },
                     ]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 10, textColor: DARK, cellPadding: { top: 3.2, bottom: 3.2, left: 4, right: 4 } },
+                    styles: { font: "Inter", fontSize: 10, textColor: DARK, cellPadding: { top: 3.2, bottom: 3.2, left: 4, right: 4 } },
                     headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 0: { cellWidth: W - 2 * M - 40 - 55 }, 1: { cellWidth: 40, halign: "right" }, 2: { cellWidth: 55, halign: "right" } },
                     margin: { top: TOP, left: M, right: M, bottom: 22 },
@@ -655,7 +667,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         `${b.pctUsed.toFixed(0)}%`,
                     ]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.8, bottom: 2.8, left: 4, right: 4 } },
+                    styles: { font: "Inter", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.8, bottom: 2.8, left: 4, right: 4 } },
                     headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", fontStyle: "bold" } },
                     alternateRowStyles: { fillColor: ZEBRA },
@@ -682,8 +694,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             const marginOnly = (netResultKpi?.sub ?? "").split("  ·  ")[0];
             lead(`${data.meta.companyName} reported a net ${netIsLoss ? "loss" : "profit"} of ${netResultKpi?.value ?? fmtMoney(0)}, a ${marginOnly}, on cash reserves of ${cashKpi?.value ?? fmtMoney(0)}.`);
 
-            heading("Key Financial Metrics", 0, 10 + data.kpis.length * 11);
-            metricTable(data.kpis);
+            heading("Key Financial Metrics", 0, 37);
+            kpiBand(data.kpis);
 
             heading("Executive Summary", 0, 17);
             paragraph(data.executiveSummary);
@@ -785,7 +797,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [["", "Exception", "Amount", "Status"]],
                         body: data.risks.map(r => ["", r.title, fmtMoney(r.amount), r.status]),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
+                        styles: { font: "Inter", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
                         headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                         columnStyles: { 0: { cellWidth: 7 }, 2: { cellWidth: 30, halign: "right" }, 3: { cellWidth: 28 } },
                         rowPageBreak: "avoid",
@@ -814,7 +826,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [["Action", "Owner", "Status"]],
                         body: data.actions.map(a => [a.action, a.owner || "—", a.status || "Open"]),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
+                        styles: { font: "Inter", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
                         headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                         columnStyles: { 1: { cellWidth: 26 }, 2: { cellWidth: 22 } },
                         rowPageBreak: "avoid",
@@ -857,7 +869,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [["Date", "Description", "Category", "Requested By", "Status", currency]],
                     body: data.transactions.map(t => [t.date, t.description, t.category, t.requestedBy, t.status, fmtMoney(t.amount)]),
                     theme: "striped",
-                    styles: { font: "Outfit", fontSize: 8.5, textColor: MID, overflow: "linebreak", cellPadding: { top: 2.4, bottom: 2.4, left: 3, right: 3 } },
+                    styles: { font: "Inter", fontSize: 8.5, textColor: MID, overflow: "linebreak", cellPadding: { top: 2.4, bottom: 2.4, left: 3, right: 3 } },
                     headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     alternateRowStyles: { fillColor: ZEBRA },
                     columnStyles: {
