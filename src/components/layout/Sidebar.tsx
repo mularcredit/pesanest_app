@@ -367,6 +367,12 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
                         <PiSignOut />
                     </button>
                 </div>
+
+                <div className="sb-powered">
+                    <span>Powered by</span>
+                    <BrandLogo width={14} height={14} color="rgba(255,255,255,0.35)" />
+                    <span className="sb-powered-name">Pesanest</span>
+                </div>
             </div>
         </aside>
     );
