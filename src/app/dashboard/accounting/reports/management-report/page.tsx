@@ -692,7 +692,10 @@ export default async function ManagementReportPage({
                 {/* Logo row: Pesanest mark (left), company name (center), the
                     company's own uploadable logo (right) */}
                 <div className="flex items-center justify-between gap-4 px-6 pt-5 pb-3">
-                    <BrandLogo width={110} height={30} color="#111827" />
+                    <div className="flex items-center gap-2 shrink-0">
+                        <BrandLogo width={28} height={28} color="#111827" />
+                        <span className="text-[16px] font-[800] text-gray-900 tracking-[-0.01em]">Pesanest</span>
+                    </div>
                     <div className="flex-1 flex justify-center px-2 min-w-0">
                         <EditableCompanyName value={companyName} className="text-[13px] font-[700] text-gray-900 text-center truncate max-w-full" />
                     </div>
@@ -969,11 +972,10 @@ export default async function ManagementReportPage({
 
             {/* ── Footer ── */}
             <div className="relative z-10 pt-5 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
-                <div className="flex items-center gap-3">
-                    <BrandLogo width={70} height={19} color="#9ca3af" />
-                    <p className="text-[11px] text-gray-400">
-                        {companyName} · CONFIDENTIAL · Powered by Pesanest
-                    </p>
+                <div className="flex items-center gap-1.5 text-[11px] text-gray-400">
+                    <span>{companyName} · CONFIDENTIAL · Powered by</span>
+                    <BrandLogo width={16} height={16} color="#9ca3af" />
+                    <span className="font-[700] text-gray-500">Pesanest</span>
                 </div>
                 <p className="text-[11px] text-gray-400">
                     All amounts in KES · Figures rounded to 2 decimal places

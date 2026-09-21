@@ -175,7 +175,18 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 apply({ size: 7, color: GRAY });
                 doc.text(`${data.meta.companyName} · CONFIDENTIAL`, M, footY + 5.5);
                 apply({ size: 6, color: FAINT });
-                doc.text("Powered by Pesanest", M, footY + 9);
+                const poweredBy = "Powered by ";
+                const poweredByW = doc.getTextWidth(poweredBy);
+                doc.text(poweredBy, M, footY + 9);
+                if (logo) {
+                    const iconH = 3, iconW = (logo.width / logo.height) * iconH;
+                    doc.addImage(logo.dataUri, logo.format, M + poweredByW, footY + 6.4, iconW, iconH);
+                    apply({ weight: "bold", size: 6, color: MID });
+                    doc.text("Pesanest", M + poweredByW + iconW + 1.2, footY + 9);
+                } else {
+                    apply({ weight: "bold", size: 6, color: MID });
+                    doc.text("Pesanest", M + poweredByW, footY + 9);
+                }
                 apply({ size: 7, color: GRAY });
                 doc.text(`Page ${pg}`, W - M, footY + 5.5, { align: "right" });
             }
@@ -189,12 +200,18 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
 
             // ── Cover page ──────────────────────────────────────────────────
             drawWatermark();
-            doc.setDrawColor(...GREEN); doc.setLineWidth(0.9);
-            doc.line(18, 26, 18, H - 26);
 
             if (logo) {
+                // Icon + wordmark side by side, centered as one lockup — the
+                // bare icon alone doesn't read as the Pesanest brand mark.
                 const boxH = 8, w = (logo.width / logo.height) * boxH;
-                doc.addImage(logo.dataUri, logo.format, (W - w) / 2, 32, w, boxH);
+                apply({ weight: "bold", size: 13, color: DARK });
+                const wordmark = "Pesanest";
+                const textW = doc.getTextWidth(wordmark);
+                const gap = 3;
+                const startX = (W - (w + gap + textW)) / 2;
+                doc.addImage(logo.dataUri, logo.format, startX, 32, w, boxH);
+                doc.text(wordmark, startX + w + gap, 32 + boxH / 2 + 2.2);
             }
 
             apply({ weight: "bold", size: 21, color: DARK });
