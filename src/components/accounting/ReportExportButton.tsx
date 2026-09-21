@@ -5,6 +5,7 @@ import { jsPDF } from "jspdf";
 import autoTable from "jspdf-autotable";
 import { PiDownloadSimple, PiFileCsv, PiFilePdf, PiPrinter, PiCaretDown, PiX } from "react-icons/pi";
 import { OUTFIT_REGULAR_BASE64, OUTFIT_BOLD_BASE64 } from "@/lib/pdf-fonts/outfit-font";
+import { fmtMoney, csvEsc, loadImageForPdf } from "@/lib/pdf-report-utils";
 
 // ── shared data model ─────────────────────────────────────────────────────────
 export interface ReportLine {
@@ -37,45 +38,6 @@ export interface ReportExportData {
     watermarkUrl?: string;   // optional low-opacity image centered behind the whole page
 }
 
-// ── helpers ───────────────────────────────────────────────────────────────────
-function fmt(n: number, neg = false): string {
-    const abs = Math.abs(n).toLocaleString("en-KE", { minimumFractionDigits: 2, maximumFractionDigits: 2 });
-    return (neg || n < 0) ? `(${abs})` : abs;
-}
-
-function csvEsc(v: string) { return `"${v.replace(/"/g, '""')}"`; }
-
-// Fetches a same-origin image URL and returns it as a data URI plus its
-// natural dimensions/format, ready for jsPDF's addImage — which needs raw
-// image data, not a URL. Same-origin fetch carries the session cookie
-// automatically, so this works for both public files and auth-gated
-// uploaded logos. Returns null on any failure so a broken/missing image
-// never breaks the rest of the export.
-async function loadImageForPdf(url: string): Promise<{ dataUri: string; width: number; height: number; format: string } | null> {
-    try {
-        const res = await fetch(url);
-        if (!res.ok) return null;
-        const blob = await res.blob();
-        const dataUri = await new Promise<string>((resolve, reject) => {
-            const reader = new FileReader();
-            reader.onload = () => resolve(reader.result as string);
-            reader.onerror = reject;
-            reader.readAsDataURL(blob);
-        });
-        const { width, height } = await new Promise<{ width: number; height: number }>((resolve, reject) => {
-            const img = new Image();
-            img.onload = () => resolve({ width: img.naturalWidth, height: img.naturalHeight });
-            img.onerror = reject;
-            img.src = dataUri;
-        });
-        if (!width || !height) return null;
-        const mime = dataUri.match(/^data:image\/(\w+);/)?.[1]?.toUpperCase() ?? 'PNG';
-        return { dataUri, width, height, format: mime === 'JPG' ? 'JPEG' : mime };
-    } catch {
-        return null;
-    }
-}
-
 // ── component ─────────────────────────────────────────────────────────────────
 export function ReportExportButton({ data }: { data: ReportExportData }) {
     const [open, setOpen] = useState(false);
@@ -106,8 +68,16 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             // Chrome (watermark + footer) is redrawn on whatever page is
             // currently active — called once per page (letterhead, TOC, and
             // every page each section's autoTable produces) so both persist
-            // across the whole document instead of just page 1.
+            // across the whole document instead of just page 1. Guarded by
+            // page number so a manual pre-emptive page break followed by
+            // autoTable's own didDrawPage on that same fresh page can't
+            // double-composite the watermark/footer.
+            const chromedPages = new Set<number>();
             function drawChrome() {
+                const currentPage = doc.getCurrentPageInfo().pageNumber;
+                if (chromedPages.has(currentPage)) return;
+                chromedPages.add(currentPage);
+
                 if (companyLogo) {
                     const maxSize = 120;
                     const scale = Math.min(maxSize / companyLogo.width, maxSize / companyLogo.height);
@@ -117,7 +87,7 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                     doc.setGState(new (doc as any).GState({ opacity: 1 }));
                 }
 
-                const pg = doc.getCurrentPageInfo().pageNumber;
+                const pg = currentPage;
                 const footY = H - 16;
                 doc.setDrawColor(220, 220, 220);
                 doc.line(8, footY, W - 8, footY);
@@ -238,8 +208,8 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
 
                     const prefix = line.indent ? "    " : "";
                     const name = `${prefix}${line.code ? `[${line.code}]  ` : ""}${line.name}`;
-                    const amount = line.isNegative ? `(${fmt(line.current)})` : fmt(line.current);
-                    const prior = line.prior !== undefined ? (line.isNegative ? `(${fmt(line.prior)})` : fmt(line.prior)) : "—";
+                    const amount = line.isNegative ? `(${fmtMoney(line.current)})` : fmtMoney(line.current);
+                    const prior = line.prior !== undefined ? (line.isNegative ? `(${fmtMoney(line.prior)})` : fmtMoney(line.prior)) : "—";
 
                     rows.push([
                         { content: name, styles: nameStyle },

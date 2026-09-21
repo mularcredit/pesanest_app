@@ -2,15 +2,17 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { FinancialReports } from '@/lib/accounting/reports';
-import { PiFileText, PiInfo } from 'react-icons/pi';
-import { ReportExportButton } from '@/components/accounting/ReportExportButton';
-import type { ReportExportData } from '@/components/accounting/ReportExportButton';
+import { PiFileText, PiArrowRight } from 'react-icons/pi';
+import { ManagementReportPdf } from '@/components/accounting/ManagementReportPdf';
+import type { ManagementReportData } from '@/components/accounting/ManagementReportPdf';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { EditableImage } from '@/components/finance-studio/EditableImage';
 import { EditableCompanyName } from '@/components/finance-studio/EditableCompanyName';
 import Link from 'next/link';
 
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+const HAIRLINE = '1px solid rgba(0,0,0,0.08)';
+const SEV_COLOR: Record<string, string> = { high: '#dc2626', medium: '#d97706', low: '#059669' };
+const STATUS_COLOR: Record<string, string> = { Flagged: '#dc2626', Resolved: '#059669', Monitor: '#6b7280', Open: '#d97706' };
 
 // Same "cash-like" subtypes used across bank reconciliation / transfers —
 // a live snapshot of what the business actually has on hand right now,
@@ -21,7 +23,11 @@ function fmt(n: number) {
     return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
 }
 
-function pct(n: number, base: number) {
+function fmtSigned(n: number) {
+    return n < 0 ? `(${fmt(n)})` : fmt(n);
+}
+
+function pctOf(n: number, base: number) {
     if (!base) return '—';
     return (Math.abs(n / base) * 100).toFixed(1) + '%';
 }
@@ -48,34 +54,107 @@ function presetToDates(key: string, now: Date): { from: string; to: string } {
     }
 }
 
-function SectionHeader({ title, color }: { title: string; color: string }) {
+// ── executive-report building blocks (understated: thin borders, thin green
+// accents, no rounded cards/shadows/gradients — see the approved redesign plan) ──
+
+function LayerHeading({ n, title }: { n: number; title: string }) {
     return (
-        <div className="px-5 py-2.5" style={{ background: `${color}08`, borderBottom: HAIRLINE }}>
-            <p className="text-[10.5px] font-[700] uppercase tracking-[0.1em]" style={{ color }}>{title}</p>
+        <div>
+            <div className="flex items-baseline gap-3">
+                <span className="text-[11px] font-[700] text-[#059669] tracking-[0.1em]">{String(n).padStart(2, '0')}</span>
+                <h2 className="text-[16px] font-[700] text-gray-900">{title}</h2>
+            </div>
+            <div className="h-px bg-gray-200 mt-2.5" />
         </div>
     );
 }
 
-function Row({ label, sub, value, negative, bold }: { label: string; sub?: string; value: number; negative?: boolean; bold?: boolean }) {
+function SubTitle({ children }: { children: React.ReactNode }) {
+    return <h3 className="text-[12.5px] font-[700] text-gray-900 mb-2 mt-4 first:mt-0">{children}</h3>;
+}
+
+function KpiBlock({ label, value, sub }: { label: string; value: string; sub?: string }) {
+    return (
+        <div className="bg-white" style={{ border: HAIRLINE }}>
+            <div className="h-[2px] bg-[#059669]" />
+            <div className="px-4 py-3.5">
+                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-2">{label}</p>
+                <p className="text-[19px] font-[700] font-mono tabular-nums text-gray-900 leading-none">{value}</p>
+                {sub && <p className="text-[10.5px] text-gray-400 mt-1.5">{sub}</p>}
+            </div>
+        </div>
+    );
+}
+
+function MetricBlock({ label, value }: { label: string; value: string }) {
+    return (
+        <div className="bg-white" style={{ border: HAIRLINE }}>
+            <div className="h-[2px] bg-[#059669]" />
+            <div className="px-4 py-4">
+                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-2">{label}</p>
+                <p className="text-[17px] font-[700] font-mono tabular-nums text-gray-900 leading-none">{value}</p>
+            </div>
+        </div>
+    );
+}
+
+function CategoryBar({ category, amount, share, count, maxAmount, rank }: { category: string; amount: number; share: string; count: number; maxAmount: number; rank: number }) {
+    const widthPct = maxAmount > 0 ? Math.max(0.6, (amount / maxAmount) * 100) : 0;
+    return (
+        <div className="px-5 py-2.5" style={{ borderBottom: HAIRLINE }}>
+            <div className="flex items-baseline justify-between gap-3 mb-1.5">
+                <span className="text-[11.5px] text-gray-700 truncate">{category} <span className="text-gray-400">({count}, {share})</span></span>
+                <span className="text-[11.5px] font-mono tabular-nums text-gray-900 font-[600] shrink-0">{fmt(amount)}</span>
+            </div>
+            <div className="h-[5px] bg-gray-100 overflow-hidden">
+                <div className="h-full" style={{ width: `${widthPct}%`, background: rank === 0 ? '#059669' : '#6ec3a5' }} />
+            </div>
+        </div>
+    );
+}
+
+function PipelineFlow({ stages }: { stages: { label: string; count: number; amount: number }[] }) {
+    return (
+        <div className="flex items-stretch">
+            {stages.map((s, i) => (
+                <div key={s.label} className="flex items-stretch flex-1">
+                    <div className="flex-1 bg-white px-3 py-3.5 text-center overflow-hidden" style={{ border: HAIRLINE }}>
+                        <div className="h-[2px] bg-[#059669] -mx-3 -mt-3.5 mb-3" />
+                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-1.5">{s.label}</p>
+                        <p className="text-[20px] font-[700] text-gray-900 leading-none mb-1.5">{s.count}</p>
+                        <p className="text-[10px] text-gray-400 font-mono tabular-nums">{fmt(s.amount)}</p>
+                    </div>
+                    {i < stages.length - 1 && (
+                        <div className="flex items-center px-1.5 shrink-0">
+                            <PiArrowRight className="text-gray-300 text-[14px]" />
+                        </div>
+                    )}
+                </div>
+            ))}
+        </div>
+    );
+}
+
+function RiskRow({ severity, title, amount, status }: { severity: 'high' | 'medium' | 'low'; title: string; amount: number; status: string }) {
     return (
         <div className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: HAIRLINE }}>
+            <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: SEV_COLOR[severity] }} />
             <div className="flex-1 min-w-0">
-                <p className={`text-[12.5px] text-gray-700 truncate ${bold ? 'font-[600]' : ''}`}>{label}</p>
-                {sub && <p className="text-[10.5px] text-gray-400 mt-0.5">{sub}</p>}
+                <p className="text-[12px] text-gray-800 truncate">{title}</p>
+                <p className="text-[10.5px] text-gray-400 mt-0.5">{status}</p>
             </div>
-            <span className={`text-[12.5px] font-mono tabular-nums shrink-0 ${bold ? 'font-[700] text-gray-900' : 'font-[500] text-gray-800'}`}>
-                {negative ? `(${fmt(value)})` : fmt(value)}
-            </span>
+            <span className="text-[12px] font-mono tabular-nums text-gray-900 font-[600] shrink-0">{fmt(amount)}</span>
         </div>
     );
 }
 
-function KpiBox({ label, value, color, sub }: { label: string; value: string; color?: string; sub?: string }) {
+function ActionRow({ action, owner, dueDate, status }: { action: string; owner?: string; dueDate?: string; status: string }) {
     return (
-        <div className="bg-white rounded-[10px] px-5 py-4" style={{ border: HAIRLINE }}>
-            <p className="text-[10px] font-[600] uppercase tracking-[0.09em] text-gray-400 mb-2">{label}</p>
-            <p className="text-[18px] font-[700] font-mono tabular-nums leading-none" style={{ color: color ?? '#111827' }}>{value}</p>
-            {sub && <p className="text-[10.5px] text-gray-400 mt-1">{sub}</p>}
+        <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2.5 items-center" style={{ borderBottom: HAIRLINE }}>
+            <p className="text-[12px] text-gray-800">{action}</p>
+            <p className="text-[11px] text-gray-400 truncate">{owner || '—'}</p>
+            <p className="text-[11px] text-gray-400 truncate">{dueDate || '—'}</p>
+            <span className="text-[10.5px] font-[600] justify-self-start" style={{ color: STATUS_COLOR[status] ?? '#6b7280' }}>{status}</span>
         </div>
     );
 }
@@ -155,13 +234,14 @@ export default async function ManagementReportPage({
 
     // ── Requisition pipeline ──
     const byStatus = (s: string) => requisitionsInPeriod.filter((r: any) => r.status === s);
-    const pipeline = [
+    const pipelineAll = [
         { label: 'Draft',     items: byStatus('DRAFT') },
         { label: 'Pending',   items: byStatus('PENDING') },
         { label: 'Approved',  items: byStatus('APPROVED') },
         { label: 'Paid',      items: byStatus('PAID') },
-        { label: 'Rejected',  items: byStatus('REJECTED') },
     ].map(p => ({ label: p.label, count: p.items.length, amount: p.items.reduce((s: number, r: any) => s + r.amount, 0) }));
+    const rejectedReqs = byStatus('REJECTED');
+    const rejectedTotal = rejectedReqs.reduce((s: number, r: any) => s + r.amount, 0);
 
     const submitted = requisitionsInPeriod.filter((r: any) => r.status !== 'DRAFT');
     const approved  = requisitionsInPeriod.filter((r: any) => !['DRAFT', 'PENDING', 'REJECTED'].includes(r.status));
@@ -181,6 +261,7 @@ export default async function ManagementReportPage({
     const topCategories = Object.entries(catMap)
         .sort(([, a], [, b]) => b.amount - a.amount)
         .map(([category, v]) => ({ category, ...v }));
+    const maxCategoryAmount = Math.max(...topCategories.map(c => c.amount), 1);
 
     // ── Budget utilization ──
     const budgetRows = activeBudgets.flatMap((b: any) =>
@@ -192,122 +273,107 @@ export default async function ManagementReportPage({
         })
     );
 
-    // ── Spending alerts ──
+    // ── Spending alerts → risk exceptions (severity derived from the same
+    // ratio already computed, not invented) ──
     const daySpan = Math.max(1, Math.round((toDate.getTime() - fromDate.getTime()) / 86400000));
     const avgDailySpend = submitted.length > 0 ? submitted.reduce((s: number, r: any) => s + r.amount, 0) / daySpan : 0;
     const alerts = submitted.filter((r: any) => avgDailySpend > 0 && r.amount > avgDailySpend * 3).slice(0, 5);
+    const risks = alerts.map((a: any) => {
+        const ratio = avgDailySpend > 0 ? a.amount / avgDailySpend : 0;
+        const severity: 'high' | 'medium' | 'low' = ratio >= 6 ? 'high' : ratio >= 4 ? 'medium' : 'low';
+        return { severity, title: a.title, amount: a.amount, status: `${ratio.toFixed(1)}× average daily spend` };
+    });
 
     const periodLabel = `${new Date(from).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
+    const monthLabel = new Date(to).toLocaleDateString('en-GB', { month: 'long', year: 'numeric' });
+    const generatedLabel = now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' });
     const pageUrl = (preset: string) => `?preset=${preset}`;
 
     // ── Executive summary — a plain-language roll-up of the numbers below,
     // generated from the same figures rather than free-text AI narration. ──
     const executiveSummary = `During ${periodLabel}, ${companyName} recorded net revenue of KES ${fmt(pl.revenue.total)} against total expenses of KES ${fmt(pl.expenses.total)}, resulting in a net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)}. Cash position stood at KES ${fmt(cashPosition)} as of period end. Of ${submitted.length} requisition${submitted.length !== 1 ? 's' : ''} submitted for approval, ${approved.length} (${approvalRate.toFixed(1)}%) were approved, with ${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} still pending.`;
 
-    // ── Recommendations — deterministic, derived from data already computed
-    // above (no free-text generation): flag whatever actually needs attention. ──
-    const overBudgetCategories = budgetRows.filter((b: any) => b.allocated > 0 && b.spent / b.allocated >= 0.9);
-    const recommendations: string[] = [];
-    if (pendingReqs.length > 0) {
-        recommendations.push(`Follow up on ${pendingReqs.length} pending requisition${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} awaiting approval.`);
-    }
-    if (overBudgetCategories.length > 0) {
-        recommendations.push(`Review budget allocations for ${overBudgetCategories.map((b: any) => b.category).join(', ')} — utilization has reached or exceeded 90% of the amount allocated for this period.`);
-    }
-    if (alerts.length > 0) {
-        recommendations.push(`Investigate ${alerts.length} flagged transaction${alerts.length !== 1 ? 's' : ''} identified as significantly above this period's average spend.`);
-    }
-    if (submitted.length > 0 && approvalRate < 70) {
-        recommendations.push(`Approval rate for this period was ${approvalRate.toFixed(1)}%, below the typical target — consider reviewing the approval workflow for bottlenecks.`);
-    }
-    if (recommendations.length === 0) {
-        recommendations.push('No immediate action items identified for this period.');
+    // ── Performance highlights — scannable bullets, derived from the same
+    // figures as the executive summary, not restated financial statements. ──
+    const highlights: string[] = [
+        `Net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)} (${pctOf(pl.netIncome, pl.revenue.total)} margin).`,
+        `Cash position of KES ${fmt(cashPosition)} as of period end.`,
+        `Requisition approval rate of ${approvalRate.toFixed(1)}% (${approved.length} of ${submitted.length} submitted).`,
+    ];
+    if (topCategories.length > 0) {
+        highlights.push(`Largest spending category: ${topCategories[0].category} at ${pctOf(topCategories[0].amount, totalCategorySpend)} of total spend.`);
     }
 
-    // ── Assemble export data ──
-    const exportData: ReportExportData = {
-        title: 'Management Report',
-        subtitle: `Business Overview · ${periodLabel}`,
-        company: companyName,
-        currency: 'KES',
-        logoUrl: '/pesanest/pesanest-light-new.png',
-        watermarkUrl: watermarkUrl ?? undefined,
-        sections: [
-            {
-                title: 'Executive Summary',
-                lines: [{ name: executiveSummary, current: 0, note: true }],
-            },
-            {
-                title: 'Reporting Period & Scope',
-                lines: [{
-                    name: `This report covers all requisition, budget, and financial activity for ${companyName} for the period ${periodLabel}, prepared for internal management review.`,
-                    current: 0, note: true,
-                }],
-            },
-            {
-                title: 'Key Financial Metrics',
-                lines: [
-                    { name: 'Net Revenue', current: pl.revenue.total },
-                    { name: 'Total Expenses', current: pl.expenses.total, isNegative: true },
-                    { name: 'Net Profit / Loss', current: pl.netIncome, isBold: true, isSubtotal: true },
-                    { name: 'Cash Position (as of period end)', current: cashPosition },
-                    { name: 'Pending Approvals (amount)', current: pendingTotal },
-                ],
-            },
-            {
-                title: 'Income Statement Summary',
-                lines: [
-                    ...pl.revenue.accounts.map(a => ({ code: a.code, name: a.name, current: a.balance })),
-                    ...pl.expenses.accounts.map(a => ({ code: a.code, name: a.name, current: a.balance, isNegative: true as const, indent: true as const })),
-                    { name: 'Net Income', current: pl.netIncome, isBold: true, isGrandTotal: true },
-                ],
-            },
-            {
-                title: 'Balance Sheet Summary',
-                lines: [
-                    { name: 'Total Assets', current: bs.assets.total, isBold: true },
-                    { name: 'Total Liabilities', current: bs.liabilities.total, isBold: true },
-                    { name: 'Total Equity', current: bs.equity.total, isBold: true, isSubtotal: true },
-                ],
-            },
-            {
-                title: 'Spending by Category',
-                lines: topCategories.map(c => ({ name: `${c.category} (${c.count}, ${pct(c.amount, totalCategorySpend)})`, current: c.amount })),
-            },
-            {
-                title: 'Requisition Pipeline',
-                lines: pipeline.map(p => ({ name: `${p.label} (${p.count})`, current: p.amount })),
-            },
-            ...(budgetRows.length > 0 ? [{
-                title: 'Budget Utilization',
-                lines: budgetRows.map((b: any) => ({ name: b.category, current: b.spent, prior: b.allocated })),
-            }] : []),
-            ...(alerts.length > 0 ? [{
-                title: 'Risks & Spending Alerts',
-                lines: alerts.map((a: any) => ({ name: a.title, current: a.amount })),
-            }] : []),
-            {
-                title: 'Recommendations & Next Steps',
-                lines: recommendations.map(r => ({ name: r, current: 0, note: true })),
-            },
-            {
-                // Full itemized listing — every requisition in the period, not just
-                // the rolled-up category/status/pipeline summaries above. This is
-                // the actual auditable detail behind those totals — kept as an
-                // appendix at the very end, after the summary and analysis.
-                title: `Detailed Transactions (${requisitionsInPeriod.length})`,
-                lines: requisitionsInPeriod.length === 0
-                    ? [{ name: 'No requisitions recorded in this period', current: 0 }]
-                    : requisitionsInPeriod.map((r: any) => ({
-                        name: `${new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}  ·  ${r.title}  ·  ${r.category || 'Uncategorized'}  ·  Requested by ${r.user?.name || 'Unknown'}  ·  ${r.status}`,
-                        current: r.amount,
-                    })),
-            },
+    // ── Management actions — deterministic, derived from data already
+    // computed above (no free-text generation): flag whatever actually needs
+    // attention. Owner/due-date are intentionally left unset — no such data
+    // exists in the system yet; the layout simply supports those fields. ──
+    const overBudgetCategories = budgetRows.filter((b: any) => b.allocated > 0 && b.spent / b.allocated >= 0.9);
+    const actionItems: string[] = [];
+    if (pendingReqs.length > 0) {
+        actionItems.push(`Follow up on ${pendingReqs.length} pending requisition${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} awaiting approval.`);
+    }
+    if (overBudgetCategories.length > 0) {
+        actionItems.push(`Review budget allocations for ${overBudgetCategories.map((b: any) => b.category).join(', ')} — utilization has reached or exceeded 90% of the amount allocated for this period.`);
+    }
+    if (risks.length > 0) {
+        actionItems.push(`Investigate ${risks.length} flagged transaction${risks.length !== 1 ? 's' : ''} identified as significantly above this period's average spend.`);
+    }
+    if (submitted.length > 0 && approvalRate < 70) {
+        actionItems.push(`Approval rate for this period was ${approvalRate.toFixed(1)}%, below the typical target — consider reviewing the approval workflow for bottlenecks.`);
+    }
+    const actions = actionItems.map(a => ({ action: a, status: 'Open' }));
+
+    // ── Assemble the report data (shared by the on-screen page and the PDF/CSV export) ──
+    const reportData: ManagementReportData = {
+        meta: {
+            companyName,
+            logoUrl: '/pesanest/pesanest-light-new.png',
+            watermarkUrl: watermarkUrl ?? undefined,
+            periodLabel,
+            monthLabel,
+            currency: 'KES',
+            generatedLabel,
+        },
+        kpis: [
+            { label: 'Net Revenue', value: fmt(pl.revenue.total), sub: 'Total recognized revenue' },
+            { label: 'Net Result', value: fmtSigned(pl.netIncome), sub: `${pctOf(pl.netIncome, pl.revenue.total)} margin` },
+            { label: 'Cash Position', value: fmt(cashPosition), sub: 'As of period end' },
+            { label: 'Total Expenditure', value: fmt(pl.expenses.total), sub: 'All operating expenses' },
+            { label: 'Pending Approvals', value: fmt(pendingTotal), sub: `${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''}` },
         ],
+        executiveSummary,
+        highlights,
+        risks,
+        actions,
+        incomeStatement: {
+            revenue: pl.revenue.accounts.map(a => ({ code: a.code, name: a.name, amount: a.balance })),
+            expenses: pl.expenses.accounts.map(a => ({ code: a.code, name: a.name, amount: a.balance })),
+            netIncome: pl.netIncome,
+        },
+        balanceSheet: {
+            totalAssets: bs.assets.total,
+            totalLiabilities: bs.liabilities.total,
+            totalEquity: bs.equity.total,
+        },
+        cashPosition,
+        spendingCategories: topCategories.map(c => ({
+            category: c.category, amount: c.amount, count: c.count,
+            pct: totalCategorySpend > 0 ? (c.amount / totalCategorySpend) * 100 : 0,
+        })),
+        pipeline: pipelineAll,
+        transactions: requisitionsInPeriod.map((r: any) => ({
+            date: new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' }),
+            description: r.title,
+            category: r.category || 'Uncategorized',
+            requestedBy: r.user?.name || 'Unknown',
+            status: r.status,
+            amount: r.amount,
+        })),
     };
 
     return (
-        <div className="pb-20 space-y-5 max-w-[960px] relative">
+        <div className="pb-20 space-y-7 max-w-[960px] relative">
 
             {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
                  Negative z-index so it paints beneath normal-flow siblings regardless
@@ -322,8 +388,8 @@ export default async function ManagementReportPage({
                 />
             )}
 
-            {/* ── Letterhead ── */}
-            <div className="relative z-10 bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
+            {/* ── Masthead ── */}
+            <div className="relative z-10 bg-white overflow-hidden" style={{ border: HAIRLINE, borderLeft: '3px solid #059669' }}>
 
                 {/* Logo row: Pesanest mark (left), company name (center), the
                     company's own uploadable logo (right) */}
@@ -348,7 +414,7 @@ export default async function ManagementReportPage({
                     </div>
                     <div>
                         <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Generated</p>
-                        <p className="text-[12px] font-[500] text-gray-800">{now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
+                        <p className="text-[12px] font-[500] text-gray-800">{generatedLabel}</p>
                     </div>
                     <div>
                         <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Currency</p>
@@ -364,9 +430,9 @@ export default async function ManagementReportPage({
                     <h1 className="text-[15px] font-[700] text-white uppercase tracking-[0.04em]">Management Report</h1>
                 </div>
 
-                {/* Company details */}
-                {(registrationNumber || headquartersAddress) && (
-                    <div className="px-5 py-2.5 flex flex-wrap gap-x-6 gap-y-1" style={{ borderTop: HAIRLINE }}>
+                {/* Company details + confidentiality mark */}
+                <div className="px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1" style={{ borderTop: HAIRLINE }}>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1">
                         {registrationNumber && (
                             <p className="text-[11px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
                         )}
@@ -374,12 +440,13 @@ export default async function ManagementReportPage({
                             <p className="text-[11px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
                         )}
                     </div>
-                )}
+                    <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-300">Confidential — Internal Management Use</p>
+                </div>
             </div>
 
             {/* ── Toolbar: export ── */}
-            <div className="relative z-10 flex items-center justify-end">
-                <ReportExportButton data={exportData} />
+            <div className="relative z-10 flex items-center justify-end -mt-2">
+                <ManagementReportPdf data={reportData} />
             </div>
 
             {/* ── Period picker ── */}
@@ -396,97 +463,183 @@ export default async function ManagementReportPage({
                 ))}
             </div>
 
-            {/* ── KPI strip ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <KpiBox label="Net Revenue" value={fmt(pl.revenue.total)} color="#059669" />
-                <KpiBox label="Total Expenses" value={`(${fmt(pl.expenses.total)})`} color="#dc2626" />
-                <KpiBox label="Net Profit / Loss" value={pl.netIncome < 0 ? `(${fmt(pl.netIncome)})` : fmt(pl.netIncome)}
-                    color={pl.netIncome >= 0 ? '#059669' : '#dc2626'} sub={`${pct(pl.netIncome, pl.revenue.total)} margin`} />
-                <KpiBox label="Cash Position" value={fmt(cashPosition)} sub="As of period end" />
-                <KpiBox label="Approval Rate" value={`${approvalRate.toFixed(1)}%`} sub={`${approved.length} of ${submitted.length} submitted`} />
-                <KpiBox label="Pending Approvals" value={fmt(pendingTotal)} color="#d97706" sub={`${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''}`} />
+            {/* ═══ 01 · EXECUTIVE OVERVIEW ═══ */}
+            <div className="space-y-4">
+                <LayerHeading n={1} title="Executive Overview" />
+
+                <SubTitle>Key Financial Metrics</SubTitle>
+                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
+                    {reportData.kpis.map(k => <KpiBlock key={k.label} {...k} />)}
+                </div>
+
+                <SubTitle>Executive Summary</SubTitle>
+                <p className="text-[12.5px] text-gray-600 leading-relaxed">{executiveSummary}</p>
+
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                    <div>
+                        <SubTitle>Performance Highlights</SubTitle>
+                        <ul className="space-y-1.5">
+                            {highlights.map((h, i) => (
+                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full bg-[#059669] mt-[6px] shrink-0" />
+                                    {h}
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                    <div>
+                        <SubTitle>Key Risks & Exceptions</SubTitle>
+                        <ul className="space-y-1.5">
+                            {risks.length > 0 ? risks.slice(0, 3).map((r, i) => (
+                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full mt-[6px] shrink-0" style={{ background: SEV_COLOR[r.severity] }} />
+                                    {r.title} — KES {fmt(r.amount)}
+                                </li>
+                            )) : <li className="text-[11.5px] text-gray-400 italic">No exceptions flagged this period.</li>}
+                        </ul>
+                    </div>
+                    <div>
+                        <SubTitle>Management Attention</SubTitle>
+                        <ul className="space-y-1.5">
+                            {actions.length > 0 ? actions.map((a, i) => (
+                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full bg-[#d97706] mt-[6px] shrink-0" />
+                                    {a.action}
+                                </li>
+                            )) : <li className="text-[11.5px] text-gray-400 italic">No outstanding actions this period.</li>}
+                        </ul>
+                    </div>
+                </div>
             </div>
 
-            {/* ── Income Statement summary ── */}
-            <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                <SectionHeader title="Income Statement Summary" color="#059669" />
-                {pl.revenue.accounts.map(a => <Row key={a.code} label={`${a.code} · ${a.name}`} value={a.balance} />)}
-                {pl.expenses.accounts.map(a => <Row key={a.code} label={`${a.code} · ${a.name}`} value={a.balance} negative />)}
-                <Row label="Net Income" value={pl.netIncome} negative={pl.netIncome < 0} bold />
-            </div>
+            {/* ═══ 02 · FINANCIAL PERFORMANCE ═══ */}
+            <div className="space-y-4">
+                <LayerHeading n={2} title="Financial Performance" />
 
-            {/* ── Balance Sheet summary ── */}
-            <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                <SectionHeader title="Balance Sheet Summary" color="#0284c7" />
-                <Row label="Total Assets" value={bs.assets.total} bold />
-                <Row label="Total Liabilities" value={bs.liabilities.total} bold />
-                <Row label="Total Equity" value={bs.equity.total} bold />
-            </div>
+                <SubTitle>Income Statement</SubTitle>
+                <div className="bg-white" style={{ border: HAIRLINE }}>
+                    <div className="px-5 pt-3 pb-1">
+                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Revenue</p>
+                    </div>
+                    {pl.revenue.accounts.map(a => (
+                        <div key={a.code} className="flex items-center gap-3 px-5 py-1.5">
+                            <span className="flex-1 text-[12px] text-gray-700 truncate">{a.code} · {a.name}</span>
+                            <span className="text-[12px] font-mono tabular-nums text-gray-900">{fmt(a.balance)}</span>
+                        </div>
+                    ))}
+                    <div className="px-5 pt-3 pb-1" style={{ borderTop: HAIRLINE }}>
+                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Operating Expenses</p>
+                    </div>
+                    {pl.expenses.accounts.map(a => (
+                        <div key={a.code} className="flex items-center gap-3 px-5 py-1.5">
+                            <span className="flex-1 text-[12px] text-gray-700 truncate pl-3">{a.code} · {a.name}</span>
+                            <span className="text-[12px] font-mono tabular-nums text-gray-700">({fmt(a.balance)})</span>
+                        </div>
+                    ))}
+                    <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.15)' }}>
+                        <span className="flex-1 text-[12.5px] font-[700] text-gray-900">Net Income</span>
+                        <span className={`text-[13px] font-[700] font-mono tabular-nums ${pl.netIncome < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmtSigned(pl.netIncome)}</span>
+                    </div>
+                </div>
 
-            {/* ── Two-column: categories + pipeline ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Spending by Category" color="#6366f1" />
+                <SubTitle>Balance Sheet</SubTitle>
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                    <MetricBlock label="Total Assets" value={fmt(bs.assets.total)} />
+                    <MetricBlock label="Total Liabilities" value={fmt(bs.liabilities.total)} />
+                    <MetricBlock label="Total Equity" value={fmtSigned(bs.equity.total)} />
+                </div>
+
+                <SubTitle>Spending Analysis</SubTitle>
+                <div className="bg-white" style={{ border: HAIRLINE }}>
                     {topCategories.length === 0
                         ? <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending recorded this period</p>
-                        : topCategories.map(c => (
-                            <Row key={c.category} label={c.category}
-                                sub={`${c.count} expense${c.count !== 1 ? 's' : ''} · ${pct(c.amount, totalCategorySpend)} of total`}
-                                value={c.amount} />
+                        : topCategories.slice(0, 8).map((c, i) => (
+                            <CategoryBar key={c.category} category={c.category} amount={c.amount} count={c.count}
+                                share={pctOf(c.amount, totalCategorySpend)} maxAmount={maxCategoryAmount} rank={i} />
                         ))
                     }
                 </div>
+            </div>
 
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Requisition Pipeline" color="#9333ea" />
-                    {pipeline.map(p => <Row key={p.label} label={p.label} sub={`${p.count} item${p.count !== 1 ? 's' : ''}`} value={p.amount} />)}
+            {/* ═══ 03 · OPERATIONS & CONTROLS ═══ */}
+            <div className="space-y-4">
+                <LayerHeading n={3} title="Operations & Controls" />
+
+                <SubTitle>Requisition Pipeline</SubTitle>
+                <PipelineFlow stages={pipelineAll} />
+                {rejectedReqs.length > 0 && (
+                    <p className="text-[10.5px] text-gray-400">{rejectedReqs.length} requisition{rejectedReqs.length !== 1 ? 's' : ''} rejected this period, totaling KES {fmt(rejectedTotal)}.</p>
+                )}
+
+                <SubTitle>Risks & Spending Alerts</SubTitle>
+                <div className="bg-white" style={{ border: HAIRLINE }}>
+                    {risks.length > 0
+                        ? risks.map((r, i) => <RiskRow key={i} {...r} />)
+                        : <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending alerts identified for this period.</p>
+                    }
+                </div>
+
+                <SubTitle>Management Actions</SubTitle>
+                <div className="bg-white" style={{ border: HAIRLINE }}>
+                    {actions.length > 0 ? (
+                        <>
+                            <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Action</span>
+                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Owner</span>
+                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Due Date</span>
+                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Status</span>
+                            </div>
+                            {actions.map((a, i) => <ActionRow key={i} {...a} />)}
+                        </>
+                    ) : (
+                        <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No outstanding actions this period.</p>
+                    )}
                 </div>
             </div>
 
-            {/* ── Budget utilization ── */}
-            {budgetRows.length > 0 && (
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Budget Utilization" color="#0284c7" />
-                    {budgetRows.map((b: any, i: number) => {
-                        const p = b.allocated > 0 ? Math.min((b.spent / b.allocated) * 100, 100) : 0;
-                        const color = p >= 90 ? '#dc2626' : p >= 70 ? '#d97706' : '#059669';
-                        return (
-                            <div key={i} className="px-5 py-3" style={{ borderBottom: HAIRLINE }}>
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[12px] font-[500] text-gray-700">{b.category}</span>
-                                    <span className="text-[11px] font-mono text-gray-400">
-                                        KES {fmt(b.spent)} / {fmt(b.allocated)} ({p.toFixed(0)}%)
-                                    </span>
-                                </div>
-                                <div className="h-[5px] w-full rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.05)' }}>
-                                    <div className="h-full rounded-full" style={{ width: `${p}%`, background: color }} />
-                                </div>
-                            </div>
-                        );
-                    })}
+            {/* ═══ 04 · APPENDICES ═══ */}
+            <div className="space-y-4">
+                <LayerHeading n={4} title="Appendices" />
+                <SubTitle>A — Detailed Transactions ({requisitionsInPeriod.length})</SubTitle>
+                <p className="text-[11px] text-gray-400 -mt-2 mb-1">Full itemized listing of every requisition recorded in the reporting period, for reference.</p>
+                <div className="bg-white overflow-x-auto" style={{ border: HAIRLINE }}>
+                    {requisitionsInPeriod.length === 0 ? (
+                        <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No requisitions recorded in this period.</p>
+                    ) : (
+                        <table className="w-full text-[11px] min-w-[720px]">
+                            <thead>
+                                <tr style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-5 py-2">Date</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Description</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Category</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Requested By</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Status</th>
+                                    <th className="text-right font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-5 py-2">Amount</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {reportData.transactions.map((t, i) => (
+                                    <tr key={i} style={{ borderBottom: HAIRLINE, background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
+                                        <td className="px-5 py-2 text-gray-500 whitespace-nowrap">{t.date}</td>
+                                        <td className="px-3 py-2 text-gray-800">{t.description}</td>
+                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.category}</td>
+                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.requestedBy}</td>
+                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.status}</td>
+                                        <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{fmt(t.amount)}</td>
+                                    </tr>
+                                ))}
+                            </tbody>
+                        </table>
+                    )}
                 </div>
-            )}
-
-            {/* ── Spending alerts ── */}
-            {alerts.length > 0 && (
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Spending Alerts" color="#dc2626" />
-                    <div className="flex items-start gap-2.5 px-5 py-3" style={{ borderBottom: HAIRLINE, background: 'rgba(220,38,38,0.03)' }}>
-                        <PiInfo className="text-[14px] text-rose-500 mt-0.5 shrink-0" />
-                        <p className="text-[11.5px] text-rose-700">Expenses well above this period's average — worth a second look.</p>
-                    </div>
-                    {alerts.map((a: any) => (
-                        <Row key={a.id} label={a.title} sub={a.category} value={a.amount} />
-                    ))}
-                </div>
-            )}
+            </div>
 
             {/* ── Footer ── */}
             <div className="relative z-10 pt-4 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
                 <div className="flex items-center gap-2.5">
                     <BrandLogo width={70} height={19} color="#9ca3af" />
                     <p className="text-[10.5px] text-gray-400">
-                        Prepared by {companyName} · Powered by Pesanest
+                        {companyName} · CONFIDENTIAL · Powered by Pesanest
                     </p>
                 </div>
                 <p className="text-[10.5px] text-gray-400">
