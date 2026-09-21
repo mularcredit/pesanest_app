@@ -129,7 +129,11 @@ export default async function ManagementReportPage({
         (prisma as any).systemSetting.findMany({
             where: { key: { in: ['company_name', 'registration_number', 'headquarters_address', 'watermark_logo'] } },
         }).catch(() => [] as any[]),
-        prisma.requisition.findMany({ where: { createdAt: { gte: fromDate, lte: toDate } } }),
+        prisma.requisition.findMany({
+            where: { createdAt: { gte: fromDate, lte: toDate } },
+            include: { user: { select: { name: true } } },
+            orderBy: { createdAt: 'asc' },
+        }),
         prisma.monthlyBudget.findMany({
             where: { month: toDate.getUTCMonth() + 1, year: toDate.getUTCFullYear(), status: 'APPROVED' },
             include: { items: true },
@@ -237,6 +241,18 @@ export default async function ManagementReportPage({
             {
                 title: 'Requisition Pipeline',
                 lines: pipeline.map(p => ({ name: `${p.label} (${p.count})`, current: p.amount })),
+            },
+            {
+                // Full itemized listing — every requisition in the period, not just
+                // the rolled-up category/status/pipeline summaries above. This is
+                // the actual auditable detail behind those totals.
+                title: `Detailed Transactions (${requisitionsInPeriod.length})`,
+                lines: requisitionsInPeriod.length === 0
+                    ? [{ name: 'No requisitions recorded in this period', current: 0 }]
+                    : requisitionsInPeriod.map((r: any) => ({
+                        name: `${new Date(r.createdAt).toLocaleDateString('en-GB', { day: '2-digit', month: 'short', year: 'numeric' })}  ·  ${r.title}  ·  ${r.category || 'Uncategorized'}  ·  Requested by ${r.user?.name || 'Unknown'}  ·  ${r.status}`,
+                        current: r.amount,
+                    })),
             },
             ...(budgetRows.length > 0 ? [{
                 title: 'Budget Utilization',
