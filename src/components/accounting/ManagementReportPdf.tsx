@@ -85,6 +85,7 @@ function compact(n: number): string {
 }
 
 const TOC_LAYERS = ["01  EXECUTIVE OVERVIEW", "02  FINANCIAL PERFORMANCE", "03  OPERATIONS & CONTROLS", "04  APPENDICES"];
+const PART_NAMES = ["Executive Overview", "Financial Performance", "Operations & Controls", "Appendices"];
 
 export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
     const [open, setOpen] = useState(false);
@@ -134,6 +135,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             // break followed by autoTable's own didDrawPage on that same fresh
             // page can't double-composite the watermark/footer.
             const chromedPages = new Set<number>();
+            // Which of the 4 parts the current page belongs to — plain
+            // letter-spaced text in the letterhead, not a colored badge.
+            // -1 until the first heading() call, so the Table of Contents
+            // reads "Contents" rather than a misleading "Part 01".
+            let currentPart = -1;
             function drawChrome() {
                 const pg = doc.getCurrentPageInfo().pageNumber;
                 if (chromedPages.has(pg)) return;
@@ -143,7 +149,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
 
                 apply({ weight: "bold", size: 8, color: GRAY });
                 doc.text(data.meta.companyName.toUpperCase(), M, 10);
-                doc.text("MANAGEMENT REPORT", W - M, 10, { align: "right" });
+                apply({ weight: "bold", size: 7.5, color: GREEN_DARK });
+                const partLabel = currentPart === -1
+                    ? "CONTENTS"
+                    : `PART ${String(currentPart + 1).padStart(2, "0")} · ${PART_NAMES[currentPart].toUpperCase()}`;
+                doc.text(partLabel, W - M, 10, { align: "right" });
                 apply({ size: 7, color: FAINT });
                 doc.text(data.meta.monthLabel, M, 14.5);
                 doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.2);
@@ -242,25 +252,60 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             const tocPage = doc.getCurrentPageInfo().pageNumber;
             drawChrome();
 
+            // The page right after the TOC always opens Part 01, before any
+            // heading() call has run to set currentPart itself — set it here
+            // so that page's chrome (drawn inside this newPage(), before the
+            // heading exists) doesn't fall back to "Contents".
+            currentPart = 0;
             newPage();
 
             // ── Section registry ────────────────────────────────────────────
             const toc: { layer: number; title: string; page: number }[] = [];
+
+            // Which pages have already drawn their one "major" heading — the
+            // first heading() call on a page is major even when a lead()
+            // paragraph runs before it (so cursorY isn't literally at TOP);
+            // every heading() call after that first one, on the same page,
+            // is minor.
+            const majorDrawnOnPage = new Set<number>();
 
             // `reserve` is the height of whatever immediately follows the
             // heading (a table, a chart, a lead line, …) — folding it into the
             // same space check keeps the heading from ever landing alone at
             // the bottom of a page with its content pushed to the next.
             function heading(title: string, layer: number, reserve = 0) {
-                ensureSpace(13 + reserve);
-                toc.push({ layer, title, page: doc.getCurrentPageInfo().pageNumber });
-                apply({ weight: "bold", size: 7.5, color: GREEN });
-                doc.text(`${String(layer + 1).padStart(2, "0")}`, M, cursorY);
-                apply({ weight: "bold", size: 12.5, color: DARK });
-                doc.text(title, M + 9, cursorY);
-                doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.2);
-                doc.line(M, cursorY + 3, W - M, cursorY + 3);
-                cursorY += 9;
+                currentPart = layer; // before ensureSpace, so a page break this call triggers already shows the right part in the header
+                ensureSpace(15 + reserve);
+                const pg = doc.getCurrentPageInfo().pageNumber;
+                toc.push({ layer, title, page: pg });
+
+                // Major: the first heading on a page — a small reference-number
+                // label (text on a tint, not a filled icon) plus a large title,
+                // closed off by one rule. Minor: every heading after it on the
+                // same page — a subordinate small-caps label, so the page reads
+                // as one section with subsections, not several stacked headlines.
+                const isMajor = !majorDrawnOnPage.has(pg);
+                if (isMajor) majorDrawnOnPage.add(pg);
+                if (isMajor) {
+                    const numLabel = String(layer + 1).padStart(2, "0");
+                    apply({ weight: "bold", size: 8, color: GREEN_DARK });
+                    const numW = doc.getTextWidth(numLabel);
+                    const pillPadX = 3, pillW = numW + pillPadX * 2, pillH = 6.5;
+                    doc.setFillColor(...GREEN_TINT);
+                    doc.roundedRect(M, cursorY - pillH + 1.8, pillW, pillH, 1, 1, "F");
+                    doc.text(numLabel, M + pillPadX, cursorY);
+                    apply({ weight: "bold", size: 15.5, color: DARK });
+                    doc.text(title, M + pillW + 6, cursorY);
+                    doc.setDrawColor(...GREEN); doc.setLineWidth(0.7);
+                    doc.line(M, cursorY + 4, W - M, cursorY + 4);
+                    cursorY += 13;
+                } else {
+                    apply({ weight: "bold", size: 7.5, color: GREEN_DARK });
+                    doc.text(title.toUpperCase(), M, cursorY);
+                    doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.2);
+                    doc.line(M, cursorY + 2.2, W - M, cursorY + 2.2);
+                    cursorY += 9;
+                }
             }
 
             // A one-line "point of the page, stated first" — a thin green rule
@@ -634,13 +679,13 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 toc.push({ layer: 2, title: "Risks & Spending Alerts", page: doc.getCurrentPageInfo().pageNumber });
                 toc.push({ layer: 2, title: "Management Actions", page: doc.getCurrentPageInfo().pageNumber });
 
-                apply({ weight: "bold", size: 13.5, color: DARK });
-                doc.text("Risks & Alerts", leftX, cursorY);
-                doc.text("Management Actions", rightX, cursorY);
+                apply({ weight: "bold", size: 7.5, color: GREEN_DARK });
+                doc.text("RISKS & ALERTS", leftX, cursorY);
+                doc.text("MANAGEMENT ACTIONS", rightX, cursorY);
                 doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.2);
-                doc.line(leftX, cursorY + 3.5, leftX + colW, cursorY + 3.5);
-                doc.line(rightX, cursorY + 3.5, rightX + colW, cursorY + 3.5);
-                const tablesY = cursorY + 10;
+                doc.line(leftX, cursorY + 2.2, leftX + colW, cursorY + 2.2);
+                doc.line(rightX, cursorY + 2.2, rightX + colW, cursorY + 2.2);
+                const tablesY = cursorY + 8;
 
                 let leftEnd = tablesY;
                 if (data.risks.length > 0) {
@@ -704,6 +749,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             }
 
             // ── 04 · Appendices ──────────────────────────────────────────────
+            currentPart = 3; // set before newPage() draws this page's chrome
             newPage();
             apply({ weight: "bold", size: 8, color: GREEN });
             doc.text("APPENDICES", M, 70);

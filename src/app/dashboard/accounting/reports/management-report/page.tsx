@@ -2,7 +2,6 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { FinancialReports } from '@/lib/accounting/reports';
-import { PiFileText } from 'react-icons/pi';
 import { ManagementReportPdf } from '@/components/accounting/ManagementReportPdf';
 import type { ManagementReportData } from '@/components/accounting/ManagementReportPdf';
 import { BrandLogo } from '@/components/ui/BrandLogo';
@@ -580,12 +579,12 @@ export default async function ManagementReportPage({
                     </div>
                 </div>
 
-                {/* Title band */}
-                <div className="flex items-center gap-2.5 px-5 py-3" style={{ background: '#059669' }}>
-                    <div className="w-[26px] h-[26px] rounded-[6px] bg-white/15 flex items-center justify-center shrink-0">
-                        <PiFileText className="text-white text-[13px]" />
-                    </div>
-                    <h1 className="text-[15px] font-[700] text-white uppercase tracking-[0.04em]">Management Report</h1>
+                {/* Title band — plain letterhead text, no filled color banner:
+                    a filled green bar with an icon reads as an app header, not
+                    a document title. */}
+                <div className="flex items-center justify-between px-5 py-3" style={{ borderTop: HAIRLINE }}>
+                    <h1 className="text-[15px] font-[700] text-gray-900 uppercase tracking-[0.06em]">Management Report</h1>
+                    <span className="text-[10px] font-[700] uppercase tracking-[0.12em]" style={{ color: '#047857' }}>{monthLabel}</span>
                 </div>
 
                 {/* Company details + confidentiality mark */}
