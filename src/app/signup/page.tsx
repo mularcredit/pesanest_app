@@ -66,10 +66,10 @@ export default function SignupPage() {
     return (
         <div className="min-h-screen bg-white flex font-sans">
             {/* Left Side - Branded Visual Area */}
-            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-b from-black to-zinc-900 items-end justify-center">
+            <div className="hidden lg:flex lg:w-1/2 relative overflow-hidden bg-gradient-to-b from-black to-[#022c22] items-end justify-center">
 
                 {/* Prominent Spotlight Behind Character */}
-                <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-red-500/20 rounded-full blur-[100px] pointer-events-none" />
+                <div className="absolute top-[40%] left-1/2 -translate-x-1/2 w-[800px] h-[800px] bg-emerald-500/20 rounded-full blur-[100px] pointer-events-none" />
 
                 {/* Foreground Image */}
                 <div className="relative w-full h-[85%] max-w-2xl">
@@ -81,7 +81,7 @@ export default function SignupPage() {
                         priority
                     />
                     {/* Bottom Edge Fade Blend */}
-                    <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-red-950 to-transparent pointer-events-none" />
+                    <div className="absolute bottom-0 left-0 right-0 h-48 bg-gradient-to-t from-[#022c22] to-transparent pointer-events-none" />
                 </div>
 
                 {/* Floating Content Overlay */}
@@ -141,14 +141,14 @@ export default function SignupPage() {
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-12 text-center">
                         <Link href="/" className="inline-block">
-                            <BrandLogo width={120} height={28} color="#007A3D" />
+                            <BrandLogo width={120} height={28} color="#059669" />
                         </Link>
                     </div>
 
                     {/* Eyebrow */}
                     <div className="flex items-center gap-3 mb-7">
-                        <div className="w-5 h-[1.5px] bg-[#6366F1]" />
-                        <span className="text-[11px] text-[#6366F1] tracking-[2px] font-semibold uppercase">
+                        <div className="w-5 h-[1.5px] bg-[#059669]" />
+                        <span className="text-[11px] text-[#059669] tracking-[2px] font-semibold uppercase">
                             Get started
                         </span>
                     </div>
@@ -174,7 +174,7 @@ export default function SignupPage() {
                                 onChange={(e) => setName(e.target.value)}
                                 placeholder="John Doe"
                                 required
-                                className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04]"
                                 style={{ padding: "11px 16px" }}
                             />
                         </div>
@@ -188,7 +188,7 @@ export default function SignupPage() {
                                 onChange={(e) => setEmail(e.target.value)}
                                 placeholder="you@company.com"
                                 required
-                                className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04]"
                                 style={{ padding: "11px 16px" }}
                             />
                         </div>
@@ -203,7 +203,7 @@ export default function SignupPage() {
                                 placeholder="Create a strong password"
                                 required
                                 minLength={8}
-                                className={`w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border focus:bg-[#6366F1]/[0.04] ${passwordError ? "border-rose-400 focus:border-rose-500" : "border-[#6366F1]/30 focus:border-[#6366F1]"}`}
+                                className={`w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border focus:bg-[#059669]/[0.04] ${passwordError ? "border-rose-400 focus:border-rose-500" : "border-[#059669]/30 focus:border-[#059669]"}`}
                                 style={{ padding: "11px 16px" }}
                             />
                         </div>
@@ -239,7 +239,7 @@ export default function SignupPage() {
                         <button
                             type="submit"
                             disabled={loading}
-                            className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#6366F1] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide mt-2"
+                            className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#059669] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide mt-2"
                         >
                             {loading ? "Submitting..." : <>Submit request <HiArrowRight /></>}
                         </button>
@@ -254,7 +254,7 @@ export default function SignupPage() {
 
                     <p className="text-xs font-normal text-zinc-500">
                         Already have an account?{" "}
-                        <Link href="/login" className="font-semibold text-[#6366F1] hover:text-[#6366F1]/80 transition-colors">
+                        <Link href="/login" className="font-semibold text-[#059669] hover:text-[#059669]/80 transition-colors">
                             Sign in
                         </Link>
                     </p>

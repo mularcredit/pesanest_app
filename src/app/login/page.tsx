@@ -91,9 +91,9 @@ function OtpBoxes({ onChange, autoFocus }: { onChange: (value: string) => void; 
                     onFocus={(e) => e.target.select()}
                     className={`w-11 h-11 rounded-full text-center text-lg font-semibold outline-none transition-all duration-150 text-zinc-900 border-2 ${
                         d
-                            ? "bg-[#6366F1]/[0.06] border-[#6366F1] shadow-[0_0_0_4px_rgba(99,102,241,0.12)]"
-                            : "bg-[#6366F1]/[0.02] border-[#6366F1]/25"
-                    } focus:border-[#6366F1] focus:bg-[#6366F1]/[0.05] focus:shadow-[0_0_0_4px_rgba(99,102,241,0.14)]`}
+                            ? "bg-[#059669]/[0.06] border-[#059669] shadow-[0_0_0_4px_rgba(5,150,105,0.12)]"
+                            : "bg-[#059669]/[0.02] border-[#059669]/25"
+                    } focus:border-[#059669] focus:bg-[#059669]/[0.05] focus:shadow-[0_0_0_4px_rgba(5,150,105,0.14)]`}
                 />
             ))}
         </div>
@@ -189,7 +189,7 @@ function LoginComponent() {
         <div className="min-h-screen flex flex-col lg:flex-row font-sans">
             {/* Left Side */}
             <div className="hidden lg:block lg:w-1/2 relative overflow-hidden"
-                style={{ background: '#3730a3' }}>
+                style={{ background: '#065f46' }}>
 
                 {/* Wave texture background */}
                 <div className="absolute inset-0" style={{
@@ -227,7 +227,7 @@ function LoginComponent() {
                         priority
                     />
                     <div className="absolute bottom-0 left-0 right-0 h-24"
-                        style={{ background: 'linear-gradient(to top, #3730a3, transparent)' }} />
+                        style={{ background: 'linear-gradient(to top, #065f46, transparent)' }} />
                 </div>
             </div>
 
@@ -236,7 +236,7 @@ function LoginComponent() {
 
                 {/* ── MOBILE HEADER (visible only on small screens) ── */}
                 <div className="lg:hidden relative overflow-hidden px-8 pt-10 pb-16"
-                    style={{ background: 'linear-gradient(135deg, #4f46e5 0%, #3730a3 50%, #1e1b4b 100%)' }}>
+                    style={{ background: 'linear-gradient(135deg, #059669 0%, #065f46 50%, #022c22 100%)' }}>
                     <div className="absolute inset-0 pointer-events-none" style={{
                         backgroundImage: 'url(/card-waves.jpeg)',
                         backgroundSize: 'cover',
@@ -276,7 +276,7 @@ function LoginComponent() {
                             </div>
                         )}
                         {!error && info && (
-                            <div className="mb-5 p-3 rounded-lg text-[11px] text-center bg-indigo-50 text-[#6366F1] border border-[#6366F1]/20">
+                            <div className="mb-5 p-3 rounded-lg text-[11px] text-center bg-emerald-50 text-[#059669] border border-[#059669]/20">
                                 {info}
                             </div>
                         )}
@@ -292,7 +292,7 @@ function LoginComponent() {
                                     placeholder="you@company.com"
                                     required
                                     disabled={otpStage}
-                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] disabled:opacity-60"
+                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04] disabled:opacity-60"
                                     style={{ padding: "11px 16px" }}
                                 />
                             </div>
@@ -300,7 +300,7 @@ function LoginComponent() {
                             {/* Password */}
                             <div className="flex justify-between items-center mb-1.5">
                                 <span className="text-xs font-medium text-zinc-900">Password</span>
-                                <Link href="/forgot-password" className="text-[11px] text-[#6366F1]/70 hover:text-[#6366F1] transition-colors">
+                                <Link href="/forgot-password" className="text-[11px] text-[#059669]/70 hover:text-[#059669] transition-colors">
                                     Forgot password?
                                 </Link>
                             </div>
@@ -312,7 +312,7 @@ function LoginComponent() {
                                     placeholder="Enter your secure password"
                                     required
                                     disabled={otpStage}
-                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04] disabled:opacity-60"
+                                    className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04] disabled:opacity-60"
                                     style={{ padding: "11px 16px" }}
                                 />
                             </div>
@@ -325,7 +325,7 @@ function LoginComponent() {
                                             type="button"
                                             onClick={handleResend}
                                             disabled={resending}
-                                            className="text-[11px] text-[#6366F1]/70 hover:text-[#6366F1] transition-colors disabled:opacity-50"
+                                            className="text-[11px] text-[#059669]/70 hover:text-[#059669] transition-colors disabled:opacity-50"
                                         >
                                             {resending ? "Sending…" : "Resend code"}
                                         </button>
@@ -341,7 +341,7 @@ function LoginComponent() {
                                 <div className="flex items-center gap-2 mb-8">
                                     <input
                                         type="checkbox"
-                                        className="w-4 h-4 rounded border-zinc-300 text-[#6366F1] focus:ring-[#6366F1]"
+                                        className="w-4 h-4 rounded border-zinc-300 text-[#059669] focus:ring-[#059669]"
                                     />
                                     <span className="text-xs font-normal text-zinc-600">Remember me</span>
                                 </div>
@@ -351,7 +351,7 @@ function LoginComponent() {
                             <button
                                 type="submit"
                                 disabled={loading}
-                                className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#6366F1] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
+                                className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#059669] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
                             >
                                 {loading ? "Please wait..." : otpStage ? <>Verify code <HiArrowRight /></> : <>Sign in <HiArrowRight /></>}
                             </button>
@@ -377,7 +377,7 @@ function LoginComponent() {
                         {/* Footer */}
                         <p className="text-xs font-normal text-zinc-500">
                             Don't have an account?{" "}
-                            <Link href="/signup" className="font-semibold text-[#6366F1] hover:text-[#6366F1]/80 transition-colors">
+                            <Link href="/signup" className="font-semibold text-[#059669] hover:text-[#059669]/80 transition-colors">
                                 Request access
                             </Link>
                         </p>

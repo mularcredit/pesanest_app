@@ -5,7 +5,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { HiEnvelope, HiArrowLeft, HiArrowRight, HiCheckCircle } from "react-icons/hi2";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { cn } from "@/lib/utils";
 
 export default function ForgotPasswordPage() {
     const [email, setEmail] = useState("");
@@ -49,12 +48,7 @@ export default function ForgotPasswordPage() {
                     className="object-cover object-center"
                     priority
                 />
-                <div className={cn(
-                    "absolute inset-0 backdrop-blur-[1px]",
-                    process.env.NEXT_PUBLIC_APP_NAME === "Pesanest"
-                        ? "bg-gradient-to-br from-[#1e005a]/90 to-black/70"
-                        : "bg-gradient-to-br from-[#6366F1]/90 to-black/70"
-                )}>
+                <div className="absolute inset-0 backdrop-blur-[1px] bg-gradient-to-br from-[#059669]/90 to-black/70">
                     <div className="h-full flex flex-col justify-between p-12">
                         <Link href="/" className="flex items-center gap-3">
                             <BrandLogo width={140} height={32} color="#ffffff" />
@@ -82,7 +76,7 @@ export default function ForgotPasswordPage() {
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-8 text-center">
                         <Link href="/" className="inline-block">
-                            <BrandLogo width={120} height={28} color="#007A3D" />
+                            <BrandLogo width={120} height={28} color="#059669" />
                         </Link>
                     </div>
 
@@ -98,8 +92,8 @@ export default function ForgotPasswordPage() {
 
                             {/* Eyebrow */}
                             <div className="flex items-center gap-3 mb-7">
-                                <div className="w-5 h-[1.5px] bg-[#6366F1]" />
-                                <span className="text-[11px] text-[#6366F1] tracking-[2px] font-semibold uppercase">
+                                <div className="w-5 h-[1.5px] bg-[#059669]" />
+                                <span className="text-[11px] text-[#059669] tracking-[2px] font-semibold uppercase">
                                     Account recovery
                                 </span>
                             </div>
@@ -124,7 +118,7 @@ export default function ForgotPasswordPage() {
                                         onChange={(e) => setEmail(e.target.value)}
                                         placeholder="you@company.com"
                                         required
-                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04]"
                                         style={{ padding: "11px 16px" }}
                                     />
                                 </div>
@@ -132,7 +126,7 @@ export default function ForgotPasswordPage() {
                                 <button
                                     type="submit"
                                     disabled={loading}
-                                    className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#6366F1] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
+                                    className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#059669] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
                                 >
                                     {loading ? "Sending..." : <>Send reset instructions <HiArrowRight /></>}
                                 </button>
@@ -146,7 +140,7 @@ export default function ForgotPasswordPage() {
 
                             <p className="text-xs font-normal text-zinc-500">
                                 Remember your password?{" "}
-                                <Link href="/login" className="font-semibold text-[#6366F1] hover:text-[#6366F1]/80 transition-colors">
+                                <Link href="/login" className="font-semibold text-[#059669] hover:text-[#059669]/80 transition-colors">
                                     Sign in
                                 </Link>
                             </p>
@@ -164,7 +158,7 @@ export default function ForgotPasswordPage() {
                                 Didn't receive the email? Check your spam folder or try again.
                             </p>
                             <Link href="/login">
-                                <button className="inline-flex items-center justify-center gap-2.5 transition-all bg-[#6366F1] hover:brightness-110 text-white rounded-lg py-3 px-6 text-sm font-bold">
+                                <button className="inline-flex items-center justify-center gap-2.5 transition-all bg-[#059669] hover:brightness-110 text-white rounded-lg py-3 px-6 text-sm font-bold">
                                     Back to login
                                 </button>
                             </Link>

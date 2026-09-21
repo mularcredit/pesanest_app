@@ -6,7 +6,6 @@ import Link from "next/link";
 import Image from "next/image";
 import { HiArrowLeft, HiArrowRight, HiCheckCircle } from "react-icons/hi2";
 import { BrandLogo } from "@/components/ui/BrandLogo";
-import { cn } from "@/lib/utils";
 
 function ResetPasswordForm() {
     const [password, setPassword] = useState("");
@@ -84,12 +83,7 @@ function ResetPasswordForm() {
                     className="object-cover object-center"
                     priority
                 />
-                <div className={cn(
-                    "absolute inset-0 backdrop-blur-[1px]",
-                    process.env.NEXT_PUBLIC_APP_NAME === "Pesanest"
-                        ? "bg-gradient-to-br from-[#1e005a]/90 to-black/70"
-                        : "bg-gradient-to-br from-[#6366F1]/90 to-black/70"
-                )}>
+                <div className="absolute inset-0 backdrop-blur-[1px] bg-gradient-to-br from-[#059669]/90 to-black/70">
                     <div className="h-full flex flex-col justify-between p-12">
                         <Link href="/" className="flex items-center gap-3">
                             <BrandLogo width={140} height={32} color="#ffffff" />
@@ -117,7 +111,7 @@ function ResetPasswordForm() {
                     {/* Mobile Logo */}
                     <div className="lg:hidden mb-8 text-center">
                         <Link href="/" className="inline-block">
-                            <BrandLogo width={120} height={28} color="#007A3D" />
+                            <BrandLogo width={120} height={28} color="#059669" />
                         </Link>
                     </div>
 
@@ -133,8 +127,8 @@ function ResetPasswordForm() {
 
                             {/* Eyebrow */}
                             <div className="flex items-center gap-3 mb-7">
-                                <div className="w-5 h-[1.5px] bg-[#6366F1]" />
-                                <span className="text-[11px] text-[#6366F1] tracking-[2px] font-semibold uppercase">
+                                <div className="w-5 h-[1.5px] bg-[#059669]" />
+                                <span className="text-[11px] text-[#059669] tracking-[2px] font-semibold uppercase">
                                     New password
                                 </span>
                             </div>
@@ -160,7 +154,7 @@ function ResetPasswordForm() {
                                         placeholder="Enter new password"
                                         required
                                         minLength={8}
-                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04]"
                                         style={{ padding: "11px 16px" }}
                                     />
                                 </div>
@@ -201,7 +195,7 @@ function ResetPasswordForm() {
                                         onChange={(e) => setConfirmPassword(e.target.value)}
                                         placeholder="Confirm new password"
                                         required
-                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#6366F1]/[0.02] border border-[#6366F1]/30 focus:border-[#6366F1] focus:bg-[#6366F1]/[0.04]"
+                                        className="w-full outline-none transition-all rounded-lg text-[13px] text-zinc-900 bg-[#059669]/[0.02] border border-[#059669]/30 focus:border-[#059669] focus:bg-[#059669]/[0.04]"
                                         style={{ padding: "11px 16px" }}
                                     />
                                 </div>
@@ -209,7 +203,7 @@ function ResetPasswordForm() {
                                 <button
                                     type="submit"
                                     disabled={loading || !token}
-                                    className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#6366F1] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
+                                    className="w-full flex items-center justify-center gap-2.5 transition-all disabled:opacity-60 bg-[#059669] hover:brightness-110 hover:-translate-y-0.5 text-white rounded-lg py-[13px] text-sm font-bold tracking-wide"
                                 >
                                     {loading ? "Resetting..." : <>Reset password <HiArrowRight /></>}
                                 </button>
@@ -225,7 +219,7 @@ function ResetPasswordForm() {
                                 Your password has been reset. Redirecting to login...
                             </p>
                             <Link href="/login">
-                                <button className="inline-flex items-center justify-center gap-2.5 transition-all bg-[#6366F1] hover:brightness-110 text-white rounded-lg py-3 px-6 text-sm font-bold">
+                                <button className="inline-flex items-center justify-center gap-2.5 transition-all bg-[#059669] hover:brightness-110 text-white rounded-lg py-3 px-6 text-sm font-bold">
                                     Go to login
                                 </button>
                             </Link>
