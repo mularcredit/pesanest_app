@@ -2,7 +2,7 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { FinancialReports } from '@/lib/accounting/reports';
-import { PiFileText, PiArrowRight } from 'react-icons/pi';
+import { PiFileText } from 'react-icons/pi';
 import { ManagementReportPdf } from '@/components/accounting/ManagementReportPdf';
 import type { ManagementReportData } from '@/components/accounting/ManagementReportPdf';
 import { BrandLogo } from '@/components/ui/BrandLogo';
@@ -73,27 +73,49 @@ function SubTitle({ children }: { children: React.ReactNode }) {
     return <h3 className="text-[12.5px] font-[700] text-gray-900 mb-2 mt-4 first:mt-0">{children}</h3>;
 }
 
-function KpiBlock({ label, value, sub }: { label: string; value: string; sub?: string }) {
+// A page's point, stated first — a thin green rule, larger type than body
+// text, before the tables that back it up.
+function Lead({ children }: { children: React.ReactNode }) {
     return (
-        <div className="bg-white" style={{ border: HAIRLINE }}>
-            <div className="h-[2px] bg-[#059669]" />
-            <div className="px-4 py-3.5">
-                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-2">{label}</p>
-                <p className="text-[19px] font-[700] font-mono tabular-nums text-gray-900 leading-none">{value}</p>
-                {sub && <p className="text-[10.5px] text-gray-400 mt-1.5">{sub}</p>}
-            </div>
+        <p className="text-[14px] text-gray-900 leading-snug pl-4 py-0.5" style={{ borderLeft: '3px solid #059669' }}>
+            {children}
+        </p>
+    );
+}
+
+// A basis-of-preparation / methodology note — not just a plain paragraph.
+function Callout({ children }: { children: React.ReactNode }) {
+    return (
+        <div className="px-4 py-3" style={{ background: '#ECFDF5', borderLeft: '4px solid #059669' }}>
+            <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-[#047857] mb-1">Basis of Preparation</p>
+            <p className="text-[11px] text-gray-700 leading-relaxed">{children}</p>
         </div>
     );
 }
 
-function MetricBlock({ label, value }: { label: string; value: string }) {
+// A flat "Metric | KES" table — used for Key Financial Metrics, matching the
+// ruled-table treatment of every other section instead of a tile band.
+function MetricTable({ items }: { items: { label: string; value: string; sub: string }[] }) {
     return (
-        <div className="bg-white" style={{ border: HAIRLINE }}>
-            <div className="h-[2px] bg-[#059669]" />
-            <div className="px-4 py-4">
-                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-2">{label}</p>
-                <p className="text-[17px] font-[700] font-mono tabular-nums text-gray-900 leading-none">{value}</p>
-            </div>
+        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+            <table className="w-full text-[12px]">
+                <thead>
+                    <tr style={{ background: '#059669' }}>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Metric</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {items.map((k, i) => (
+                        <tr key={k.label} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
+                            <td className="px-5 py-2 text-gray-700">
+                                {k.label}{k.sub && <span className="text-gray-400"> — {k.sub}</span>}
+                            </td>
+                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900 font-[600]">{k.value}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
@@ -166,24 +188,27 @@ function CategoryBar({ category, amount, share, count, maxAmount, rank }: { cate
     );
 }
 
-function PipelineFlow({ stages }: { stages: { label: string; count: number; amount: number }[] }) {
+function PipelineTable({ stages }: { stages: { label: string; count: number; amount: number }[] }) {
     return (
-        <div className="flex items-stretch">
-            {stages.map((s, i) => (
-                <div key={s.label} className="flex items-stretch flex-1">
-                    <div className="flex-1 bg-white px-3 py-3.5 text-center overflow-hidden" style={{ border: HAIRLINE }}>
-                        <div className="h-[2px] bg-[#059669] -mx-3 -mt-3.5 mb-3" />
-                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400 mb-1.5">{s.label}</p>
-                        <p className="text-[20px] font-[700] text-gray-900 leading-none mb-1.5">{s.count}</p>
-                        <p className="text-[10px] text-gray-400 font-mono tabular-nums">{fmt(s.amount)}</p>
-                    </div>
-                    {i < stages.length - 1 && (
-                        <div className="flex items-center px-1.5 shrink-0">
-                            <PiArrowRight className="text-gray-300 text-[14px]" />
-                        </div>
-                    )}
-                </div>
-            ))}
+        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+            <table className="w-full text-[12px]">
+                <thead>
+                    <tr style={{ background: '#059669' }}>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Stage</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Items</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {stages.map((s, i) => (
+                        <tr key={s.label} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
+                            <td className="px-5 py-2 text-gray-700">{s.label}</td>
+                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{s.count}</td>
+                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900 font-[600]">{fmt(s.amount)}</td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
         </div>
     );
 }
@@ -369,9 +394,8 @@ export default async function ManagementReportPage({
         { label: 'Pending',   items: byStatus('PENDING') },
         { label: 'Approved',  items: byStatus('APPROVED') },
         { label: 'Paid',      items: byStatus('PAID') },
+        { label: 'Rejected',  items: byStatus('REJECTED') },
     ].map(p => ({ label: p.label, count: p.items.length, amount: p.items.reduce((s: number, r: any) => s + r.amount, 0) }));
-    const rejectedReqs = byStatus('REJECTED');
-    const rejectedTotal = rejectedReqs.reduce((s: number, r: any) => s + r.amount, 0);
 
     const submitted = requisitionsInPeriod.filter((r: any) => r.status !== 'DRAFT');
     const approved  = requisitionsInPeriod.filter((r: any) => !['DRAFT', 'PENDING', 'REJECTED'].includes(r.status));
@@ -507,7 +531,7 @@ export default async function ManagementReportPage({
     };
 
     return (
-        <div className="pb-20 space-y-7 max-w-[960px] relative">
+        <div className="pb-20 space-y-7 max-w-[1120px] relative">
 
             {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
                  Negative z-index so it paints beneath normal-flow siblings regardless
@@ -601,10 +625,12 @@ export default async function ManagementReportPage({
             <div className="space-y-4">
                 <LayerHeading n={1} title="Executive Overview" />
 
+                <Lead>
+                    {companyName} reported a net profit of {fmtSigned(pl.netIncome)}, a {pctOf(pl.netIncome, pl.revenue.total)} margin, on cash reserves of {fmt(cashPosition)}.
+                </Lead>
+
                 <SubTitle>Key Financial Metrics</SubTitle>
-                <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                    {reportData.kpis.map(k => <KpiBlock key={k.label} {...k} />)}
-                </div>
+                <MetricTable items={reportData.kpis} />
 
                 <SubTitle>Executive Summary</SubTitle>
                 <p className="text-[12.5px] text-gray-600 leading-relaxed">{executiveSummary}</p>
@@ -644,6 +670,10 @@ export default async function ManagementReportPage({
                         </ul>
                     </div>
                 </div>
+
+                <Callout>
+                    Every figure is drawn from posted journal entries — voided entries are included as their offsetting reversal, never netted out or dropped. Nothing here is estimated or carried forward by hand.
+                </Callout>
             </div>
 
             {/* ═══ 02 · FINANCIAL PERFORMANCE ═══ */}
@@ -651,6 +681,9 @@ export default async function ManagementReportPage({
                 <LayerHeading n={2} title="Financial Performance" />
 
                 <SubTitle>Income Statement</SubTitle>
+                <Lead>
+                    Revenue of KES {fmt(pl.revenue.total)} against expenses of KES {fmt(pl.expenses.total)} left a net {pl.netIncome >= 0 ? 'profit' : 'loss'} of KES {fmt(pl.netIncome)} for the period.
+                </Lead>
                 <StatementTable
                     groups={[
                         { label: 'Revenue', rows: pl.revenue.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })) },
@@ -661,11 +694,6 @@ export default async function ManagementReportPage({
                 />
 
                 <SubTitle>Balance Sheet</SubTitle>
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
-                    <MetricBlock label="Total Assets" value={fmt(bs.assets.total)} />
-                    <MetricBlock label="Total Liabilities" value={fmt(bs.liabilities.total)} />
-                    <MetricBlock label="Total Equity" value={fmtSigned(bs.equity.total)} />
-                </div>
                 <StatementTable
                     groups={[
                         { label: 'Assets', rows: bs.assets.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })), subtotal: { label: 'Total Assets', amount: bs.assets.total } },
@@ -708,34 +736,40 @@ export default async function ManagementReportPage({
                 <LayerHeading n={3} title="Operations & Controls" />
 
                 <SubTitle>Requisition Pipeline</SubTitle>
-                <PipelineFlow stages={pipelineAll} />
-                {rejectedReqs.length > 0 && (
-                    <p className="text-[10.5px] text-gray-400">{rejectedReqs.length} requisition{rejectedReqs.length !== 1 ? 's' : ''} rejected this period, totaling KES {fmt(rejectedTotal)}.</p>
-                )}
+                <Lead>
+                    {submitted.length} requisition{submitted.length !== 1 ? 's' : ''} moved through approval this period — {approvalRate.toFixed(1)}% approved, {pendingReqs.length} still pending, {risks.length} flagged for review.
+                </Lead>
+                <PipelineTable stages={pipelineAll} />
 
-                <SubTitle>Risks & Spending Alerts</SubTitle>
-                <div className="bg-white" style={{ border: HAIRLINE }}>
-                    {risks.length > 0
-                        ? risks.map((r, i) => <RiskRow key={i} {...r} />)
-                        : <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending alerts identified for this period.</p>
-                    }
-                </div>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
+                    <div>
+                        <SubTitle>Risks & Alerts</SubTitle>
+                        <div className="bg-white" style={{ border: HAIRLINE }}>
+                            {risks.length > 0
+                                ? risks.map((r, i) => <RiskRow key={i} {...r} />)
+                                : <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending alerts identified for this period.</p>
+                            }
+                        </div>
+                    </div>
 
-                <SubTitle>Management Actions</SubTitle>
-                <div className="bg-white" style={{ border: HAIRLINE }}>
-                    {actions.length > 0 ? (
-                        <>
-                            <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
-                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Action</span>
-                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Owner</span>
-                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Due Date</span>
-                                <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Status</span>
-                            </div>
-                            {actions.map((a, i) => <ActionRow key={i} {...a} />)}
-                        </>
-                    ) : (
-                        <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No outstanding actions this period.</p>
-                    )}
+                    <div>
+                        <SubTitle>Management Actions</SubTitle>
+                        <div className="bg-white" style={{ border: HAIRLINE }}>
+                            {actions.length > 0 ? (
+                                <>
+                                    <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Action</span>
+                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Owner</span>
+                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Due Date</span>
+                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Status</span>
+                                    </div>
+                                    {actions.map((a, i) => <ActionRow key={i} {...a} />)}
+                                </>
+                            ) : (
+                                <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No outstanding actions this period.</p>
+                            )}
+                        </div>
+                    </div>
                 </div>
             </div>
 
