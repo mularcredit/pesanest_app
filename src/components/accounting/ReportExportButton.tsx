@@ -34,11 +34,6 @@ export interface ReportExportData {
     currency?: string;       // default "KES"
     logoUrl?: string;        // optional brand mark, top-left of the PDF header band
     watermarkUrl?: string;   // optional low-opacity image centered behind the whole page
-    // Optional written narrative, drawn as a wrapped paragraph right after the
-    // letterhead and before the table — doesn't fit ReportLine's {name, current}
-    // shape (it's prose, not a tabular row), and jsPDF-autotable can't interleave
-    // free text mid-table in one call, so it's handled as its own pre-table block.
-    executiveSummary?: string;
 }
 
 // ── helpers ───────────────────────────────────────────────────────────────────
@@ -119,88 +114,75 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             }
 
             // ── Letterhead ──────────────────────────────────────────────────
-            // Classic corporate: navy ink, plain rules, no colored fill band.
-            const INK: [number, number, number] = [15, 23, 42];
-            const RULE: [number, number, number] = [200, 200, 200];
-            const SLATE_FILL: [number, number, number] = [241, 245, 249];
-            const GREEN: [number, number, number] = [20, 83, 45];
-            const RED: [number, number, number] = [127, 29, 29];
-
-            // Page border is drawn per-page in didDrawPage below (autoTable's
-            // callback fires once per page, keeping multi-page exports framed
-            // consistently rather than only on page 1).
-
-            // Logo row: brand mark (left), the company's own uploaded logo (right).
+            // Logo row: brand mark (left), company name (center), the
+            // company's own uploaded logo (right, same image as the watermark).
             const logo = data.logoUrl ? await loadImageForPdf(data.logoUrl) : null;
             if (logo) {
-                const boxH = 10;
+                const boxH = 14;
                 const w = (logo.width / logo.height) * boxH;
-                doc.addImage(logo.dataUri, logo.format, 12, 10, w, boxH);
+                doc.addImage(logo.dataUri, logo.format, 14, 6, w, boxH);
             }
             const companyLogo = data.watermarkUrl ? await loadImageForPdf(data.watermarkUrl) : null;
             if (companyLogo) {
-                const boxH = 10;
+                const boxH = 14;
                 const w = (companyLogo.width / companyLogo.height) * boxH;
-                doc.addImage(companyLogo.dataUri, companyLogo.format, W - 12 - w, 10, w, boxH);
+                doc.addImage(companyLogo.dataUri, companyLogo.format, W - 14 - w, 6, w, boxH);
             }
+            doc.setTextColor(30, 30, 30);
+            doc.setFontSize(12); doc.setFont("Outfit", "bold");
+            doc.text(data.company, W / 2, 14, { align: "center" });
 
-            doc.setTextColor(...INK);
-            doc.setFontSize(11); doc.setFont("Outfit", "bold");
-            doc.text(data.company, W / 2, 16, { align: "center" });
+            // Thin rule under the logo row
+            doc.setDrawColor(220, 220, 220);
+            doc.line(8, 24, W - 8, 24);
 
-            doc.setDrawColor(...RULE);
-            doc.setLineWidth(0.2);
-            doc.line(10, 25, W - 10, 25);
+            // Metadata strip: three equal columns, small gray label over a
+            // black value — the same pattern this app's other letterheaded
+            // documents (Customer Statement, Payment Receipt) already use.
+            const metaY = 30;
+            const colW = (W - 16) / 3;
+            const metaCols: [string, string][] = [
+                ["Period", data.subtitle],
+                ["Generated", new Date().toLocaleDateString("en-KE", { day: "numeric", month: "short", year: "numeric" })],
+                ["Currency", currency],
+            ];
+            metaCols.forEach(([label, value], i) => {
+                const x = 8 + i * colW;
+                doc.setFontSize(7); doc.setFont("Outfit", "bold"); doc.setTextColor(150, 150, 150);
+                doc.text(label.toUpperCase(), x, metaY);
+                doc.setFontSize(9.5); doc.setFont("Outfit", "normal"); doc.setTextColor(30, 30, 30);
+                doc.text(value, x, metaY + 5.5, { maxWidth: colW - 4 });
+            });
 
-            doc.setFontSize(15); doc.setFont("Outfit", "bold");
-            doc.setTextColor(...INK);
-            doc.text(data.title.toUpperCase(), W / 2, 33, { align: "center" });
-            doc.setFontSize(9); doc.setFont("Outfit", "normal"); doc.setTextColor(90, 90, 90);
-            doc.text(data.subtitle, W / 2, 39, { align: "center" });
-
-            doc.setDrawColor(...INK);
-            doc.setLineWidth(0.4);
-            doc.line(10, 44, W - 10, 44);
-
-            let cursorY = 51;
-
-            // Executive summary — a wrapped paragraph, not a table row.
-            if (data.executiveSummary) {
-                doc.setFontSize(7.5); doc.setFont("Outfit", "bold"); doc.setTextColor(...INK);
-                doc.text("1. EXECUTIVE SUMMARY", 10, cursorY);
-                cursorY += 2;
-                doc.setDrawColor(...INK);
-                doc.line(10, cursorY, 22, cursorY);
-                cursorY += 5;
-
-                doc.setFontSize(9); doc.setFont("Outfit", "normal"); doc.setTextColor(40, 40, 40);
-                const wrapped = doc.splitTextToSize(data.executiveSummary, W - 20);
-                doc.text(wrapped, 10, cursorY);
-                cursorY += wrapped.length * 4.5 + 8;
-            }
+            // Title band
+            doc.setFillColor(5, 150, 105);
+            doc.rect(0, 40, W, 12, "F");
+            doc.setTextColor(255, 255, 255);
+            doc.setFontSize(13); doc.setFont("Outfit", "bold");
+            doc.text(data.title.toUpperCase(), W / 2, 48, { align: "center" });
 
             const rows: (string | { content: string; styles: object })[][] = [];
 
             for (const section of data.sections) {
-                // Section header row — plain slate fill, navy text, no green/light tint.
+                // Section header row
                 rows.push([
-                    { content: section.title.toUpperCase(), styles: { fillColor: SLATE_FILL, textColor: INK, fontStyle: "bold", fontSize: 7.5 } },
-                    { content: "", styles: { fillColor: SLATE_FILL } },
-                    ...(data.showPrior ? [{ content: "", styles: { fillColor: SLATE_FILL } }] : []),
-                    { content: "", styles: { fillColor: SLATE_FILL } },
+                    { content: section.title.toUpperCase(), styles: { fillColor: [236, 253, 245], textColor: [5, 150, 105], fontStyle: "bold", fontSize: 7.5 } },
+                    { content: "", styles: { fillColor: [236, 253, 245] } },
+                    ...(data.showPrior ? [{ content: "", styles: { fillColor: [236, 253, 245] } }] : []),
+                    { content: "", styles: { fillColor: [236, 253, 245] } },
                 ]);
 
                 for (const line of section.lines) {
                     if (line.spacer) { rows.push(["", "", ...(data.showPrior ? [""] : []), ""]); continue; }
 
                     const nameStyle: any = {};
-                    const amtStyle: any = { halign: "right", textColor: line.isNegative || line.current < 0 ? RED : GREEN };
-                    const priorStyle: any = { halign: "right", textColor: [140, 140, 140] };
+                    const amtStyle: any = { halign: "right" };
+                    const priorStyle: any = { halign: "right", textColor: [180, 180, 180] };
 
                     if (line.isGrandTotal) {
-                        nameStyle.fillColor = SLATE_FILL; nameStyle.fontStyle = "bold"; nameStyle.fontSize = 9;
-                        amtStyle.fillColor = SLATE_FILL; amtStyle.fontStyle = "bold"; amtStyle.fontSize = 9;
-                        priorStyle.fillColor = SLATE_FILL;
+                        nameStyle.fillColor = [236, 253, 245]; nameStyle.fontStyle = "bold"; nameStyle.fontSize = 9;
+                        amtStyle.fillColor = [236, 253, 245]; amtStyle.fontStyle = "bold"; amtStyle.fontSize = 9;
+                        priorStyle.fillColor = [236, 253, 245];
                     } else if (line.isSubtotal || line.isBold) {
                         nameStyle.fontStyle = "bold"; amtStyle.fontStyle = "bold";
                     }
@@ -224,27 +206,18 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                 : ["Description / Account", "", `${currency}`];
 
             autoTable(doc, {
-                startY: cursorY,
+                startY: 58,
                 head: [colHeader],
                 body: rows as any,
                 theme: "plain",
-                headStyles: { fillColor: INK, textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", font: "Outfit" },
+                headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", font: "Outfit" },
                 bodyStyles: { fontSize: 8, minCellHeight: 5.5, font: "Outfit" },
                 columnStyles: data.showPrior
                     ? { 0: { cellWidth: 100 }, 1: { cellWidth: 5 }, 2: { cellWidth: 35, halign: "right" }, 3: { cellWidth: 42, halign: "right" } }
                     : { 0: { cellWidth: 130 }, 1: { cellWidth: 5 }, 2: { cellWidth: 50, halign: "right" } },
                 margin: { left: 8, right: 8, bottom: 22 },
-                styles: { overflow: "linebreak", font: "Outfit", lineColor: RULE, lineWidth: 0.15 },
-                tableLineColor: RULE,
-                tableLineWidth: 0.15,
+                styles: { overflow: "linebreak", font: "Outfit" },
                 didDrawPage: () => {
-                    // Outer page border — redrawn on every page (didDrawPage fires
-                    // once per page), so multi-page exports stay consistent rather
-                    // than only having the frame on page 1.
-                    doc.setDrawColor(...INK);
-                    doc.setLineWidth(0.4);
-                    doc.rect(6, 6, W - 12, H - 12);
-
                     // ── Footer: hairline rule, brand note, small brand mark, page number —
                     // drawn on every page, matching the on-screen report's footer.
                     const pg = doc.getNumberOfPages();
