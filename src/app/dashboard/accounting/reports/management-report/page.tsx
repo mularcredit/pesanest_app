@@ -61,23 +61,23 @@ function LayerHeading({ n, title }: { n: number; title: string }) {
     return (
         <div>
             <div className="flex items-baseline gap-3">
-                <span className="text-[11px] font-[700] text-[#059669] tracking-[0.1em]">{String(n).padStart(2, '0')}</span>
-                <h2 className="text-[16px] font-[700] text-gray-900">{title}</h2>
+                <span className="text-[12px] font-[700] text-[#059669] tracking-[0.1em]">{String(n).padStart(2, '0')}</span>
+                <h2 className="text-[18px] font-[700] text-gray-900">{title}</h2>
             </div>
-            <div className="h-px bg-gray-200 mt-2.5" />
+            <div className="h-px bg-gray-200 mt-3" />
         </div>
     );
 }
 
 function SubTitle({ children }: { children: React.ReactNode }) {
-    return <h3 className="text-[12.5px] font-[700] text-gray-900 mb-2 mt-4 first:mt-0">{children}</h3>;
+    return <h3 className="text-[13px] font-[700] text-gray-900 mb-3 mt-6 first:mt-0">{children}</h3>;
 }
 
 // A page's point, stated first — a thin green rule, larger type than body
 // text, before the tables that back it up.
 function Lead({ children }: { children: React.ReactNode }) {
     return (
-        <p className="text-[14px] text-gray-900 leading-snug pl-4 py-0.5" style={{ borderLeft: '3px solid #059669' }}>
+        <p className="text-[14px] text-gray-900 leading-relaxed pl-4 py-1" style={{ borderLeft: '3px solid #059669' }}>
             {children}
         </p>
     );
@@ -86,9 +86,9 @@ function Lead({ children }: { children: React.ReactNode }) {
 // A basis-of-preparation / methodology note — not just a plain paragraph.
 function Callout({ children }: { children: React.ReactNode }) {
     return (
-        <div className="px-4 py-3" style={{ background: '#ECFDF5', borderLeft: '4px solid #059669' }}>
-            <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-[#047857] mb-1">Basis of Preparation</p>
-            <p className="text-[11px] text-gray-700 leading-relaxed">{children}</p>
+        <div className="px-5 py-4" style={{ background: '#ECFDF5', borderLeft: '4px solid #059669' }}>
+            <p className="text-[10.5px] font-[700] uppercase tracking-[0.08em] text-[#047857] mb-1.5">Basis of Preparation</p>
+            <p className="text-[12px] text-gray-700 leading-relaxed">{children}</p>
         </div>
     );
 }
@@ -101,17 +101,17 @@ function MetricTable({ items }: { items: { label: string; value: string; sub: st
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
-                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Metric</th>
-                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Metric</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">KES</th>
                     </tr>
                 </thead>
                 <tbody>
                     {items.map((k, i) => (
                         <tr key={k.label} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
-                            <td className="px-5 py-2 text-gray-700">
+                            <td className="px-5 py-3 text-gray-700 leading-relaxed">
                                 {k.label}{k.sub && <span className="text-gray-400"> — {k.sub}</span>}
                             </td>
-                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900 font-[600]">{k.value}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900 font-[600]">{k.value}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -135,37 +135,37 @@ function StatementTable({ groups, totalLabel, totalAmount }: {
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
-                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Description / Account</th>
-                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Description / Account</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">KES</th>
                     </tr>
                 </thead>
                 <tbody>
                     {groups.flatMap((g, gi) => [
                         <tr key={`${gi}-h`} style={{ background: '#ECFDF5' }}>
-                            <td colSpan={2} className="px-5 py-1.5 text-[9.5px] font-[700] uppercase tracking-[0.08em]" style={{ color: '#059669' }}>{g.label}</td>
+                            <td colSpan={2} className="px-5 py-2 text-[10.5px] font-[700] uppercase tracking-[0.08em]" style={{ color: '#059669' }}>{g.label}</td>
                         </tr>,
                         ...(g.rows.length === 0 ? [
                             <tr key={`${gi}-empty`}>
-                                <td colSpan={2} className="px-5 py-2 text-[11.5px] text-gray-400 italic">No activity recorded</td>
+                                <td colSpan={2} className="px-5 py-3 text-[12px] text-gray-400 italic">No activity recorded</td>
                             </tr>,
                         ] : g.rows.map((r, ri) => (
                             <tr key={`${gi}-${ri}`} style={{ background: ri % 2 === 1 ? '#FAFAFA' : 'white' }}>
-                                <td className="px-5 py-2 text-gray-700">{r.name}</td>
-                                <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{fmtSigned(r.amount)}</td>
+                                <td className="px-5 py-2.5 text-gray-700 leading-relaxed">{r.name}</td>
+                                <td className="px-5 py-2.5 text-right font-mono tabular-nums text-gray-900">{fmtSigned(r.amount)}</td>
                             </tr>
                         ))),
                         ...(g.subtotal ? [
                             <tr key={`${gi}-sub`} style={{ background: '#F3F4F6' }}>
-                                <td className="px-5 py-2 font-[600] text-gray-700">{g.subtotal.label}</td>
-                                <td className="px-5 py-2 text-right font-[700] font-mono tabular-nums text-gray-900">{fmtSigned(g.subtotal.amount)}</td>
+                                <td className="px-5 py-2.5 font-[600] text-gray-700">{g.subtotal.label}</td>
+                                <td className="px-5 py-2.5 text-right font-[700] font-mono tabular-nums text-gray-900">{fmtSigned(g.subtotal.amount)}</td>
                             </tr>,
                         ] : []),
                     ])}
                 </tbody>
                 <tfoot>
                     <tr style={{ background: '#111827' }}>
-                        <td className="px-5 py-3 font-[700] text-white uppercase tracking-[0.04em] text-[11.5px]">{totalLabel}</td>
-                        <td className="px-5 py-3 text-right font-[800] font-mono tabular-nums text-white text-[13px]">{fmtSigned(totalAmount)}</td>
+                        <td className="px-5 py-3.5 font-[700] text-white uppercase tracking-[0.04em] text-[12.5px]">{totalLabel}</td>
+                        <td className="px-5 py-3.5 text-right font-[800] font-mono tabular-nums text-white text-[14px]">{fmtSigned(totalAmount)}</td>
                     </tr>
                 </tfoot>
             </table>
@@ -176,12 +176,12 @@ function StatementTable({ groups, totalLabel, totalAmount }: {
 function CategoryBar({ category, amount, share, count, maxAmount, rank }: { category: string; amount: number; share: string; count: number; maxAmount: number; rank: number }) {
     const widthPct = maxAmount > 0 ? Math.max(0.6, (amount / maxAmount) * 100) : 0;
     return (
-        <div className="px-5 py-2.5" style={{ borderBottom: HAIRLINE }}>
-            <div className="flex items-baseline justify-between gap-3 mb-1.5">
-                <span className="text-[11.5px] text-gray-700 truncate">{category} <span className="text-gray-400">({count}, {share})</span></span>
-                <span className="text-[11.5px] font-mono tabular-nums text-gray-900 font-[600] shrink-0">{fmt(amount)}</span>
+        <div className="px-5 py-3.5" style={{ borderBottom: HAIRLINE }}>
+            <div className="flex items-baseline justify-between gap-3 mb-2">
+                <span className="text-[12px] text-gray-700 truncate">{category} <span className="text-gray-400">({count}, {share})</span></span>
+                <span className="text-[12px] font-mono tabular-nums text-gray-900 font-[600] shrink-0">{fmt(amount)}</span>
             </div>
-            <div className="h-[5px] bg-gray-100 overflow-hidden">
+            <div className="h-[6px] bg-gray-100 overflow-hidden">
                 <div className="h-full" style={{ width: `${widthPct}%`, background: rank === 0 ? '#059669' : '#6ec3a5' }} />
             </div>
         </div>
@@ -194,17 +194,17 @@ function PipelineTable({ stages }: { stages: { label: string; count: number; amo
             <table className="w-full text-[12px]">
                 <thead>
                     <tr style={{ background: '#059669' }}>
-                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Stage</th>
-                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Items</th>
-                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Stage</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Items</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">KES</th>
                     </tr>
                 </thead>
                 <tbody>
                     {stages.map((s, i) => (
                         <tr key={s.label} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
-                            <td className="px-5 py-2 text-gray-700">{s.label}</td>
-                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{s.count}</td>
-                            <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900 font-[600]">{fmt(s.amount)}</td>
+                            <td className="px-5 py-3 text-gray-700">{s.label}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900">{s.count}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900 font-[600]">{fmt(s.amount)}</td>
                         </tr>
                     ))}
                 </tbody>
@@ -215,11 +215,11 @@ function PipelineTable({ stages }: { stages: { label: string; count: number; amo
 
 function RiskRow({ severity, title, amount, status }: { severity: 'high' | 'medium' | 'low'; title: string; amount: number; status: string }) {
     return (
-        <div className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: HAIRLINE }}>
+        <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: HAIRLINE }}>
             <span className="w-[7px] h-[7px] rounded-full shrink-0" style={{ background: SEV_COLOR[severity] }} />
             <div className="flex-1 min-w-0">
                 <p className="text-[12px] text-gray-800 truncate">{title}</p>
-                <p className="text-[10.5px] text-gray-400 mt-0.5">{status}</p>
+                <p className="text-[11px] text-gray-400 mt-1">{status}</p>
             </div>
             <span className="text-[12px] font-mono tabular-nums text-gray-900 font-[600] shrink-0">{fmt(amount)}</span>
         </div>
@@ -228,11 +228,11 @@ function RiskRow({ severity, title, amount, status }: { severity: 'high' | 'medi
 
 function ActionRow({ action, owner, dueDate, status }: { action: string; owner?: string; dueDate?: string; status: string }) {
     return (
-        <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2.5 items-center" style={{ borderBottom: HAIRLINE }}>
-            <p className="text-[12px] text-gray-800">{action}</p>
-            <p className="text-[11px] text-gray-400 truncate">{owner || '—'}</p>
-            <p className="text-[11px] text-gray-400 truncate">{dueDate || '—'}</p>
-            <span className="text-[10.5px] font-[600] justify-self-start" style={{ color: STATUS_COLOR[status] ?? '#6b7280' }}>{status}</span>
+        <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-3.5 items-center" style={{ borderBottom: HAIRLINE }}>
+            <p className="text-[12px] text-gray-800 leading-relaxed">{action}</p>
+            <p className="text-[11.5px] text-gray-400 truncate">{owner || '—'}</p>
+            <p className="text-[11.5px] text-gray-400 truncate">{dueDate || '—'}</p>
+            <span className="text-[11px] font-[600] justify-self-start" style={{ color: STATUS_COLOR[status] ?? '#6b7280' }}>{status}</span>
         </div>
     );
 }
@@ -531,7 +531,7 @@ export default async function ManagementReportPage({
     };
 
     return (
-        <div className="pb-20 space-y-7 max-w-[1120px] relative">
+        <div className="pb-20 space-y-10 max-w-[1120px] relative">
 
             {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
                  Negative z-index so it paints beneath normal-flow siblings regardless
@@ -565,17 +565,17 @@ export default async function ManagementReportPage({
                 </div>
 
                 {/* Metadata strip */}
-                <div className="grid grid-cols-3 gap-4 px-5 py-3" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                <div className="grid grid-cols-3 gap-4 px-5 py-4" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
                     <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Period</p>
+                        <p className="text-[10px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-1">Period</p>
                         <p className="text-[12px] font-[500] text-gray-800">{periodLabel}</p>
                     </div>
                     <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Generated</p>
+                        <p className="text-[10px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-1">Generated</p>
                         <p className="text-[12px] font-[500] text-gray-800">{generatedLabel}</p>
                     </div>
                     <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Currency</p>
+                        <p className="text-[10px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-1">Currency</p>
                         <p className="text-[12px] font-[500] text-gray-800">KES</p>
                     </div>
                 </div>
@@ -589,16 +589,16 @@ export default async function ManagementReportPage({
                 </div>
 
                 {/* Company details + confidentiality mark */}
-                <div className="px-5 py-2.5 flex flex-wrap items-center justify-between gap-x-6 gap-y-1" style={{ borderTop: HAIRLINE }}>
-                    <div className="flex flex-wrap gap-x-6 gap-y-1">
+                <div className="px-5 py-3 flex flex-wrap items-center justify-between gap-x-6 gap-y-1.5" style={{ borderTop: HAIRLINE }}>
+                    <div className="flex flex-wrap gap-x-6 gap-y-1.5">
                         {registrationNumber && (
-                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
+                            <p className="text-[11.5px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
                         )}
                         {headquartersAddress && (
-                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
+                            <p className="text-[11.5px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
                         )}
                     </div>
-                    <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-300">Confidential — Internal Management Use</p>
+                    <p className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-300">Confidential — Internal Management Use</p>
                 </div>
             </div>
 
@@ -611,7 +611,7 @@ export default async function ManagementReportPage({
             <div className="flex items-center gap-1 flex-wrap">
                 {PRESETS.map(p => (
                     <Link key={p.key} href={pageUrl(p.key)}
-                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-[500] transition-colors border ${
+                        className={`px-3.5 py-1.5 rounded-full text-[12px] font-[500] transition-colors border ${
                             activePreset === p.key
                                 ? 'bg-[#059669] text-white border-[#059669]'
                                 : 'bg-white text-gray-500 border-gray-200 hover:border-[#059669]/40 hover:text-[#059669]'
@@ -622,7 +622,7 @@ export default async function ManagementReportPage({
             </div>
 
             {/* ═══ 01 · EXECUTIVE OVERVIEW ═══ */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <LayerHeading n={1} title="Executive Overview" />
 
                 <Lead>
@@ -633,15 +633,15 @@ export default async function ManagementReportPage({
                 <MetricTable items={reportData.kpis} />
 
                 <SubTitle>Executive Summary</SubTitle>
-                <p className="text-[12.5px] text-gray-600 leading-relaxed">{executiveSummary}</p>
+                <p className="text-[13px] text-gray-600 leading-[1.75]">{executiveSummary}</p>
 
-                <div className="grid grid-cols-1 md:grid-cols-3 gap-5 pt-1">
+                <div className="grid grid-cols-1 md:grid-cols-3 gap-6 pt-1">
                     <div>
                         <SubTitle>Performance Highlights</SubTitle>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2.5">
                             {highlights.map((h, i) => (
-                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
-                                    <span className="w-[5px] h-[5px] rounded-full bg-[#059669] mt-[6px] shrink-0" />
+                                <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full bg-[#059669] mt-[7px] shrink-0" />
                                     {h}
                                 </li>
                             ))}
@@ -649,24 +649,24 @@ export default async function ManagementReportPage({
                     </div>
                     <div>
                         <SubTitle>Key Risks & Exceptions</SubTitle>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2.5">
                             {risks.length > 0 ? risks.slice(0, 3).map((r, i) => (
-                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
-                                    <span className="w-[5px] h-[5px] rounded-full mt-[6px] shrink-0" style={{ background: SEV_COLOR[r.severity] }} />
+                                <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full mt-[7px] shrink-0" style={{ background: SEV_COLOR[r.severity] }} />
                                     {r.title} — KES {fmt(r.amount)}
                                 </li>
-                            )) : <li className="text-[11.5px] text-gray-400 italic">No exceptions flagged this period.</li>}
+                            )) : <li className="text-[12px] text-gray-400 italic">No exceptions flagged this period.</li>}
                         </ul>
                     </div>
                     <div>
                         <SubTitle>Management Attention</SubTitle>
-                        <ul className="space-y-1.5">
+                        <ul className="space-y-2.5">
                             {actions.length > 0 ? actions.map((a, i) => (
-                                <li key={i} className="flex items-start gap-2 text-[11.5px] text-gray-600 leading-relaxed">
-                                    <span className="w-[5px] h-[5px] rounded-full bg-[#d97706] mt-[6px] shrink-0" />
+                                <li key={i} className="flex items-start gap-2.5 text-[12px] text-gray-600 leading-relaxed">
+                                    <span className="w-[5px] h-[5px] rounded-full bg-[#d97706] mt-[7px] shrink-0" />
                                     {a.action}
                                 </li>
-                            )) : <li className="text-[11.5px] text-gray-400 italic">No outstanding actions this period.</li>}
+                            )) : <li className="text-[12px] text-gray-400 italic">No outstanding actions this period.</li>}
                         </ul>
                     </div>
                 </div>
@@ -677,7 +677,7 @@ export default async function ManagementReportPage({
             </div>
 
             {/* ═══ 02 · FINANCIAL PERFORMANCE ═══ */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <LayerHeading n={2} title="Financial Performance" />
 
                 <SubTitle>Income Statement</SubTitle>
@@ -714,15 +714,15 @@ export default async function ManagementReportPage({
                     totalLabel="Net Increase / (Decrease) in Cash"
                     totalAmount={cashFlow.netChange}
                 />
-                <div className="flex items-center gap-3 px-1 -mt-2">
-                    <span className="flex-1 text-[11px] text-gray-400">Cash Balance on Books</span>
-                    <span className="text-[11px] font-mono tabular-nums text-gray-500">{fmt(cashPosition)}</span>
+                <div className="flex items-center gap-3 px-1">
+                    <span className="flex-1 text-[12px] text-gray-400">Cash Balance on Books</span>
+                    <span className="text-[12px] font-mono tabular-nums text-gray-500">{fmt(cashPosition)}</span>
                 </div>
 
                 <SubTitle>Spending Analysis</SubTitle>
                 <div className="bg-white" style={{ border: HAIRLINE }}>
                     {topCategories.length === 0
-                        ? <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending recorded this period</p>
+                        ? <p className="px-5 py-5 text-[12px] text-gray-400 italic">No spending recorded this period</p>
                         : topCategories.slice(0, 8).map((c, i) => (
                             <CategoryBar key={c.category} category={c.category} amount={c.amount} count={c.count}
                                 share={pctOf(c.amount, totalCategorySpend)} maxAmount={maxCategoryAmount} rank={i} />
@@ -732,7 +732,7 @@ export default async function ManagementReportPage({
             </div>
 
             {/* ═══ 03 · OPERATIONS & CONTROLS ═══ */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <LayerHeading n={3} title="Operations & Controls" />
 
                 <SubTitle>Requisition Pipeline</SubTitle>
@@ -747,7 +747,7 @@ export default async function ManagementReportPage({
                         <div className="bg-white" style={{ border: HAIRLINE }}>
                             {risks.length > 0
                                 ? risks.map((r, i) => <RiskRow key={i} {...r} />)
-                                : <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending alerts identified for this period.</p>
+                                : <p className="px-5 py-5 text-[12px] text-gray-400 italic">No spending alerts identified for this period.</p>
                             }
                         </div>
                     </div>
@@ -757,16 +757,16 @@ export default async function ManagementReportPage({
                         <div className="bg-white" style={{ border: HAIRLINE }}>
                             {actions.length > 0 ? (
                                 <>
-                                    <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
-                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Action</span>
-                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Owner</span>
-                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Due Date</span>
-                                        <span className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Status</span>
+                                    <div className="grid grid-cols-[1fr_100px_90px_80px] gap-3 px-5 py-2.5" style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
+                                        <span className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-400">Action</span>
+                                        <span className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-400">Owner</span>
+                                        <span className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-400">Due Date</span>
+                                        <span className="text-[10px] font-[700] uppercase tracking-[0.08em] text-gray-400">Status</span>
                                     </div>
                                     {actions.map((a, i) => <ActionRow key={i} {...a} />)}
                                 </>
                             ) : (
-                                <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No outstanding actions this period.</p>
+                                <p className="px-5 py-5 text-[12px] text-gray-400 italic">No outstanding actions this period.</p>
                             )}
                         </div>
                     </div>
@@ -774,34 +774,34 @@ export default async function ManagementReportPage({
             </div>
 
             {/* ═══ 04 · APPENDICES ═══ */}
-            <div className="space-y-4">
+            <div className="space-y-5">
                 <LayerHeading n={4} title="Appendices" />
                 <SubTitle>A — Detailed Transactions ({requisitionsInPeriod.length})</SubTitle>
-                <p className="text-[11px] text-gray-400 -mt-2 mb-1">Full itemized listing of every requisition recorded in the reporting period, for reference.</p>
+                <p className="text-[12px] text-gray-400 -mt-1 mb-2">Full itemized listing of every requisition recorded in the reporting period, for reference.</p>
                 <div className="bg-white overflow-x-auto" style={{ border: HAIRLINE }}>
                     {requisitionsInPeriod.length === 0 ? (
-                        <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No requisitions recorded in this period.</p>
+                        <p className="px-5 py-5 text-[12px] text-gray-400 italic">No requisitions recorded in this period.</p>
                     ) : (
-                        <table className="w-full text-[11px] min-w-[720px]">
+                        <table className="w-full text-[12px] min-w-[720px]">
                             <thead>
                                 <tr style={{ borderBottom: HAIRLINE, background: '#FAFAFA' }}>
-                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-5 py-2">Date</th>
-                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Description</th>
-                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Category</th>
-                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Requested By</th>
-                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-3 py-2">Status</th>
-                                    <th className="text-right font-[700] text-gray-400 uppercase tracking-[0.05em] text-[9.5px] px-5 py-2">Amount</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-5 py-2.5">Date</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-3 py-2.5">Description</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-3 py-2.5">Category</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-3 py-2.5">Requested By</th>
+                                    <th className="text-left font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-3 py-2.5">Status</th>
+                                    <th className="text-right font-[700] text-gray-400 uppercase tracking-[0.05em] text-[10px] px-5 py-2.5">Amount</th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {reportData.transactions.map((t, i) => (
                                     <tr key={i} style={{ borderBottom: HAIRLINE, background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
-                                        <td className="px-5 py-2 text-gray-500 whitespace-nowrap">{t.date}</td>
-                                        <td className="px-3 py-2 text-gray-800">{t.description}</td>
-                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.category}</td>
-                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.requestedBy}</td>
-                                        <td className="px-3 py-2 text-gray-500 whitespace-nowrap">{t.status}</td>
-                                        <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{fmt(t.amount)}</td>
+                                        <td className="px-5 py-2.5 text-gray-500 whitespace-nowrap">{t.date}</td>
+                                        <td className="px-3 py-2.5 text-gray-800">{t.description}</td>
+                                        <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{t.category}</td>
+                                        <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{t.requestedBy}</td>
+                                        <td className="px-3 py-2.5 text-gray-500 whitespace-nowrap">{t.status}</td>
+                                        <td className="px-5 py-2.5 text-right font-mono tabular-nums text-gray-900">{fmt(t.amount)}</td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -811,14 +811,14 @@ export default async function ManagementReportPage({
             </div>
 
             {/* ── Footer ── */}
-            <div className="relative z-10 pt-4 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
-                <div className="flex items-center gap-2.5">
+            <div className="relative z-10 pt-5 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
+                <div className="flex items-center gap-3">
                     <BrandLogo width={70} height={19} color="#9ca3af" />
-                    <p className="text-[10.5px] text-gray-400">
+                    <p className="text-[11px] text-gray-400">
                         {companyName} · CONFIDENTIAL · Powered by Pesanest
                     </p>
                 </div>
-                <p className="text-[10.5px] text-gray-400">
+                <p className="text-[11px] text-gray-400">
                     All amounts in KES · Figures rounded to 2 decimal places
                 </p>
             </div>

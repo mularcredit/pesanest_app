@@ -266,47 +266,47 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             // A one-line "point of the page, stated first" — a thin green rule
             // on the left, larger type than body text.
             function lead(text: string) {
-                apply({ size: 10.5, color: DARK });
+                apply({ size: 12, color: DARK });
                 const lines = doc.splitTextToSize(text, W - 2 * M - 6) as string[];
-                const lineH = 5;
-                ensureSpace(lines.length * lineH + 6);
+                const lineH = 5.8;
+                ensureSpace(lines.length * lineH + 7);
                 const y0 = cursorY;
                 lines.forEach((ln, i) => doc.text(ln, M + 6, y0 + i * lineH));
                 doc.setDrawColor(...GREEN); doc.setLineWidth(0.8);
-                doc.line(M, y0 - 3.5, M, y0 + (lines.length - 1) * lineH + 1);
-                cursorY = y0 + lines.length * lineH + 6;
+                doc.line(M, y0 - 4, M, y0 + (lines.length - 1) * lineH + 1.5);
+                cursorY = y0 + lines.length * lineH + 7;
             }
 
             // A basis-of-preparation / methodology note — a light green box
             // with a bold header line, not just a plain paragraph.
             function callout(text: string) {
-                apply({ size: 7.8, color: DARK });
-                const pad = 4;
+                apply({ size: 10, color: DARK });
+                const pad = 5;
                 const maxW = W - 2 * M - pad * 2 - 3;
                 const lines = doc.splitTextToSize(text, maxW) as string[];
-                const lineH = 4;
-                const boxH = (lines.length + 1) * lineH + pad * 1.6;
-                ensureSpace(boxH + 4);
+                const lineH = 5;
+                const boxH = (lines.length + 1) * lineH + pad * 1.8;
+                ensureSpace(boxH + 5);
                 const y0 = cursorY;
                 doc.setFillColor(...GREEN_TINT);
                 doc.rect(M, y0, W - 2 * M, boxH, "F");
                 doc.setFillColor(...GREEN);
                 doc.rect(M, y0, 1.2, boxH, "F");
-                apply({ weight: "bold", size: 7.5, color: GREEN_DARK });
+                apply({ weight: "bold", size: 9, color: GREEN_DARK });
                 doc.text("BASIS OF PREPARATION", M + pad + 3, y0 + pad + 1);
-                apply({ size: 7.8, color: DARK });
+                apply({ size: 10, color: DARK });
                 lines.forEach((ln, i) => doc.text(ln, M + pad + 3, y0 + pad + 1 + lineH + i * lineH));
-                cursorY = y0 + boxH + 10;
+                cursorY = y0 + boxH + 12;
             }
 
             function subheading(title: string) {
-                ensureSpace(8);
-                apply({ weight: "bold", size: 9, color: DARK });
+                ensureSpace(9);
+                apply({ weight: "bold", size: 10.5, color: DARK });
                 doc.text(title.toUpperCase(), M, cursorY);
-                cursorY += 6;
+                cursorY += 7;
             }
 
-            function paragraph(text: string, s: Style = { size: 9, color: MID }, lineH = 4.6) {
+            function paragraph(text: string, s: Style = { size: 11, color: MID }, lineH = 5.6) {
                 apply(s);
                 const lines = doc.splitTextToSize(text, W - 2 * M) as string[];
                 ensureSpace(Math.min(2, lines.length) * lineH);
@@ -315,20 +315,20 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     doc.text(ln, M, cursorY);
                     cursorY += lineH;
                 }
-                cursorY += 2;
+                cursorY += 3;
             }
 
             function bullets(items: string[]) {
-                const s: Style = { size: 8.8, color: MID };
+                const s: Style = { size: 10.5, color: MID };
                 for (const it of items) {
                     apply(s);
                     const lines = doc.splitTextToSize(it, W - 2 * M - 6) as string[];
-                    ensureSpace(lines.length * 4.6 + 1.5);
+                    ensureSpace(lines.length * 5.6 + 2.5);
                     doc.setFillColor(...GREEN);
-                    doc.circle(M + 1.1, cursorY - 1.3, 0.7, "F");
+                    doc.circle(M + 1.2, cursorY - 1.5, 0.8, "F");
                     apply(s);
-                    lines.forEach((ln, i) => doc.text(ln, M + 5, cursorY + i * 4.6));
-                    cursorY += lines.length * 4.6 + 2.5;
+                    lines.forEach((ln, i) => doc.text(ln, M + 5.5, cursorY + i * 5.6));
+                    cursorY += lines.length * 5.6 + 3;
                 }
             }
 
@@ -343,15 +343,15 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         { content: k.value, styles: { halign: "right", ...(i % 2 === 1 ? { fillColor: ZEBRA } : {}) } },
                     ]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 9, textColor: DARK },
-                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8 },
+                    styles: { font: "Outfit", fontSize: 10, textColor: DARK, cellPadding: { top: 3.2, bottom: 3.2, left: 4, right: 4 } },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 0: { cellWidth: W - 2 * M - 50 }, 1: { cellWidth: 50, halign: "right" } },
                     margin: { top: TOP, left: M, right: M, bottom: 22 },
                     rowPageBreak: "avoid",
                     showHead: "everyPage",
                     didDrawPage: () => drawChrome(),
                 });
-                cursorY = (doc as any).lastAutoTable.finalY + 10;
+                cursorY = (doc as any).lastAutoTable.finalY + 12;
             }
 
             // Body rows for one statement group (label/amount lines + an
@@ -385,26 +385,26 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             // misplace it if the left column had already spilled onto a
             // later page with a different coordinate space.
             function estimateGroupHeight(g: { rows: unknown[]; subtotal?: unknown }): number {
-                return 7 + Math.max(1, g.rows.length) * 6 + (g.subtotal ? 6.5 : 0);
+                return 9 + Math.max(1, g.rows.length) * 8.5 + (g.subtotal ? 8.5 : 0);
             }
             function estimateStatementHeight(
                 leftGroup: { rows: unknown[]; subtotal?: unknown },
                 rightGroups: { rows: unknown[]; subtotal?: unknown }[],
             ): number {
                 const leftH = estimateGroupHeight(leftGroup);
-                const rightH = rightGroups.reduce((s, g, i) => s + estimateGroupHeight(g) + (i > 0 ? 6 : 0), 0);
-                return Math.max(leftH, rightH) + 19; // + dark total bar and its gaps
+                const rightH = rightGroups.reduce((s, g, i) => s + estimateGroupHeight(g) + (i > 0 ? 7 : 0), 0);
+                return Math.max(leftH, rightH) + 26; // + dark total bar and its gaps
             }
 
             function darkTotalBar(label: string, amount: number) {
-                ensureSpace(11);
-                const h = 9;
+                ensureSpace(13);
+                const h = 11;
                 doc.setFillColor(17, 24, 39);
                 doc.rect(M, cursorY, W - 2 * M, h, "F");
-                apply({ weight: "bold", size: 10.5, color: [255, 255, 255] });
-                doc.text(label.toUpperCase(), M + 4, cursorY + 6);
-                doc.text(fmtMoney(amount), W - M - 4, cursorY + 6, { align: "right" });
-                cursorY += h + 10;
+                apply({ weight: "bold", size: 11.5, color: [255, 255, 255] });
+                doc.text(label.toUpperCase(), M + 5, cursorY + 7.3);
+                doc.text(fmtMoney(amount), W - M - 5, cursorY + 7.3, { align: "right" });
+                cursorY += h + 12;
             }
 
             // Two ruled mini-tables side by side (left: one group; right: one
@@ -417,7 +417,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 totalLabel: string,
                 totalAmount: number,
             ) {
-                const gap = 10;
+                const gap = 13;
                 const colW = (W - 2 * M - gap) / 2;
                 const leftX = M, rightX = M + colW + gap;
                 // The heading before this call reserves estimateStatementHeight,
@@ -438,8 +438,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [[leftGroup.label, currency]],
                     body: groupRows(leftGroup),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 8.5, textColor: DARK },
-                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 7.5 },
+                    styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 1: { halign: "right" } },
                     rowPageBreak: "avoid",
                     showHead: "everyPage",
@@ -458,14 +458,14 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [[g.label, currency]],
                         body: groupRows(g),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 8.5, textColor: DARK },
-                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 7.5 },
+                        styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.6, bottom: 2.6, left: 3.5, right: 3.5 } },
+                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                         columnStyles: { 1: { halign: "right" } },
                         rowPageBreak: "avoid",
                         showHead: "everyPage",
                         didDrawPage: () => drawChrome(),
                     });
-                    ry = (doc as any).lastAutoTable.finalY + 6;
+                    ry = (doc as any).lastAutoTable.finalY + 7;
                 }
                 const rightEnd = ry - 6;
                 const rightEndPage = doc.getCurrentPageInfo().pageNumber;
@@ -480,35 +480,35 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             }
 
             function barChartAt(x: number, w: number, startY: number, items: { category: string; amount: number; pct: number }[]) {
-                const RH = 10.5, BAR_H = 4, GUTTER = 40;
+                const RH = 12, BAR_H = 4.5, GUTTER = 42;
                 const trackW = w - GUTTER - 4;
                 const maxAmt = Math.max(...items.map(i => i.amount), 1);
                 items.forEach((it, i) => {
                     const ry = startY + i * RH;
-                    apply({ size: 8, color: MID });
+                    apply({ size: 9, color: MID });
                     const labelLines = doc.splitTextToSize(it.category, trackW * 0.55) as string[];
-                    doc.text(labelLines[0], x, ry + 3);
+                    doc.text(labelLines[0], x, ry + 3.3);
 
-                    apply({ weight: "bold", size: 8, color: DARK });
-                    doc.text(fmtMoney(it.amount), x + w, ry + 3, { align: "right" });
-                    apply({ size: 7, color: FAINT });
-                    doc.text(`${it.pct.toFixed(1)}%`, x + w - GUTTER + 8, ry + 3, { align: "right" });
+                    apply({ weight: "bold", size: 9, color: DARK });
+                    doc.text(fmtMoney(it.amount), x + w, ry + 3.3, { align: "right" });
+                    apply({ size: 7.5, color: FAINT });
+                    doc.text(`${it.pct.toFixed(1)}%`, x + w - GUTTER + 9, ry + 3.3, { align: "right" });
 
                     doc.setFillColor(...TRACK);
-                    doc.rect(x, ry + 5, trackW, BAR_H, "F");
+                    doc.rect(x, ry + 5.5, trackW, BAR_H, "F");
                     const bw = Math.max(0.8, (Math.max(0, it.amount) / maxAmt) * trackW);
                     doc.setFillColor(...(i === 0 ? GREEN : GREEN_SOFT));
-                    doc.rect(x, ry + 5, bw, BAR_H, "F");
+                    doc.rect(x, ry + 5.5, bw, BAR_H, "F");
                 });
                 return startY + items.length * RH;
             }
 
             function spendingAnalysis(categories: { category: string; amount: number; pct: number; count: number }[]) {
-                const gap = 12;
+                const gap = 14;
                 const colW = (W - 2 * M - gap) / 2;
                 const leftX = M, rightX = M + colW + gap;
                 const top8 = categories.slice(0, 8);
-                ensureSpace(Math.max(top8.length * 10.5, 20));
+                ensureSpace(Math.max(top8.length * 12, 22));
                 const startY = cursorY;
 
                 const chartEnd = top8.length > 0 ? barChartAt(leftX, colW, startY, top8) : startY;
@@ -520,16 +520,16 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [["Category", "Items", "Share", currency]],
                     body: categories.map(c => [c.category, String(c.count), `${c.pct.toFixed(1)}%`, fmtMoney(c.amount)]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 7.5, textColor: MID },
-                    headStyles: { fontStyle: "bold", fontSize: 7, textColor: FAINT },
-                    columnStyles: { 0: { cellWidth: colW - 60 }, 1: { cellWidth: 16, halign: "right" }, 2: { cellWidth: 18, halign: "right" }, 3: { cellWidth: 26, halign: "right" } },
+                    styles: { font: "Outfit", fontSize: 8.5, textColor: MID, cellPadding: { top: 2.2, bottom: 2.2, left: 3, right: 3 } },
+                    headStyles: { fontStyle: "bold", fontSize: 8, textColor: FAINT },
+                    columnStyles: { 0: { cellWidth: colW - 62 }, 1: { cellWidth: 18, halign: "right" }, 2: { cellWidth: 18, halign: "right" }, 3: { cellWidth: 26, halign: "right" } },
                     rowPageBreak: "avoid",
                     showHead: "everyPage",
                     didDrawPage: () => drawChrome(),
                 });
                 const tableEnd = (doc as any).lastAutoTable.finalY;
 
-                cursorY = Math.max(chartEnd, tableEnd) + 10;
+                cursorY = Math.max(chartEnd, tableEnd) + 12;
             }
 
             function pipelineTable(stages: { label: string; count: number; amount: number }[]) {
@@ -543,27 +543,27 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         { content: fmtMoney(s.amount), styles: { halign: "right", ...(i % 2 === 1 ? { fillColor: ZEBRA } : {}) } },
                     ]),
                     theme: "plain",
-                    styles: { font: "Outfit", fontSize: 9, textColor: DARK },
-                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8 },
+                    styles: { font: "Outfit", fontSize: 10, textColor: DARK, cellPadding: { top: 3.2, bottom: 3.2, left: 4, right: 4 } },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     columnStyles: { 0: { cellWidth: W - 2 * M - 40 - 55 }, 1: { cellWidth: 40, halign: "right" }, 2: { cellWidth: 55, halign: "right" } },
                     margin: { top: TOP, left: M, right: M, bottom: 22 },
                     rowPageBreak: "avoid",
                     showHead: "everyPage",
                     didDrawPage: () => drawChrome(),
                 });
-                cursorY = (doc as any).lastAutoTable.finalY + 10;
+                cursorY = (doc as any).lastAutoTable.finalY + 12;
             }
 
             // ── 01 · Executive Overview ─────────────────────────────────────
             lead(`${data.meta.companyName} reported a net profit of ${netResultKpi?.value ?? fmtMoney(0)}, a ${netResultKpi?.sub ?? ""}, on cash reserves of ${cashKpi?.value ?? fmtMoney(0)}.`);
 
-            heading("Key Financial Metrics", 0, 20);
+            heading("Key Financial Metrics", 0, 10 + data.kpis.length * 11);
             metricTable(data.kpis);
 
-            heading("Executive Summary", 0, 14);
+            heading("Executive Summary", 0, 17);
             paragraph(data.executiveSummary);
 
-            heading("Highlights & Exceptions", 0, 14);
+            heading("Highlights & Exceptions", 0, 18);
             subheading("Performance Highlights");
             bullets(data.highlights.length ? data.highlights : ["No notable performance highlights for this period."]);
             subheading("Key Risks & Exceptions");
@@ -601,13 +601,13 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             ];
             heading("Cash Flow Statement", 1, estimateStatementHeight(cfLeft, cfRight));
             twoColStatement(cfLeft, cfRight, "Net Increase / (Decrease) in Cash", data.cashFlow.netChange);
-            ensureSpace(7);
-            apply({ size: 8, color: GRAY });
+            ensureSpace(8);
+            apply({ size: 9.5, color: GRAY });
             doc.text("Cash Balance on Books", M, cursorY);
             doc.text(fmtMoney(data.cashPosition), W - M, cursorY, { align: "right" });
-            cursorY += 11;
+            cursorY += 13;
 
-            heading("Spending Analysis", 1, Math.min(8, data.spendingCategories.length || 1) * 10.5 + 4);
+            heading("Spending Analysis", 1, Math.min(8, data.spendingCategories.length || 1) * 12 + 6);
             if (data.spendingCategories.length > 0) {
                 spendingAnalysis(data.spendingCategories);
             } else {
@@ -619,28 +619,28 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             const approvedCount = data.pipeline.filter(p => p.label === "Approved" || p.label === "Paid").reduce((s, p) => s + p.count, 0);
             const approvalRate = submittedCount > 0 ? (approvedCount / submittedCount) * 100 : 0;
             const pendingCount = data.pipeline.find(p => p.label === "Pending")?.count ?? 0;
-            heading("Requisition Pipeline", 2, 20);
+            heading("Requisition Pipeline", 2, 12 + 10 + data.pipeline.length * 10);
             lead(`${submittedCount} requisition${submittedCount !== 1 ? "s" : ""} moved through approval this period — ${approvalRate.toFixed(1)}% approved, ${pendingCount} still pending, ${data.risks.length} flagged for review.`);
             pipelineTable(data.pipeline);
 
             {
-                const gap = 12;
+                const gap = 14;
                 const colW = (W - 2 * M - gap) / 2;
                 const leftX = M, rightX = M + colW + gap;
-                const risksReserve = data.risks.length > 0 ? 20 : 14;
-                const actionsReserve = data.actions.length > 0 ? 20 : 14;
-                ensureSpace(13 + Math.max(risksReserve, actionsReserve));
+                const risksReserve = data.risks.length > 0 ? 24 : 16;
+                const actionsReserve = data.actions.length > 0 ? 24 : 16;
+                ensureSpace(14 + Math.max(risksReserve, actionsReserve));
 
                 toc.push({ layer: 2, title: "Risks & Spending Alerts", page: doc.getCurrentPageInfo().pageNumber });
                 toc.push({ layer: 2, title: "Management Actions", page: doc.getCurrentPageInfo().pageNumber });
 
-                apply({ weight: "bold", size: 12.5, color: DARK });
+                apply({ weight: "bold", size: 13.5, color: DARK });
                 doc.text("Risks & Alerts", leftX, cursorY);
                 doc.text("Management Actions", rightX, cursorY);
                 doc.setDrawColor(...HAIRLINE); doc.setLineWidth(0.2);
-                doc.line(leftX, cursorY + 3, leftX + colW, cursorY + 3);
-                doc.line(rightX, cursorY + 3, rightX + colW, cursorY + 3);
-                const tablesY = cursorY + 9;
+                doc.line(leftX, cursorY + 3.5, leftX + colW, cursorY + 3.5);
+                doc.line(rightX, cursorY + 3.5, rightX + colW, cursorY + 3.5);
+                const tablesY = cursorY + 10;
 
                 let leftEnd = tablesY;
                 if (data.risks.length > 0) {
@@ -651,24 +651,24 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [["", "Exception", "Amount", "Status"]],
                         body: data.risks.map(r => ["", r.title, fmtMoney(r.amount), r.status]),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 8, textColor: MID, valign: "top" },
-                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 7.5 },
-                        columnStyles: { 0: { cellWidth: 6 }, 2: { cellWidth: 28, halign: "right" }, 3: { cellWidth: 26 } },
+                        styles: { font: "Outfit", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
+                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
+                        columnStyles: { 0: { cellWidth: 7 }, 2: { cellWidth: 30, halign: "right" }, 3: { cellWidth: 28 } },
                         rowPageBreak: "avoid",
                         showHead: "everyPage",
                         didDrawCell: (d) => {
                             if (d.section !== "body" || d.column.index !== 0) return;
                             const color = SEV_COLOR[data.risks[d.row.index]?.severity] ?? GRAY;
                             doc.setFillColor(...color);
-                            doc.circle(d.cell.x + d.cell.width / 2, d.cell.y + 3.6, 1.1, "F");
+                            doc.circle(d.cell.x + d.cell.width / 2, d.cell.y + 4, 1.2, "F");
                         },
                         didDrawPage: () => drawChrome(),
                     });
                     leftEnd = (doc as any).lastAutoTable.finalY;
                 } else {
-                    apply({ size: 9, color: GRAY });
-                    doc.text("No spending alerts identified for this period.", leftX, tablesY + 4);
-                    leftEnd = tablesY + 8;
+                    apply({ size: 10, color: GRAY });
+                    doc.text("No spending alerts identified for this period.", leftX, tablesY + 4.5);
+                    leftEnd = tablesY + 9;
                 }
 
                 let rightEnd = tablesY;
@@ -680,9 +680,9 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                         head: [["Action", "Owner", "Status"]],
                         body: data.actions.map(a => [a.action, a.owner || "—", a.status || "Open"]),
                         theme: "plain",
-                        styles: { font: "Outfit", fontSize: 8, textColor: MID, valign: "top" },
-                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 7.5 },
-                        columnStyles: { 1: { cellWidth: 24 }, 2: { cellWidth: 20 } },
+                        styles: { font: "Outfit", fontSize: 9, textColor: MID, valign: "top", cellPadding: { top: 2.8, bottom: 2.8, left: 3, right: 3 } },
+                        headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
+                        columnStyles: { 1: { cellWidth: 26 }, 2: { cellWidth: 22 } },
                         rowPageBreak: "avoid",
                         showHead: "everyPage",
                         didParseCell: (d) => {
@@ -695,9 +695,9 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     });
                     rightEnd = (doc as any).lastAutoTable.finalY;
                 } else {
-                    apply({ size: 9, color: GRAY });
-                    doc.text("No outstanding actions for this period.", rightX, tablesY + 4);
-                    rightEnd = tablesY + 8;
+                    apply({ size: 10, color: GRAY });
+                    doc.text("No outstanding actions for this period.", rightX, tablesY + 4.5);
+                    rightEnd = tablesY + 9;
                 }
 
                 cursorY = Math.max(leftEnd, rightEnd) + 10;
@@ -722,8 +722,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                     head: [["Date", "Description", "Category", "Requested By", "Status", currency]],
                     body: data.transactions.map(t => [t.date, t.description, t.category, t.requestedBy, t.status, fmtMoney(t.amount)]),
                     theme: "striped",
-                    styles: { font: "Outfit", fontSize: 8, textColor: MID, overflow: "linebreak" },
-                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8 },
+                    styles: { font: "Outfit", fontSize: 8.5, textColor: MID, overflow: "linebreak", cellPadding: { top: 2.4, bottom: 2.4, left: 3, right: 3 } },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
                     alternateRowStyles: { fillColor: ZEBRA },
                     columnStyles: {
                         0: { cellWidth: 22 },
