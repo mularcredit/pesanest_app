@@ -2,14 +2,19 @@ import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import prisma from '@/lib/prisma';
 import { FinancialReports } from '@/lib/accounting/reports';
-import { PiFileText, PiInfo } from 'react-icons/pi';
 import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { EditableImage } from '@/components/finance-studio/EditableImage';
 import Link from 'next/link';
 
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+// Classic corporate palette — navy ink, plain hairlines, one muted accent
+// used only for positive/negative number color, never as a fill. Sharp
+// corners throughout (no rounded-[Npx] anywhere in this report).
+const INK = '#0F172A';
+const RULE = '#D1D5DB';
+const GREEN = '#14532D';
+const RED = '#7F1D1D';
 
 // Same "cash-like" subtypes used across bank reconciliation / transfers —
 // a live snapshot of what the business actually has on hand right now,
@@ -47,36 +52,41 @@ function presetToDates(key: string, now: Date): { from: string; to: string } {
     }
 }
 
-function SectionHeader({ title, color }: { title: string; color: string }) {
+// ── shared, sharp-cornered building blocks ──────────────────────────────────
+
+function SectionTitle({ n, title }: { n: number; title: string }) {
     return (
-        <div className="px-5 py-2.5" style={{ background: `${color}08`, borderBottom: HAIRLINE }}>
-            <p className="text-[10.5px] font-[700] uppercase tracking-[0.1em]" style={{ color }}>{title}</p>
+        <div className="pt-7 pb-2 first:pt-0">
+            <h3 className="text-[13px] font-[700] tracking-[0.02em]" style={{ color: INK }}>
+                {n}. {title.toUpperCase()}
+            </h3>
+            <div className="mt-1.5 h-[2px] w-10" style={{ background: INK }} />
         </div>
     );
 }
 
-function Row({ label, sub, value, negative, bold }: { label: string; sub?: string; value: number; negative?: boolean; bold?: boolean }) {
+function Th({ children, right }: { children: React.ReactNode; right?: boolean }) {
     return (
-        <div className="flex items-center gap-3 px-5 py-2.5" style={{ borderBottom: HAIRLINE }}>
-            <div className="flex-1 min-w-0">
-                <p className={`text-[12.5px] text-gray-700 truncate ${bold ? 'font-[600]' : ''}`}>{label}</p>
-                {sub && <p className="text-[10.5px] text-gray-400 mt-0.5">{sub}</p>}
-            </div>
-            <span className={`text-[12.5px] font-mono tabular-nums shrink-0 ${bold ? 'font-[700] text-gray-900' : 'font-[500] text-gray-800'}`}>
-                {negative ? `(${fmt(value)})` : fmt(value)}
-            </span>
-        </div>
+        <th className={`px-3 py-2 text-[10px] font-[700] uppercase tracking-[0.05em] ${right ? 'text-right' : 'text-left'}`}
+            style={{ color: '#475569', background: '#F1F5F9', border: `1px solid ${RULE}` }}>
+            {children}
+        </th>
     );
 }
 
-function KpiBox({ label, value, color, sub }: { label: string; value: string; color?: string; sub?: string }) {
+function Td({ children, right, bold, colorValue }: { children: React.ReactNode; right?: boolean; bold?: boolean; colorValue?: number }) {
+    const color = colorValue !== undefined ? (colorValue < 0 ? RED : undefined) : undefined;
     return (
-        <div className="bg-white rounded-[10px] px-5 py-4" style={{ border: HAIRLINE }}>
-            <p className="text-[10px] font-[600] uppercase tracking-[0.09em] text-gray-400 mb-2">{label}</p>
-            <p className="text-[18px] font-[700] font-mono tabular-nums leading-none" style={{ color: color ?? '#111827' }}>{value}</p>
-            {sub && <p className="text-[10.5px] text-gray-400 mt-1">{sub}</p>}
-        </div>
+        <td className={`px-3 py-2 text-[12px] ${right ? 'text-right font-mono tabular-nums' : ''} ${bold ? 'font-[700]' : ''}`}
+            style={{ border: `1px solid ${RULE}`, color: color ?? '#1F2937' }}>
+            {children}
+        </td>
     );
+}
+
+function Money({ n, negativeParens }: { n: number; negativeParens?: boolean }) {
+    const isNeg = negativeParens || n < 0;
+    return <span style={{ color: isNeg ? RED : GREEN }}>{isNeg ? `(${fmt(n)})` : fmt(n)}</span>;
 }
 
 async function getCashPosition(asOf: Date) {
@@ -164,7 +174,7 @@ export default async function ManagementReportPage({
     const pendingReqs = byStatus('PENDING');
     const pendingTotal = pendingReqs.reduce((s: number, r: any) => s + r.amount, 0);
 
-    // ── Top spending categories ──
+    // ── Spending by category ──
     const catMap: Record<string, { amount: number; count: number }> = {};
     for (const r of requisitionsInPeriod) {
         if (!r.category || r.status === 'DRAFT') continue;
@@ -195,17 +205,27 @@ export default async function ManagementReportPage({
     const periodLabel = `${new Date(from).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     const pageUrl = (preset: string) => `?preset=${preset}`;
 
+    // ── Executive summary — the actual point of a management report: a
+    // written narrative, not a grid of colorful tiles ──
+    const executiveSummary =
+        `Revenue for the period totaled KES ${fmt(pl.revenue.total)} against expenses of KES ${fmt(pl.expenses.total)}, ` +
+        `yielding a net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)} (${pct(pl.netIncome, pl.revenue.total)} margin). ` +
+        `Cash position stands at KES ${fmt(cashPosition)}. Approval rate held at ${approvalRate.toFixed(1)}%` +
+        (pendingReqs.length > 0 ? `, with ${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''} pending disbursement totaling KES ${fmt(pendingTotal)}.` : ', with no items currently pending disbursement.');
+
     // ── Assemble export data ──
+    let sectionNum = 1;
     const exportData: ReportExportData = {
         title: 'Management Report',
-        subtitle: `Business Overview · ${periodLabel}`,
+        subtitle: `For the Period Ended ${new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}`,
         company: companyName,
         currency: 'KES',
         logoUrl: '/pesanest/pesanest-light-new.png',
         watermarkUrl: watermarkUrl ?? undefined,
+        executiveSummary,
         sections: [
             {
-                title: 'Key Metrics',
+                title: `${++sectionNum}. Financial Summary`,
                 lines: [
                     { name: 'Net Revenue', current: pl.revenue.total },
                     { name: 'Total Expenses', current: pl.expenses.total, isNegative: true },
@@ -215,7 +235,7 @@ export default async function ManagementReportPage({
                 ],
             },
             {
-                title: 'Income Statement Summary',
+                title: `${++sectionNum}. Income Statement`,
                 lines: [
                     ...pl.revenue.accounts.map(a => ({ code: a.code, name: a.name, current: a.balance })),
                     ...pl.expenses.accounts.map(a => ({ code: a.code, name: a.name, current: a.balance, isNegative: true as const, indent: true as const })),
@@ -223,7 +243,7 @@ export default async function ManagementReportPage({
                 ],
             },
             {
-                title: 'Balance Sheet Summary',
+                title: `${++sectionNum}. Balance Sheet`,
                 lines: [
                     { name: 'Total Assets', current: bs.assets.total, isBold: true },
                     { name: 'Total Liabilities', current: bs.liabilities.total, isBold: true },
@@ -231,26 +251,26 @@ export default async function ManagementReportPage({
                 ],
             },
             {
-                title: 'Spending by Category',
+                title: `${++sectionNum}. Spending by Category`,
                 lines: topCategories.map(c => ({ name: `${c.category} (${c.count}, ${pct(c.amount, totalCategorySpend)})`, current: c.amount })),
             },
             {
-                title: 'Requisition Pipeline',
+                title: `${++sectionNum}. Requisition Pipeline`,
                 lines: pipeline.map(p => ({ name: `${p.label} (${p.count})`, current: p.amount })),
             },
             ...(budgetRows.length > 0 ? [{
-                title: 'Budget Utilization',
+                title: `${++sectionNum}. Budget Utilization`,
                 lines: budgetRows.map((b: any) => ({ name: b.category, current: b.spent, prior: b.allocated })),
             }] : []),
             ...(alerts.length > 0 ? [{
-                title: 'Spending Alerts',
+                title: `${++sectionNum}. Spending Alerts`,
                 lines: alerts.map((a: any) => ({ name: a.title, current: a.amount })),
             }] : []),
         ],
     };
 
     return (
-        <div className="pb-20 space-y-5 max-w-[960px] relative">
+        <div className="pb-20 max-w-[880px] relative">
 
             {/* ── Watermark: the company's own uploaded logo, faint, behind everything.
                  Negative z-index so it paints beneath normal-flow siblings regardless
@@ -261,178 +281,173 @@ export default async function ManagementReportPage({
                     src={watermarkUrl}
                     alt=""
                     aria-hidden="true"
-                    className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[520px] max-w-[85%] opacity-[0.05] pointer-events-none select-none print:opacity-[0.05] -z-10"
+                    className="absolute top-[100px] left-1/2 -translate-x-1/2 w-[480px] max-w-[85%] opacity-[0.04] pointer-events-none select-none print:opacity-[0.04] -z-10"
                 />
             )}
 
             {/* ── Letterhead ── */}
-            <div className="relative z-10 bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-
-                {/* Logo row: Pesanest mark (left), company name (center), the
-                    company's own uploadable logo (right) */}
-                <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-3">
-                    <BrandLogo width={110} height={30} color="#111827" />
-                    <h2 className="text-[13px] font-[700] text-gray-900 text-center flex-1 truncate px-2">{companyName}</h2>
+            <div className="relative z-10 bg-white" style={{ border: `1px solid ${INK}` }}>
+                <div className="flex items-center justify-between gap-4 px-6 pt-4 pb-3">
+                    <BrandLogo width={100} height={27} color={INK} />
                     <EditableImage
                         settingKey="watermark_logo"
                         defaultSrc=""
                         alt="Company Logo"
-                        className="w-[90px] h-[42px] shrink-0"
+                        className="w-[80px] h-[36px] shrink-0"
                     />
                 </div>
-
-                {/* Metadata strip */}
-                <div className="grid grid-cols-3 gap-4 px-5 py-3" style={{ borderTop: HAIRLINE, borderBottom: HAIRLINE, background: '#FAFAFA' }}>
-                    <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Period</p>
-                        <p className="text-[12px] font-[500] text-gray-800">{periodLabel}</p>
-                    </div>
-                    <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Generated</p>
-                        <p className="text-[12px] font-[500] text-gray-800">{now.toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}</p>
-                    </div>
-                    <div>
-                        <p className="text-[9.5px] font-[600] uppercase tracking-[0.08em] text-gray-400 mb-0.5">Currency</p>
-                        <p className="text-[12px] font-[500] text-gray-800">KES</p>
-                    </div>
+                <div className="text-center px-6 pb-2">
+                    <p className="text-[13px] font-[700]" style={{ color: INK }}>{companyName}</p>
+                    {(registrationNumber || headquartersAddress) && (
+                        <p className="text-[10.5px] text-gray-500 mt-0.5">
+                            {[headquartersAddress, registrationNumber ? `Reg. No. ${registrationNumber}` : null].filter(Boolean).join(' · ')}
+                        </p>
+                    )}
                 </div>
-
-                {/* Title band */}
-                <div className="flex items-center gap-2.5 px-5 py-3" style={{ background: '#059669' }}>
-                    <div className="w-[26px] h-[26px] rounded-[6px] bg-white/15 flex items-center justify-center shrink-0">
-                        <PiFileText className="text-white text-[13px]" />
-                    </div>
-                    <h1 className="text-[15px] font-[700] text-white uppercase tracking-[0.04em]">Management Report</h1>
+                <div style={{ borderTop: `1px solid ${INK}` }} className="text-center px-6 py-3">
+                    <h1 className="text-[16px] font-[700] uppercase tracking-[0.08em]" style={{ color: INK }}>Management Report</h1>
+                    <p className="text-[11px] text-gray-500 mt-1">
+                        For the Period Ended {new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' })}
+                    </p>
                 </div>
-
-                {/* Company details */}
-                {(registrationNumber || headquartersAddress) && (
-                    <div className="px-5 py-2.5 flex flex-wrap gap-x-6 gap-y-1" style={{ borderTop: HAIRLINE }}>
-                        {registrationNumber && (
-                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Reg. No:</span> {registrationNumber}</p>
-                        )}
-                        {headquartersAddress && (
-                            <p className="text-[11px] text-gray-500"><span className="text-gray-400">Address:</span> {headquartersAddress}</p>
-                        )}
-                    </div>
-                )}
             </div>
 
-            {/* ── Toolbar: export ── */}
-            <div className="relative z-10 flex items-center justify-end">
+            {/* ── Toolbar: period picker + export ── */}
+            <div className="relative z-10 flex items-center justify-between gap-4 flex-wrap mt-4 mb-2 print:hidden">
+                <div className="flex items-center gap-1 flex-wrap">
+                    {PRESETS.map(p => (
+                        <Link key={p.key} href={pageUrl(p.key)}
+                            className={`px-3 py-1.5 text-[11.5px] font-[500] transition-colors border ${
+                                activePreset === p.key ? 'text-white' : 'bg-white text-gray-500 border-gray-300 hover:border-gray-500'
+                            }`}
+                            style={activePreset === p.key ? { background: INK, borderColor: INK } : undefined}>
+                            {p.label}
+                        </Link>
+                    ))}
+                </div>
                 <ReportExportButton data={exportData} />
             </div>
 
-            {/* ── Period picker ── */}
-            <div className="flex items-center gap-1 flex-wrap">
-                {PRESETS.map(p => (
-                    <Link key={p.key} href={pageUrl(p.key)}
-                        className={`px-3 py-1.5 rounded-full text-[11.5px] font-[500] transition-colors border ${
-                            activePreset === p.key
-                                ? 'bg-[#059669] text-white border-[#059669]'
-                                : 'bg-white text-gray-500 border-gray-200 hover:border-[#059669]/40 hover:text-[#059669]'
-                        }`}>
-                        {p.label}
-                    </Link>
-                ))}
+            {/* ── 1. Executive Summary ── */}
+            <SectionTitle n={1} title="Executive Summary" />
+            <div className="text-[12.5px] leading-relaxed text-gray-800 px-4 py-3" style={{ border: `1px solid ${RULE}` }}>
+                {executiveSummary}
             </div>
 
-            {/* ── KPI strip ── */}
-            <div className="grid grid-cols-2 md:grid-cols-3 gap-3">
-                <KpiBox label="Net Revenue" value={fmt(pl.revenue.total)} color="#059669" />
-                <KpiBox label="Total Expenses" value={`(${fmt(pl.expenses.total)})`} color="#dc2626" />
-                <KpiBox label="Net Profit / Loss" value={pl.netIncome < 0 ? `(${fmt(pl.netIncome)})` : fmt(pl.netIncome)}
-                    color={pl.netIncome >= 0 ? '#059669' : '#dc2626'} sub={`${pct(pl.netIncome, pl.revenue.total)} margin`} />
-                <KpiBox label="Cash Position" value={fmt(cashPosition)} sub="As of period end" />
-                <KpiBox label="Approval Rate" value={`${approvalRate.toFixed(1)}%`} sub={`${approved.length} of ${submitted.length} submitted`} />
-                <KpiBox label="Pending Approvals" value={fmt(pendingTotal)} color="#d97706" sub={`${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''}`} />
-            </div>
+            {/* ── 2. Financial Summary ── */}
+            <SectionTitle n={2} title="Financial Summary" />
+            <table className="w-full border-collapse">
+                <thead><tr><Th>Metric</Th><Th right>Amount (KES)</Th></tr></thead>
+                <tbody>
+                    <tr><Td>Net Revenue</Td><Td right><Money n={pl.revenue.total} /></Td></tr>
+                    <tr><Td>Total Expenses</Td><Td right><Money n={pl.expenses.total} negativeParens /></Td></tr>
+                    <tr><Td bold>Net Profit / Loss ({pct(pl.netIncome, pl.revenue.total)} margin)</Td><Td right bold><Money n={pl.netIncome} /></Td></tr>
+                    <tr><Td>Cash Position (as of period end)</Td><Td right><Money n={cashPosition} /></Td></tr>
+                    <tr><Td>Approval Rate</Td><Td right>{approvalRate.toFixed(1)}% ({approved.length} of {submitted.length})</Td></tr>
+                    <tr><Td>Pending Approvals</Td><Td right><Money n={pendingTotal} /> ({pendingReqs.length})</Td></tr>
+                </tbody>
+            </table>
 
-            {/* ── Income Statement summary ── */}
-            <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                <SectionHeader title="Income Statement Summary" color="#059669" />
-                {pl.revenue.accounts.map(a => <Row key={a.code} label={`${a.code} · ${a.name}`} value={a.balance} />)}
-                {pl.expenses.accounts.map(a => <Row key={a.code} label={`${a.code} · ${a.name}`} value={a.balance} negative />)}
-                <Row label="Net Income" value={pl.netIncome} negative={pl.netIncome < 0} bold />
-            </div>
+            {/* ── 3. Income Statement ── */}
+            <SectionTitle n={3} title="Income Statement" />
+            <table className="w-full border-collapse">
+                <thead><tr><Th>Code</Th><Th>Account</Th><Th right>Amount (KES)</Th></tr></thead>
+                <tbody>
+                    {pl.revenue.accounts.map(a => (
+                        <tr key={a.code}><Td>{a.code}</Td><Td>{a.name}</Td><Td right><Money n={a.balance} /></Td></tr>
+                    ))}
+                    {pl.expenses.accounts.map(a => (
+                        <tr key={a.code}><Td>{a.code}</Td><Td>{a.name}</Td><Td right><Money n={a.balance} negativeParens /></Td></tr>
+                    ))}
+                    <tr><Td bold>—</Td><Td bold>Net Income</Td><Td right bold><Money n={pl.netIncome} /></Td></tr>
+                </tbody>
+            </table>
 
-            {/* ── Balance Sheet summary ── */}
-            <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                <SectionHeader title="Balance Sheet Summary" color="#0284c7" />
-                <Row label="Total Assets" value={bs.assets.total} bold />
-                <Row label="Total Liabilities" value={bs.liabilities.total} bold />
-                <Row label="Total Equity" value={bs.equity.total} bold />
-            </div>
+            {/* ── 4. Balance Sheet ── */}
+            <SectionTitle n={4} title="Balance Sheet" />
+            <table className="w-full border-collapse">
+                <thead><tr><Th>Metric</Th><Th right>Amount (KES)</Th></tr></thead>
+                <tbody>
+                    <tr><Td bold>Total Assets</Td><Td right bold><Money n={bs.assets.total} /></Td></tr>
+                    <tr><Td bold>Total Liabilities</Td><Td right bold><Money n={bs.liabilities.total} /></Td></tr>
+                    <tr><Td bold>Total Equity</Td><Td right bold><Money n={bs.equity.total} /></Td></tr>
+                </tbody>
+            </table>
 
-            {/* ── Two-column: categories + pipeline ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Spending by Category" color="#6366f1" />
-                    {topCategories.length === 0
-                        ? <p className="px-5 py-4 text-[11.5px] text-gray-400 italic">No spending recorded this period</p>
-                        : topCategories.map(c => (
-                            <Row key={c.category} label={c.category}
-                                sub={`${c.count} expense${c.count !== 1 ? 's' : ''} · ${pct(c.amount, totalCategorySpend)} of total`}
-                                value={c.amount} />
-                        ))
-                    }
-                </div>
-
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Requisition Pipeline" color="#9333ea" />
-                    {pipeline.map(p => <Row key={p.label} label={p.label} sub={`${p.count} item${p.count !== 1 ? 's' : ''}`} value={p.amount} />)}
-                </div>
-            </div>
-
-            {/* ── Budget utilization ── */}
-            {budgetRows.length > 0 && (
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Budget Utilization" color="#0284c7" />
-                    {budgetRows.map((b: any, i: number) => {
-                        const p = b.allocated > 0 ? Math.min((b.spent / b.allocated) * 100, 100) : 0;
-                        const color = p >= 90 ? '#dc2626' : p >= 70 ? '#d97706' : '#059669';
-                        return (
-                            <div key={i} className="px-5 py-3" style={{ borderBottom: HAIRLINE }}>
-                                <div className="flex items-center justify-between mb-1.5">
-                                    <span className="text-[12px] font-[500] text-gray-700">{b.category}</span>
-                                    <span className="text-[11px] font-mono text-gray-400">
-                                        KES {fmt(b.spent)} / {fmt(b.allocated)} ({p.toFixed(0)}%)
-                                    </span>
-                                </div>
-                                <div className="h-[5px] w-full rounded-full overflow-hidden" style={{ background: 'rgba(0,0,0,0.05)' }}>
-                                    <div className="h-full rounded-full" style={{ width: `${p}%`, background: color }} />
-                                </div>
-                            </div>
-                        );
-                    })}
-                </div>
+            {/* ── 5. Spending by Category ── */}
+            <SectionTitle n={5} title="Spending by Category" />
+            {topCategories.length === 0 ? (
+                <p className="text-[11.5px] text-gray-400 italic py-2">No spending recorded this period.</p>
+            ) : (
+                <table className="w-full border-collapse">
+                    <thead><tr><Th>Category</Th><Th right>Count</Th><Th right>% of Total</Th><Th right>Amount (KES)</Th></tr></thead>
+                    <tbody>
+                        {topCategories.map(c => (
+                            <tr key={c.category}>
+                                <Td>{c.category}</Td>
+                                <Td right>{c.count}</Td>
+                                <Td right>{pct(c.amount, totalCategorySpend)}</Td>
+                                <Td right><Money n={c.amount} /></Td>
+                            </tr>
+                        ))}
+                    </tbody>
+                </table>
             )}
 
-            {/* ── Spending alerts ── */}
-            {alerts.length > 0 && (
-                <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-                    <SectionHeader title="Spending Alerts" color="#dc2626" />
-                    <div className="flex items-start gap-2.5 px-5 py-3" style={{ borderBottom: HAIRLINE, background: 'rgba(220,38,38,0.03)' }}>
-                        <PiInfo className="text-[14px] text-rose-500 mt-0.5 shrink-0" />
-                        <p className="text-[11.5px] text-rose-700">Expenses well above this period's average — worth a second look.</p>
-                    </div>
-                    {alerts.map((a: any) => (
-                        <Row key={a.id} label={a.title} sub={a.category} value={a.amount} />
+            {/* ── 6. Requisition Pipeline ── */}
+            <SectionTitle n={6} title="Requisition Pipeline" />
+            <table className="w-full border-collapse">
+                <thead><tr><Th>Status</Th><Th right>Count</Th><Th right>Amount (KES)</Th></tr></thead>
+                <tbody>
+                    {pipeline.map(p => (
+                        <tr key={p.label}><Td>{p.label}</Td><Td right>{p.count}</Td><Td right><Money n={p.amount} /></Td></tr>
                     ))}
-                </div>
+                </tbody>
+            </table>
+
+            {/* ── 7. Budget Utilization ── */}
+            {budgetRows.length > 0 && (
+                <>
+                    <SectionTitle n={7} title="Budget Utilization" />
+                    <table className="w-full border-collapse">
+                        <thead><tr><Th>Category</Th><Th right>Allocated</Th><Th right>Spent</Th><Th right>Utilization</Th></tr></thead>
+                        <tbody>
+                            {budgetRows.map((b: any, i: number) => {
+                                const p = b.allocated > 0 ? Math.min((b.spent / b.allocated) * 100, 100) : 0;
+                                return (
+                                    <tr key={i}>
+                                        <Td>{b.category}</Td>
+                                        <Td right>{fmt(b.allocated)}</Td>
+                                        <Td right>{fmt(b.spent)}</Td>
+                                        <Td right colorValue={p >= 90 ? -1 : undefined}>{p.toFixed(0)}%</Td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                    </table>
+                </>
+            )}
+
+            {/* ── 8. Spending Alerts ── */}
+            {alerts.length > 0 && (
+                <>
+                    <SectionTitle n={budgetRows.length > 0 ? 8 : 7} title="Spending Alerts" />
+                    <p className="text-[11px] text-gray-500 italic mb-2">Expenses well above this period's average — worth a second look.</p>
+                    <table className="w-full border-collapse">
+                        <thead><tr><Th>Description</Th><Th>Category</Th><Th right>Amount (KES)</Th></tr></thead>
+                        <tbody>
+                            {alerts.map((a: any) => (
+                                <tr key={a.id}><Td>{a.title}</Td><Td>{a.category || '—'}</Td><Td right><Money n={a.amount} /></Td></tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </>
             )}
 
             {/* ── Footer ── */}
-            <div className="relative z-10 pt-4 flex items-center justify-between gap-4" style={{ borderTop: HAIRLINE }}>
-                <div className="flex items-center gap-2.5">
-                    <BrandLogo width={70} height={19} color="#9ca3af" />
-                    <p className="text-[10.5px] text-gray-400">
-                        Prepared by {companyName} · Powered by Pesanest
-                    </p>
-                </div>
-                <p className="text-[10.5px] text-gray-400">
-                    All amounts in KES · Figures rounded to 2 decimal places
-                </p>
+            <div className="relative z-10 pt-4 mt-8 flex items-center justify-between gap-4" style={{ borderTop: `1px solid ${INK}` }}>
+                <p className="text-[10px] text-gray-500">{companyName} · Management Report · For internal management use only</p>
+                <p className="text-[10px] text-gray-500">All amounts in KES</p>
             </div>
         </div>
     );
