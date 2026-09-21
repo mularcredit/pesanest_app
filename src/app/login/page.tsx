@@ -191,15 +191,6 @@ function LoginComponent() {
             <div className="hidden lg:block lg:w-1/2 relative overflow-hidden"
                 style={{ background: '#065f46' }}>
 
-                {/* Wave texture background */}
-                <div className="absolute inset-0" style={{
-                    backgroundImage: 'url(/card-waves.jpeg)',
-                    backgroundSize: 'cover',
-                    backgroundPosition: 'center',
-                    opacity: 0.2,
-                    mixBlendMode: 'screen',
-                }} />
-
                 {/* Logo */}
                 <div className="absolute top-10 left-10 z-20">
                     <Link href="/">
@@ -237,12 +228,6 @@ function LoginComponent() {
                 {/* ── MOBILE HEADER (visible only on small screens) ── */}
                 <div className="lg:hidden relative overflow-hidden px-8 pt-10 pb-16"
                     style={{ background: 'linear-gradient(135deg, #059669 0%, #065f46 50%, #022c22 100%)' }}>
-                    <div className="absolute inset-0 pointer-events-none" style={{
-                        backgroundImage: 'url(/card-waves.jpeg)',
-                        backgroundSize: 'cover',
-                        opacity: 0.1,
-                        mixBlendMode: 'screen',
-                    }} />
                     <Link href="/" className="relative z-10 inline-flex items-center gap-3 mb-6">
                         <BrandLogo width={160} height={40} color="#ffffff" />
                     </Link>
