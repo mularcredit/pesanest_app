@@ -132,7 +132,7 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
 
             function drawWatermark() {
                 if (!companyLogo) return;
-                const maxSize = 100;
+                const maxSize = 150;
                 const scale = Math.min(maxSize / companyLogo.width, maxSize / companyLogo.height);
                 const w = companyLogo.width * scale, h = companyLogo.height * scale;
                 doc.setGState(new (doc as any).GState({ opacity: 0.05 }));

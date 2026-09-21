@@ -677,7 +677,7 @@ export default async function ManagementReportPage({
                     src={watermarkUrl}
                     alt=""
                     aria-hidden="true"
-                    className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[520px] max-w-[85%] opacity-[0.05] pointer-events-none select-none print:opacity-[0.05] -z-10"
+                    className="absolute top-[80px] left-1/2 -translate-x-1/2 w-[760px] max-w-[95%] opacity-[0.05] pointer-events-none select-none print:opacity-[0.05] -z-10"
                 />
             )}
 
