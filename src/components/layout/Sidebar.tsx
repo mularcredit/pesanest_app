@@ -370,7 +370,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
 
                 <div className="sb-powered">
                     <span>Powered by</span>
-                    <BrandLogo width={58} height={18} color="rgba(255,255,255,0.4)" />
+                    <BrandLogo width={78} height={24} color="rgba(255,255,255,0.4)" />
                 </div>
             </div>
         </aside>
