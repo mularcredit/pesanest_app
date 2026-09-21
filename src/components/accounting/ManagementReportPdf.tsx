@@ -35,7 +35,11 @@ export interface ManagementReportData {
     risks: { severity: "high" | "medium" | "low"; title: string; amount: number; status: string }[];
     actions: { action: string; owner?: string; dueDate?: string; status?: string }[];
     incomeStatement: { revenue: MgmtLineItem[]; expenses: MgmtLineItem[]; netIncome: number };
-    balanceSheet: { totalAssets: number; totalLiabilities: number; totalEquity: number };
+    balanceSheet: {
+        assets: MgmtLineItem[]; totalAssets: number;
+        liabilities: MgmtLineItem[]; totalLiabilities: number;
+        equity: MgmtLineItem[]; totalEquity: number;
+    };
     cashFlow: {
         operating: { items: MgmtLineItem[]; total: number };
         investing: { items: MgmtLineItem[]; total: number };
@@ -365,6 +369,58 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 blockGrid(items.map(i => ({ label: i.label, value: i.value, sub: "" })));
             }
 
+            // A proper ruled accounting statement: green header, alternating
+            // row shading, shaded subtotal rows, and a bold dark grand-total
+            // footer — used identically for the Income Statement, Balance
+            // Sheet and Cash Flow Statement so all three carry the same
+            // weight as the rest of the report instead of reading as plain
+            // label/amount lists.
+            function statementTable(
+                groups: { label: string; rows: { name: string; amount: number; indent?: boolean }[]; subtotal?: { label: string; amount: number } }[],
+                totalLabel: string,
+                totalAmount: number,
+            ) {
+                const body: any[] = [];
+                for (const g of groups) {
+                    body.push([{ content: g.label.toUpperCase(), colSpan: 2, styles: { fillColor: [236, 253, 245], textColor: GREEN, fontStyle: "bold", fontSize: 7.5 } }]);
+                    if (g.rows.length === 0) {
+                        body.push([{ content: "No activity recorded", colSpan: 2, styles: { fontStyle: "italic", textColor: FAINT, fillColor: [255, 255, 255] } }]);
+                    }
+                    g.rows.forEach((r, i) => {
+                        const fill: [number, number, number] = i % 2 === 1 ? [250, 250, 250] : [255, 255, 255];
+                        body.push([
+                            { content: `${r.indent ? "   " : ""}${r.name}`, styles: { fillColor: fill } },
+                            { content: fmtMoney(r.amount), styles: { halign: "right", fillColor: fill } },
+                        ]);
+                    });
+                    if (g.subtotal) {
+                        body.push([
+                            { content: g.subtotal.label, styles: { fillColor: [243, 244, 246], fontStyle: "bold" } },
+                            { content: fmtMoney(g.subtotal.amount), styles: { halign: "right", fillColor: [243, 244, 246], fontStyle: "bold" } },
+                        ]);
+                    }
+                }
+
+                ensureSpace(24);
+                autoTable(doc, {
+                    startY: cursorY,
+                    head: [["Description / Account", currency]],
+                    body,
+                    foot: [[totalLabel.toUpperCase(), fmtMoney(totalAmount)]],
+                    theme: "plain",
+                    styles: { font: "Outfit", fontSize: 8.5, textColor: DARK },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 7.5 },
+                    footStyles: { fillColor: [17, 24, 39], textColor: 255, fontStyle: "bold", fontSize: 9.5 },
+                    columnStyles: { 0: { cellWidth: W - 2 * M - 45 }, 1: { cellWidth: 45, halign: "right" } },
+                    margin: { top: TOP, left: M, right: M, bottom: 22 },
+                    rowPageBreak: "avoid",
+                    showHead: "everyPage",
+                    showFoot: "lastPage",
+                    didDrawPage: () => drawChrome(),
+                });
+                cursorY = (doc as any).lastAutoTable.finalY + 10;
+            }
+
             // ── 01 · Executive Overview ─────────────────────────────────────
             const kpiRows = data.kpis.length > 3 ? 2 : 1;
             heading("Key Financial Metrics", 0, kpiRows * 22 + (kpiRows - 1) * 6);
@@ -386,98 +442,47 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             bullets(data.actions.length ? data.actions.map(a => a.action) : ["No outstanding actions for this period."]);
 
             // ── 02 · Financial Performance ──────────────────────────────────
-            heading("Income Statement", 1, 22);
-            {
-                const rows: any[] = [];
-                rows.push([{ content: "REVENUE", styles: { fontStyle: "bold", fontSize: 7.5, textColor: GRAY } }, ""]);
-                for (const r of data.incomeStatement.revenue) {
-                    rows.push([`${r.code ? `${r.code} · ` : ""}${r.name}`, { content: fmtMoney(r.amount), styles: { halign: "right" } }]);
-                }
-                rows.push(["", ""]);
-                rows.push([{ content: "OPERATING EXPENSES", styles: { fontStyle: "bold", fontSize: 7.5, textColor: GRAY } }, ""]);
-                for (const e of data.incomeStatement.expenses) {
-                    rows.push([`    ${e.code ? `${e.code} · ` : ""}${e.name}`, { content: `(${fmtMoney(e.amount)})`, styles: { halign: "right" } }]);
-                }
-                ensureSpace(20);
-                autoTable(doc, {
-                    startY: cursorY,
-                    head: [["Description / Account", currency]],
-                    body: rows,
-                    theme: "plain",
-                    styles: { font: "Outfit", fontSize: 8.5, textColor: DARK },
-                    headStyles: { fontStyle: "bold", fontSize: 7, textColor: FAINT },
-                    columnStyles: { 0: { cellWidth: W - 2 * M - 45 }, 1: { cellWidth: 45, halign: "right" } },
-                    margin: { top: TOP, left: M, right: M, bottom: 22 },
-                    rowPageBreak: "avoid",
-                    showHead: "everyPage",
-                    didDrawPage: () => drawChrome(),
-                });
-                cursorY = (doc as any).lastAutoTable.finalY + 3;
-                ensureSpace(9);
-                doc.setDrawColor(...DARK); doc.setLineWidth(0.4);
-                doc.line(M, cursorY, W - M, cursorY);
-                cursorY += 5;
-                apply({ weight: "bold", size: 10, color: DARK });
-                doc.text("NET INCOME", M, cursorY);
-                doc.text(fmtMoney(data.incomeStatement.netIncome), W - M, cursorY, { align: "right" });
-                cursorY += 11;
-            }
+            heading("Income Statement", 1, 24);
+            statementTable(
+                [
+                    { label: "Revenue", rows: data.incomeStatement.revenue.map(r => ({ name: `${r.code ? `${r.code} · ` : ""}${r.name}`, amount: r.amount })) },
+                    { label: "Operating Expenses", rows: data.incomeStatement.expenses.map(e => ({ name: `${e.code ? `${e.code} · ` : ""}${e.name}`, amount: -e.amount })) },
+                ],
+                "Net Income",
+                data.incomeStatement.netIncome,
+            );
 
-            heading("Balance Sheet", 1, 22);
+            heading("Balance Sheet", 1, 22 + 24);
             metricRow([
                 { label: "Total Assets", value: fmtMoney(data.balanceSheet.totalAssets) },
                 { label: "Total Liabilities", value: fmtMoney(data.balanceSheet.totalLiabilities) },
                 { label: "Total Equity", value: fmtMoney(data.balanceSheet.totalEquity) },
             ]);
+            statementTable(
+                [
+                    { label: "Assets", rows: data.balanceSheet.assets.map(a => ({ name: `${a.code ? `${a.code} · ` : ""}${a.name}`, amount: a.amount })), subtotal: { label: "Total Assets", amount: data.balanceSheet.totalAssets } },
+                    { label: "Liabilities", rows: data.balanceSheet.liabilities.map(a => ({ name: `${a.code ? `${a.code} · ` : ""}${a.name}`, amount: a.amount })), subtotal: { label: "Total Liabilities", amount: data.balanceSheet.totalLiabilities } },
+                    { label: "Equity", rows: data.balanceSheet.equity.map(a => ({ name: `${a.code ? `${a.code} · ` : ""}${a.name}`, amount: a.amount })), subtotal: { label: "Total Equity", amount: data.balanceSheet.totalEquity } },
+                ],
+                "Total Liabilities & Equity",
+                data.balanceSheet.totalLiabilities + data.balanceSheet.totalEquity,
+            );
 
-            heading("Cash Flow Statement", 1, 22);
-            {
-                const cf = data.cashFlow;
-                const cfRows: any[] = [];
-                const group = (label: string, g: { items: MgmtLineItem[]; total: number }) => {
-                    cfRows.push([{ content: label, styles: { fontStyle: "bold", fontSize: 7.5, textColor: GRAY } }, ""]);
-                    for (const it of g.items) {
-                        cfRows.push([`  ${it.name}`, { content: fmtMoney(it.amount), styles: { halign: "right" } }]);
-                    }
-                    cfRows.push([
-                        { content: `Net Cash from ${label}`, styles: { fontStyle: "bold" } },
-                        { content: fmtMoney(g.total), styles: { halign: "right", fontStyle: "bold" } },
-                    ]);
-                    cfRows.push(["", ""]);
-                };
-                group("Operating Activities", cf.operating);
-                group("Investing Activities", cf.investing);
-                group("Financing Activities", cf.financing);
-                cfRows.pop(); // drop the trailing spacer row
-
-                ensureSpace(20);
-                autoTable(doc, {
-                    startY: cursorY,
-                    head: [["Description", currency]],
-                    body: cfRows,
-                    theme: "plain",
-                    styles: { font: "Outfit", fontSize: 8.5, textColor: DARK },
-                    headStyles: { fontStyle: "bold", fontSize: 7, textColor: FAINT },
-                    columnStyles: { 0: { cellWidth: W - 2 * M - 45 }, 1: { cellWidth: 45, halign: "right" } },
-                    margin: { top: TOP, left: M, right: M, bottom: 22 },
-                    rowPageBreak: "avoid",
-                    showHead: "everyPage",
-                    didDrawPage: () => drawChrome(),
-                });
-                cursorY = (doc as any).lastAutoTable.finalY + 3;
-                ensureSpace(9);
-                doc.setDrawColor(...DARK); doc.setLineWidth(0.4);
-                doc.line(M, cursorY, W - M, cursorY);
-                cursorY += 5;
-                apply({ weight: "bold", size: 10, color: DARK });
-                doc.text("Net Increase / (Decrease) in Cash", M, cursorY);
-                doc.text(fmtMoney(cf.netChange), W - M, cursorY, { align: "right" });
-                cursorY += 6;
-                apply({ size: 8, color: GRAY });
-                doc.text("Cash Balance on Books", M, cursorY);
-                doc.text(fmtMoney(data.cashPosition), W - M, cursorY, { align: "right" });
-                cursorY += 11;
-            }
+            heading("Cash Flow Statement", 1, 24);
+            statementTable(
+                [
+                    { label: "Operating Activities", rows: data.cashFlow.operating.items.map(i => ({ name: i.name, amount: i.amount })), subtotal: { label: "Net Cash from Operating Activities", amount: data.cashFlow.operating.total } },
+                    { label: "Investing Activities", rows: data.cashFlow.investing.items.map(i => ({ name: i.name, amount: i.amount })), subtotal: { label: "Net Cash from Investing Activities", amount: data.cashFlow.investing.total } },
+                    { label: "Financing Activities", rows: data.cashFlow.financing.items.map(i => ({ name: i.name, amount: i.amount })), subtotal: { label: "Net Cash from Financing Activities", amount: data.cashFlow.financing.total } },
+                ],
+                "Net Increase / (Decrease) in Cash",
+                data.cashFlow.netChange,
+            );
+            ensureSpace(8);
+            apply({ size: 8, color: GRAY });
+            doc.text("Cash Balance on Books", M, cursorY);
+            doc.text(fmtMoney(data.cashPosition), W - M, cursorY, { align: "right" });
+            cursorY += 11;
 
             heading("Spending Analysis", 1, data.spendingCategories.length > 0 ? Math.min(8, data.spendingCategories.length) * 11 + 4 : 14);
             if (data.spendingCategories.length > 0) {
@@ -649,8 +654,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             for (const r of data.incomeStatement.revenue) rows.push([csvEsc("Income Statement — Revenue"), csvEsc(r.name), r.code ?? "", r.amount.toFixed(2)]);
             for (const e of data.incomeStatement.expenses) rows.push([csvEsc("Income Statement — Expenses"), csvEsc(e.name), e.code ?? "", (-e.amount).toFixed(2)]);
             rows.push([csvEsc("Income Statement"), csvEsc("Net Income"), "", data.incomeStatement.netIncome.toFixed(2)]);
+            for (const a of data.balanceSheet.assets) rows.push([csvEsc("Balance Sheet — Assets"), csvEsc(a.name), a.code ?? "", a.amount.toFixed(2)]);
             rows.push([csvEsc("Balance Sheet"), csvEsc("Total Assets"), "", data.balanceSheet.totalAssets.toFixed(2)]);
+            for (const l of data.balanceSheet.liabilities) rows.push([csvEsc("Balance Sheet — Liabilities"), csvEsc(l.name), l.code ?? "", l.amount.toFixed(2)]);
             rows.push([csvEsc("Balance Sheet"), csvEsc("Total Liabilities"), "", data.balanceSheet.totalLiabilities.toFixed(2)]);
+            for (const e of data.balanceSheet.equity) rows.push([csvEsc("Balance Sheet — Equity"), csvEsc(e.name), e.code ?? "", e.amount.toFixed(2)]);
             rows.push([csvEsc("Balance Sheet"), csvEsc("Total Equity"), "", data.balanceSheet.totalEquity.toFixed(2)]);
             for (const it of data.cashFlow.operating.items) rows.push([csvEsc("Cash Flow — Operating Activities"), csvEsc(it.name), "", it.amount.toFixed(2)]);
             rows.push([csvEsc("Cash Flow Statement"), csvEsc("Net Cash from Operating Activities"), "", data.cashFlow.operating.total.toFixed(2)]);

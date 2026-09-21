@@ -98,6 +98,59 @@ function MetricBlock({ label, value }: { label: string; value: string }) {
     );
 }
 
+// A proper ruled accounting statement — green header, alternating row
+// shading, shaded subtotal rows, bold dark grand-total footer — used
+// identically for the Income Statement, Balance Sheet and Cash Flow
+// Statement so all three carry the same visual weight as the rest of the
+// report instead of reading as plain label/amount lists.
+function StatementTable({ groups, totalLabel, totalAmount }: {
+    groups: { label: string; rows: { name: string; amount: number }[]; subtotal?: { label: string; amount: number } }[];
+    totalLabel: string;
+    totalAmount: number;
+}) {
+    return (
+        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+            <table className="w-full text-[12px]">
+                <thead>
+                    <tr style={{ background: '#059669' }}>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">Description / Account</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.06em] text-[10px] px-5 py-2.5">KES</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {groups.flatMap((g, gi) => [
+                        <tr key={`${gi}-h`} style={{ background: '#ECFDF5' }}>
+                            <td colSpan={2} className="px-5 py-1.5 text-[9.5px] font-[700] uppercase tracking-[0.08em]" style={{ color: '#059669' }}>{g.label}</td>
+                        </tr>,
+                        ...(g.rows.length === 0 ? [
+                            <tr key={`${gi}-empty`}>
+                                <td colSpan={2} className="px-5 py-2 text-[11.5px] text-gray-400 italic">No activity recorded</td>
+                            </tr>,
+                        ] : g.rows.map((r, ri) => (
+                            <tr key={`${gi}-${ri}`} style={{ background: ri % 2 === 1 ? '#FAFAFA' : 'white' }}>
+                                <td className="px-5 py-2 text-gray-700">{r.name}</td>
+                                <td className="px-5 py-2 text-right font-mono tabular-nums text-gray-900">{fmtSigned(r.amount)}</td>
+                            </tr>
+                        ))),
+                        ...(g.subtotal ? [
+                            <tr key={`${gi}-sub`} style={{ background: '#F3F4F6' }}>
+                                <td className="px-5 py-2 font-[600] text-gray-700">{g.subtotal.label}</td>
+                                <td className="px-5 py-2 text-right font-[700] font-mono tabular-nums text-gray-900">{fmtSigned(g.subtotal.amount)}</td>
+                            </tr>,
+                        ] : []),
+                    ])}
+                </tbody>
+                <tfoot>
+                    <tr style={{ background: '#111827' }}>
+                        <td className="px-5 py-3 font-[700] text-white uppercase tracking-[0.04em] text-[11.5px]">{totalLabel}</td>
+                        <td className="px-5 py-3 text-right font-[800] font-mono tabular-nums text-white text-[13px]">{fmtSigned(totalAmount)}</td>
+                    </tr>
+                </tfoot>
+            </table>
+        </div>
+    );
+}
+
 function CategoryBar({ category, amount, share, count, maxAmount, rank }: { category: string; amount: number; share: string; count: number; maxAmount: number; rank: number }) {
     const widthPct = maxAmount > 0 ? Math.max(0.6, (amount / maxAmount) * 100) : 0;
     return (
@@ -429,8 +482,11 @@ export default async function ManagementReportPage({
             netIncome: pl.netIncome,
         },
         balanceSheet: {
+            assets: bs.assets.accounts.map((a: any) => ({ code: a.code, name: a.name, amount: a.balance })),
             totalAssets: bs.assets.total,
+            liabilities: bs.liabilities.accounts.map((a: any) => ({ code: a.code, name: a.name, amount: a.balance })),
             totalLiabilities: bs.liabilities.total,
+            equity: bs.equity.accounts.map((a: any) => ({ code: a.code, name: a.name, amount: a.balance })),
             totalEquity: bs.equity.total,
         },
         cashFlow,
@@ -595,30 +651,14 @@ export default async function ManagementReportPage({
                 <LayerHeading n={2} title="Financial Performance" />
 
                 <SubTitle>Income Statement</SubTitle>
-                <div className="bg-white" style={{ border: HAIRLINE }}>
-                    <div className="px-5 pt-3 pb-1">
-                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Revenue</p>
-                    </div>
-                    {pl.revenue.accounts.map(a => (
-                        <div key={a.code} className="flex items-center gap-3 px-5 py-1.5">
-                            <span className="flex-1 text-[12px] text-gray-700 truncate">{a.code} · {a.name}</span>
-                            <span className="text-[12px] font-mono tabular-nums text-gray-900">{fmt(a.balance)}</span>
-                        </div>
-                    ))}
-                    <div className="px-5 pt-3 pb-1" style={{ borderTop: HAIRLINE }}>
-                        <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">Operating Expenses</p>
-                    </div>
-                    {pl.expenses.accounts.map(a => (
-                        <div key={a.code} className="flex items-center gap-3 px-5 py-1.5">
-                            <span className="flex-1 text-[12px] text-gray-700 truncate pl-3">{a.code} · {a.name}</span>
-                            <span className="text-[12px] font-mono tabular-nums text-gray-700">({fmt(a.balance)})</span>
-                        </div>
-                    ))}
-                    <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.15)' }}>
-                        <span className="flex-1 text-[12.5px] font-[700] text-gray-900">Net Income</span>
-                        <span className={`text-[13px] font-[700] font-mono tabular-nums ${pl.netIncome < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmtSigned(pl.netIncome)}</span>
-                    </div>
-                </div>
+                <StatementTable
+                    groups={[
+                        { label: 'Revenue', rows: pl.revenue.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })) },
+                        { label: 'Operating Expenses', rows: pl.expenses.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: -a.balance })) },
+                    ]}
+                    totalLabel="Net Income"
+                    totalAmount={pl.netIncome}
+                />
 
                 <SubTitle>Balance Sheet</SubTitle>
                 <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
@@ -626,42 +666,29 @@ export default async function ManagementReportPage({
                     <MetricBlock label="Total Liabilities" value={fmt(bs.liabilities.total)} />
                     <MetricBlock label="Total Equity" value={fmtSigned(bs.equity.total)} />
                 </div>
+                <StatementTable
+                    groups={[
+                        { label: 'Assets', rows: bs.assets.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })), subtotal: { label: 'Total Assets', amount: bs.assets.total } },
+                        { label: 'Liabilities', rows: bs.liabilities.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })), subtotal: { label: 'Total Liabilities', amount: bs.liabilities.total } },
+                        { label: 'Equity', rows: bs.equity.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })), subtotal: { label: 'Total Equity', amount: bs.equity.total } },
+                    ]}
+                    totalLabel="Total Liabilities & Equity"
+                    totalAmount={bs.liabilities.total + bs.equity.total}
+                />
 
                 <SubTitle>Cash Flow Statement</SubTitle>
-                <div className="bg-white" style={{ border: HAIRLINE }}>
-                    {([
-                        ['Operating Activities', cashFlow.operating],
-                        ['Investing Activities', cashFlow.investing],
-                        ['Financing Activities', cashFlow.financing],
-                    ] as const).map(([label, g], gi) => (
-                        <div key={label}>
-                            <div className="px-5 pt-3 pb-1" style={gi > 0 ? { borderTop: HAIRLINE } : {}}>
-                                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">{label}</p>
-                            </div>
-                            {g.items.length === 0 ? (
-                                <div className="px-5 py-1.5">
-                                    <span className="text-[11.5px] text-gray-400 italic">No activity recorded</span>
-                                </div>
-                            ) : g.items.map((it, i) => (
-                                <div key={i} className="flex items-center gap-3 px-5 py-1.5">
-                                    <span className="flex-1 text-[12px] text-gray-700 truncate">{it.name}</span>
-                                    <span className="text-[12px] font-mono tabular-nums text-gray-900">{fmtSigned(it.amount)}</span>
-                                </div>
-                            ))}
-                            <div className="flex items-center gap-3 px-5 py-1.5" style={{ background: '#FAFAFA' }}>
-                                <span className="flex-1 text-[11.5px] font-[600] text-gray-600">Net Cash from {label}</span>
-                                <span className="text-[12px] font-[700] font-mono tabular-nums text-gray-900">{fmtSigned(g.total)}</span>
-                            </div>
-                        </div>
-                    ))}
-                    <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.15)' }}>
-                        <span className="flex-1 text-[12.5px] font-[700] text-gray-900">Net Increase / (Decrease) in Cash</span>
-                        <span className={`text-[13px] font-[700] font-mono tabular-nums ${cashFlow.netChange < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmtSigned(cashFlow.netChange)}</span>
-                    </div>
-                    <div className="flex items-center gap-3 px-5 py-2" style={{ borderTop: HAIRLINE }}>
-                        <span className="flex-1 text-[11px] text-gray-400">Cash Balance on Books</span>
-                        <span className="text-[11px] font-mono tabular-nums text-gray-500">{fmt(cashPosition)}</span>
-                    </div>
+                <StatementTable
+                    groups={[
+                        { label: 'Operating Activities', rows: cashFlow.operating.items, subtotal: { label: 'Net Cash from Operating Activities', amount: cashFlow.operating.total } },
+                        { label: 'Investing Activities', rows: cashFlow.investing.items, subtotal: { label: 'Net Cash from Investing Activities', amount: cashFlow.investing.total } },
+                        { label: 'Financing Activities', rows: cashFlow.financing.items, subtotal: { label: 'Net Cash from Financing Activities', amount: cashFlow.financing.total } },
+                    ]}
+                    totalLabel="Net Increase / (Decrease) in Cash"
+                    totalAmount={cashFlow.netChange}
+                />
+                <div className="flex items-center gap-3 px-1 -mt-2">
+                    <span className="flex-1 text-[11px] text-gray-400">Cash Balance on Books</span>
+                    <span className="text-[11px] font-mono tabular-nums text-gray-500">{fmt(cashPosition)}</span>
                 </div>
 
                 <SubTitle>Spending Analysis</SubTitle>
