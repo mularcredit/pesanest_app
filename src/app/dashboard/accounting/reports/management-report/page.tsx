@@ -31,6 +31,31 @@ function pctOf(n: number, base: number) {
     return (Math.abs(n / base) * 100).toFixed(1) + '%';
 }
 
+// A net margin specifically — unlike pctOf (a share of a whole, always
+// 0–100%), net income can exceed revenue itself when a loss is larger
+// than the revenue base, producing a "539% margin" that is mathematically
+// correct but meaningless to a reader. Flag those as NM (not meaningful)
+// rather than print a distorted percentage.
+function marginPct(net: number, revenue: number): string {
+    if (!revenue || revenue <= 0) return 'NM';
+    const ratio = net / revenue;
+    if (Math.abs(ratio) > 1) return 'NM';
+    return `${(ratio * 100).toFixed(1)}%`;
+}
+
+// A short "vs last period" trend line for a KPI — the comparative baseline
+// every board-reporting guide treats as non-negotiable (a single month's
+// figure in isolation tells a director nothing about whether it's normal).
+// Plain words rather than ▲▼ glyphs — the PDF's embedded font subset only
+// covers the Latin characters actually used elsewhere in the report, so an
+// arrow glyph silently drops out instead of rendering.
+function trendLabel(curr: number, prev: number): string | undefined {
+    if (prev === 0) return curr === 0 ? undefined : 'up from nil last period';
+    const pct = ((curr - prev) / Math.abs(prev)) * 100;
+    if (Math.abs(pct) < 0.05) return 'flat vs last period';
+    return `${pct > 0 ? 'up' : 'down'} ${Math.abs(pct).toFixed(1)}% vs last period`;
+}
+
 const PRESETS = [
     { label: 'This month', key: 'this_month' },
     { label: 'Last month', key: 'last_month' },
@@ -212,6 +237,60 @@ function PipelineTable({ stages }: { stages: { label: string; count: number; amo
     );
 }
 
+// Budget vs Actual — the comparison every CFO board-reporting guide treats
+// as non-negotiable, built from budget data the app already collects
+// (MonthlyBudget/BudgetItem) but this report wasn't previously showing.
+function BudgetTable({ rows }: { rows: { category: string; allocated: number; spent: number; pctUsed: number }[] }) {
+    return (
+        <div className="overflow-hidden" style={{ border: HAIRLINE }}>
+            <table className="w-full text-[12px]">
+                <thead>
+                    <tr style={{ background: '#059669' }}>
+                        <th className="text-left font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Category</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Allocated</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Spent</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">Variance</th>
+                        <th className="text-right font-[700] text-white uppercase tracking-[0.07em] text-[10.5px] px-5 py-3">% Used</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {rows.map((b, i) => (
+                        <tr key={b.category} style={{ background: i % 2 === 1 ? '#FAFAFA' : 'white' }}>
+                            <td className="px-5 py-3 text-gray-700">{b.category}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900">{fmt(b.allocated)}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900">{fmt(b.spent)}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums text-gray-900">{fmtSigned(b.allocated - b.spent)}</td>
+                            <td className="px-5 py-3 text-right font-mono tabular-nums font-[700]" style={{ color: b.pctUsed >= 100 ? '#dc2626' : b.pctUsed >= 90 ? '#d97706' : '#059669' }}>
+                                {b.pctUsed.toFixed(0)}%
+                            </td>
+                        </tr>
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
+}
+
+// A short, escalated list of items that need a board decision — not routine
+// follow-up (that's Management Actions), only what genuinely needs sign-off:
+// a fully exhausted budget line, or a high-severity spending exception.
+function BoardDecisions({ items }: { items: string[] }) {
+    if (items.length === 0) return null;
+    return (
+        <div className="px-5 py-4" style={{ background: '#FEF2F2', borderLeft: '4px solid #dc2626' }}>
+            <p className="text-[10.5px] font-[700] uppercase tracking-[0.08em] text-[#b91c1c] mb-2">Requires Board Decision</p>
+            <ul className="space-y-1.5">
+                {items.map((item, i) => (
+                    <li key={i} className="text-[12px] text-gray-700 leading-relaxed pl-3 relative">
+                        <span className="absolute left-0 top-[7px] w-[5px] h-[5px] rounded-full" style={{ background: '#dc2626' }} />
+                        {item}
+                    </li>
+                ))}
+            </ul>
+        </div>
+    );
+}
+
 function RiskRow({ severity, title, amount, status }: { severity: 'high' | 'medium' | 'low'; title: string; amount: number; status: string }) {
     return (
         <div className="flex items-center gap-3 px-5 py-3.5" style={{ borderBottom: HAIRLINE }}>
@@ -347,6 +426,13 @@ export default async function ManagementReportPage({
     const fromDate = new Date(from + 'T00:00:00.000Z');
     const toDate   = new Date(to + 'T23:59:59.999Z');
 
+    // The immediately preceding period of equal length — every board-report
+    // guide treats "vs last period" as the minimum comparative baseline; a
+    // single month's figures in isolation don't tell a director anything.
+    const periodLengthMs = toDate.getTime() - fromDate.getTime();
+    const prevToDate = new Date(fromDate.getTime() - 1);
+    const prevFromDate = new Date(prevToDate.getTime() - periodLengthMs);
+
     const [
         pl,
         bs,
@@ -355,6 +441,9 @@ export default async function ManagementReportPage({
         systemSettingRows,
         requisitionsInPeriod,
         activeBudgets,
+        plComparative,
+        prevCashPosition,
+        prevBs,
     ] = await Promise.all([
         FinancialReports.getProfitAndLoss(fromDate, toDate),
         FinancialReports.getBalanceSheet(toDate),
@@ -372,6 +461,9 @@ export default async function ManagementReportPage({
             where: { month: toDate.getUTCMonth() + 1, year: toDate.getUTCFullYear(), status: 'APPROVED' },
             include: { items: true },
         }),
+        FinancialReports.getComparative({ start: fromDate, end: toDate }, { start: prevFromDate, end: prevToDate }, 'PL'),
+        getCashPosition(prevToDate),
+        FinancialReports.getBalanceSheet(prevToDate),
     ]);
 
     const settingsMap: Record<string, string> = {};
@@ -425,6 +517,17 @@ export default async function ManagementReportPage({
             return { category: item.category, allocated: item.amount, spent };
         })
     );
+    const budget = budgetRows
+        .map((b: any) => ({ ...b, pctUsed: b.allocated > 0 ? (b.spent / b.allocated) * 100 : 0 }))
+        .sort((a: any, b: any) => b.pctUsed - a.pctUsed);
+
+    // ── Prior-period trend for the headline KPIs — "vs last period" is the
+    // baseline every board-reporting guide treats as required, not optional. ──
+    const revTrend = trendLabel(pl.revenue.total, plComparative.summary?.period2.revenue ?? 0);
+    const expTrend = trendLabel(pl.expenses.total, plComparative.summary?.period2.expenses ?? 0);
+    const netTrend = trendLabel(pl.netIncome, plComparative.summary?.period2.netIncome ?? 0);
+    const cashTrend = trendLabel(cashPosition, prevCashPosition);
+    const equityTrend = trendLabel(bs.equity.total, prevBs.equity.total);
 
     // ── Spending alerts → risk exceptions (severity derived from the same
     // ratio already computed, not invented) ──
@@ -443,14 +546,16 @@ export default async function ManagementReportPage({
     const pageUrl = (preset: string) => `?preset=${preset}`;
 
     // ── Executive summary — a plain-language roll-up of the numbers below,
-    // generated from the same figures rather than free-text AI narration. ──
-    const executiveSummary = `During ${periodLabel}, ${companyName} recorded net revenue of KES ${fmt(pl.revenue.total)} against total expenses of KES ${fmt(pl.expenses.total)}, resulting in a net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)}. Cash position stood at KES ${fmt(cashPosition)} as of period end. Of ${submitted.length} requisition${submitted.length !== 1 ? 's' : ''} submitted for approval, ${approved.length} (${approvalRate.toFixed(1)}%) were approved, with ${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} still pending.`;
+    // generated from the same figures rather than free-text AI narration.
+    // Leads with what changed vs last period, not just the raw totals — a
+    // number with no comparative baseline doesn't tell a director anything. ──
+    const executiveSummary = `During ${periodLabel}, ${companyName} recorded net revenue of KES ${fmt(pl.revenue.total)} (${revTrend ?? 'no prior-period activity to compare'}) against total expenses of KES ${fmt(pl.expenses.total)} (${expTrend ?? 'no prior-period activity to compare'}), resulting in a net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)}. Cash position stood at KES ${fmt(cashPosition)} as of period end${cashTrend ? `, ${cashTrend}` : ''}. Of ${submitted.length} requisition${submitted.length !== 1 ? 's' : ''} submitted for approval, ${approved.length} (${approvalRate.toFixed(1)}%) were approved, with ${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} still pending.`;
 
     // ── Performance highlights — scannable bullets, derived from the same
     // figures as the executive summary, not restated financial statements. ──
     const highlights: string[] = [
-        `Net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)} (${pctOf(pl.netIncome, pl.revenue.total)} margin).`,
-        `Cash position of KES ${fmt(cashPosition)} as of period end.`,
+        `Net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)} (${marginPct(pl.netIncome, pl.revenue.total)} margin)${netTrend ? `, ${netTrend}` : ''}.`,
+        `Cash position of KES ${fmt(cashPosition)} as of period end${cashTrend ? `, ${cashTrend}` : ''}.`,
         `Requisition approval rate of ${approvalRate.toFixed(1)}% (${approved.length} of ${submitted.length} submitted).`,
     ];
     if (topCategories.length > 0) {
@@ -462,6 +567,7 @@ export default async function ManagementReportPage({
     // attention. Owner/due-date are intentionally left unset — no such data
     // exists in the system yet; the layout simply supports those fields. ──
     const overBudgetCategories = budgetRows.filter((b: any) => b.allocated > 0 && b.spent / b.allocated >= 0.9);
+    const fullyOverBudget = budgetRows.filter((b: any) => b.allocated > 0 && b.spent / b.allocated >= 1);
     const actionItems: string[] = [];
     if (pendingReqs.length > 0) {
         actionItems.push(`Follow up on ${pendingReqs.length} pending requisition${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} awaiting approval.`);
@@ -477,6 +583,24 @@ export default async function ManagementReportPage({
     }
     const actions = actionItems.map(a => ({ action: a, status: 'Open' }));
 
+    // ── Board decisions required — escalated separately from routine
+    // Management Actions: only what genuinely needs sign-off (a fully
+    // exhausted budget line, or a high-severity spending exception), not
+    // day-to-day follow-up. ──
+    const boardDecisionItems: string[] = [];
+    if (fullyOverBudget.length > 0) {
+        boardDecisionItems.push(`Budget fully exhausted for ${fullyOverBudget.map((b: any) => b.category).join(', ')} — authorize further spend or reallocate budget.`);
+    }
+    const highRisks = risks.filter(r => r.severity === 'high');
+    if (highRisks.length > 0) {
+        boardDecisionItems.push(`${highRisks.length} high-severity spending exception${highRisks.length !== 1 ? 's' : ''} totaling KES ${fmt(highRisks.reduce((s, r) => s + r.amount, 0))} requires review and sign-off.`);
+    }
+
+    const balanceSheetLead = `Total assets of KES ${fmt(bs.assets.total)} are financed by KES ${fmt(bs.liabilities.total)} in liabilities and KES ${fmt(bs.equity.total)} in shareholders' equity${equityTrend ? `, ${equityTrend}` : ''}.`;
+    const spendingAnalysisLead = topCategories.length > 0
+        ? `${topCategories[0].category} was the largest cost category this period at ${pctOf(topCategories[0].amount, totalCategorySpend)} of total spend (KES ${fmt(topCategories[0].amount)}).`
+        : 'No categorized spending recorded for this period.';
+
     // ── Assemble the report data (shared by the on-screen page and the PDF/CSV export) ──
     const reportData: ManagementReportData = {
         meta: {
@@ -489,16 +613,20 @@ export default async function ManagementReportPage({
             generatedLabel,
         },
         kpis: [
-            { label: 'Net Revenue', value: fmt(pl.revenue.total), sub: 'Total recognized revenue' },
-            { label: 'Net Result', value: fmtSigned(pl.netIncome), sub: `${pctOf(pl.netIncome, pl.revenue.total)} margin` },
-            { label: 'Cash Position', value: fmt(cashPosition), sub: 'As of period end' },
-            { label: 'Total Expenditure', value: fmt(pl.expenses.total), sub: 'All operating expenses' },
+            { label: 'Net Revenue', value: fmt(pl.revenue.total), sub: `Total recognized revenue${revTrend ? `  ·  ${revTrend}` : ''}` },
+            { label: 'Net Result', value: fmtSigned(pl.netIncome), sub: `${marginPct(pl.netIncome, pl.revenue.total)} margin${netTrend ? `  ·  ${netTrend}` : ''}` },
+            { label: 'Cash Position', value: fmt(cashPosition), sub: `As of period end${cashTrend ? `  ·  ${cashTrend}` : ''}` },
+            { label: 'Total Expenditure', value: fmt(pl.expenses.total), sub: `All operating expenses${expTrend ? `  ·  ${expTrend}` : ''}` },
             { label: 'Pending Approvals', value: fmt(pendingTotal), sub: `${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''}` },
         ],
         executiveSummary,
         highlights,
         risks,
         actions,
+        boardDecisions: boardDecisionItems,
+        budget,
+        balanceSheetLead,
+        spendingAnalysisLead,
         incomeStatement: {
             revenue: pl.revenue.accounts.map(a => ({ code: a.code, name: a.name, amount: a.balance })),
             expenses: pl.expenses.accounts.map(a => ({ code: a.code, name: a.name, amount: a.balance })),
@@ -625,7 +753,7 @@ export default async function ManagementReportPage({
                 <LayerHeading n={1} title="Executive Overview" />
 
                 <Lead>
-                    {companyName} reported a net profit of {fmtSigned(pl.netIncome)}, a {pctOf(pl.netIncome, pl.revenue.total)} margin, on cash reserves of {fmt(cashPosition)}.
+                    {companyName} reported a net {pl.netIncome >= 0 ? 'profit' : 'loss'} of {fmtSigned(pl.netIncome)}, a {marginPct(pl.netIncome, pl.revenue.total)} margin, on cash reserves of {fmt(cashPosition)}.
                 </Lead>
 
                 <SubTitle>Key Financial Metrics</SubTitle>
@@ -670,6 +798,8 @@ export default async function ManagementReportPage({
                     </div>
                 </div>
 
+                <BoardDecisions items={boardDecisionItems} />
+
                 <Callout>
                     Every figure is drawn from posted journal entries — voided entries are included as their offsetting reversal, never netted out or dropped. Nothing here is estimated or carried forward by hand.
                 </Callout>
@@ -693,6 +823,7 @@ export default async function ManagementReportPage({
                 />
 
                 <SubTitle>Balance Sheet</SubTitle>
+                <Lead>{balanceSheetLead}</Lead>
                 <StatementTable
                     groups={[
                         { label: 'Assets', rows: bs.assets.accounts.map(a => ({ name: `${a.code} · ${a.name}`, amount: a.balance })), subtotal: { label: 'Total Assets', amount: bs.assets.total } },
@@ -719,6 +850,7 @@ export default async function ManagementReportPage({
                 </div>
 
                 <SubTitle>Spending Analysis</SubTitle>
+                <Lead>{spendingAnalysisLead}</Lead>
                 <div className="bg-white" style={{ border: HAIRLINE }}>
                     {topCategories.length === 0
                         ? <p className="px-5 py-5 text-[12px] text-gray-400 italic">No spending recorded this period</p>
@@ -728,6 +860,13 @@ export default async function ManagementReportPage({
                         ))
                     }
                 </div>
+
+                {budget.length > 0 && (
+                    <>
+                        <SubTitle>Budget vs Actual</SubTitle>
+                        <BudgetTable rows={budget} />
+                    </>
+                )}
             </div>
 
             {/* ═══ 03 · OPERATIONS & CONTROLS ═══ */}

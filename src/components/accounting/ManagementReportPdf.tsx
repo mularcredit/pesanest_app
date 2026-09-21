@@ -34,12 +34,17 @@ export interface ManagementReportData {
     highlights: string[];
     risks: { severity: "high" | "medium" | "low"; title: string; amount: number; status: string }[];
     actions: { action: string; owner?: string; dueDate?: string; status?: string }[];
+    // Escalated separately from `actions` — only what genuinely needs board
+    // sign-off (a fully exhausted budget line, a high-severity exception),
+    // not routine operational follow-up.
+    boardDecisions: string[];
     incomeStatement: { revenue: MgmtLineItem[]; expenses: MgmtLineItem[]; netIncome: number };
     balanceSheet: {
         assets: MgmtLineItem[]; totalAssets: number;
         liabilities: MgmtLineItem[]; totalLiabilities: number;
         equity: MgmtLineItem[]; totalEquity: number;
     };
+    balanceSheetLead: string;
     cashFlow: {
         operating: { items: MgmtLineItem[]; total: number };
         investing: { items: MgmtLineItem[]; total: number };
@@ -48,6 +53,10 @@ export interface ManagementReportData {
     };
     cashPosition: number;
     spendingCategories: { category: string; amount: number; pct: number; count: number }[];
+    spendingAnalysisLead: string;
+    // Budget vs Actual, by requisition category — built from the app's
+    // existing MonthlyBudget/BudgetItem data.
+    budget: { category: string; allocated: number; spent: number; pctUsed: number }[];
     pipeline: { label: string; count: number; amount: number }[]; // Draft, Pending, Approved, Paid, Rejected
     transactions: { date: string; description: string; category: string; requestedBy: string; status: string; amount: number }[];
 }
@@ -61,6 +70,8 @@ const DARK: [number, number, number] = [15, 23, 42];
 const MID: [number, number, number] = [90, 90, 90];
 const GRAY: [number, number, number] = [140, 140, 140];
 const FAINT: [number, number, number] = [180, 180, 180];
+const RED_DARK: [number, number, number] = [185, 28, 28];
+const RED_TINT: [number, number, number] = [254, 242, 242];
 const HAIRLINE: [number, number, number] = [228, 228, 228];
 const TRACK: [number, number, number] = [243, 244, 246];
 const SUBTOTAL: [number, number, number] = [243, 244, 246];
@@ -344,6 +355,35 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 cursorY = y0 + boxH + 12;
             }
 
+            // Escalated separately from the routine bullet lists — a red-tinted
+            // box so items that genuinely need board sign-off (a fully
+            // exhausted budget line, a high-severity exception) can't be
+            // skimmed past as just another line of Management Attention.
+            function boardDecisionBox(items: string[]) {
+                if (items.length === 0) return;
+                const pad = 5, lineH = 5, indent = 6;
+                const maxW = W - 2 * M - pad * 2 - 3 - indent;
+                const wrapped = items.map(it => doc.splitTextToSize(it, maxW) as string[]);
+                const totalLines = wrapped.reduce((s, l) => s + l.length, 0);
+                const boxH = (totalLines + 1) * lineH + pad * 1.8;
+                ensureSpace(boxH + 5);
+                const y0 = cursorY;
+                doc.setFillColor(...RED_TINT);
+                doc.rect(M, y0, W - 2 * M, boxH, "F");
+                doc.setFillColor(...SEV_COLOR.high);
+                doc.rect(M, y0, 1.2, boxH, "F");
+                apply({ weight: "bold", size: 9, color: RED_DARK });
+                doc.text("REQUIRES BOARD DECISION", M + pad + 3, y0 + pad + 1);
+                let ly = y0 + pad + 1 + lineH;
+                wrapped.forEach(lines => {
+                    apply({ size: 10, color: DARK });
+                    doc.setFillColor(...SEV_COLOR.high);
+                    doc.circle(M + pad + 3 + 1.2, ly - 1.7, 0.8, "F");
+                    lines.forEach(ln => { doc.text(ln, M + pad + 3 + indent, ly); ly += lineH; });
+                });
+                cursorY = y0 + boxH + 12;
+            }
+
             function subheading(title: string) {
                 ensureSpace(9);
                 apply({ weight: "bold", size: 10.5, color: DARK });
@@ -599,8 +639,48 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 cursorY = (doc as any).lastAutoTable.finalY + 12;
             }
 
+            // Budget vs Actual, by requisition category — the comparison
+            // against a plan, not just against last period, that every
+            // CFO board-reporting guide treats as required.
+            function budgetTable(rows: { category: string; allocated: number; spent: number; pctUsed: number }[]) {
+                ensureSpace(20);
+                autoTable(doc, {
+                    startY: cursorY,
+                    head: [["Category", "Allocated", "Spent", "Variance", "% Used"]],
+                    body: rows.map(b => [
+                        b.category,
+                        fmtMoney(b.allocated),
+                        fmtMoney(b.spent),
+                        fmtMoney(b.allocated - b.spent),
+                        `${b.pctUsed.toFixed(0)}%`,
+                    ]),
+                    theme: "plain",
+                    styles: { font: "Outfit", fontSize: 9.5, textColor: DARK, cellPadding: { top: 2.8, bottom: 2.8, left: 4, right: 4 } },
+                    headStyles: { fillColor: GREEN, textColor: 255, fontStyle: "bold", fontSize: 8.5 },
+                    columnStyles: { 1: { halign: "right" }, 2: { halign: "right" }, 3: { halign: "right" }, 4: { halign: "right", fontStyle: "bold" } },
+                    alternateRowStyles: { fillColor: ZEBRA },
+                    didParseCell: (d) => {
+                        if (d.section !== "body" || d.column.index !== 4) return;
+                        const pct = rows[d.row.index]?.pctUsed ?? 0;
+                        d.cell.styles.textColor = pct >= 100 ? SEV_COLOR.high : pct >= 90 ? SEV_COLOR.medium : GREEN_DARK;
+                    },
+                    margin: { top: TOP, left: M, right: M, bottom: 22 },
+                    rowPageBreak: "avoid",
+                    showHead: "everyPage",
+                    didDrawPage: () => drawChrome(),
+                });
+                cursorY = (doc as any).lastAutoTable.finalY + 12;
+            }
+
             // ── 01 · Executive Overview ─────────────────────────────────────
-            lead(`${data.meta.companyName} reported a net profit of ${netResultKpi?.value ?? fmtMoney(0)}, a ${netResultKpi?.sub ?? ""}, on cash reserves of ${cashKpi?.value ?? fmtMoney(0)}.`);
+            // netResultKpi.sub carries the "vs last period" trend appended
+            // after a middle dot for the metric table — strip that back off
+            // here so the lead sentence reads as one clean claim, and say
+            // "loss" rather than always "profit" (fmtSigned alone doesn't
+            // make that obvious in a sentence).
+            const netIsLoss = (netResultKpi?.value ?? "").startsWith("(");
+            const marginOnly = (netResultKpi?.sub ?? "").split("  ·  ")[0];
+            lead(`${data.meta.companyName} reported a net ${netIsLoss ? "loss" : "profit"} of ${netResultKpi?.value ?? fmtMoney(0)}, a ${marginOnly}, on cash reserves of ${cashKpi?.value ?? fmtMoney(0)}.`);
 
             heading("Key Financial Metrics", 0, 10 + data.kpis.length * 11);
             metricTable(data.kpis);
@@ -620,6 +700,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             subheading("Management Attention");
             bullets(data.actions.length ? data.actions.map(a => a.action) : ["No outstanding actions for this period."]);
 
+            boardDecisionBox(data.boardDecisions);
+
             callout("Every figure is drawn from posted journal entries — voided entries are included as their offsetting reversal, never netted out or dropped. Nothing here is estimated or carried forward by hand.");
 
             // ── 02 · Financial Performance ──────────────────────────────────
@@ -636,7 +718,8 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
                 { label: "Liabilities", rows: data.balanceSheet.liabilities.map(a => ({ name: `${a.code ? `${a.code} · ` : ""}${a.name}`, amount: a.amount })), subtotal: { label: "Total Liabilities", amount: data.balanceSheet.totalLiabilities } },
                 { label: "Equity", rows: data.balanceSheet.equity.map(a => ({ name: `${a.code ? `${a.code} · ` : ""}${a.name}`, amount: a.amount })), subtotal: { label: "Total Equity", amount: data.balanceSheet.totalEquity } },
             ];
-            heading("Balance Sheet", 1, estimateStatementHeight(bsLeft, bsRight));
+            heading("Balance Sheet", 1, 12 + estimateStatementHeight(bsLeft, bsRight));
+            lead(data.balanceSheetLead);
             twoColStatement(bsLeft, bsRight, "Total Liabilities & Equity", data.balanceSheet.totalLiabilities + data.balanceSheet.totalEquity);
 
             const cfLeft = { label: "Operating Activities", rows: data.cashFlow.operating.items.map(i => ({ name: i.name, amount: i.amount })), subtotal: { label: "Net Cash from Operating Activities", amount: data.cashFlow.operating.total } };
@@ -652,11 +735,17 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             doc.text(fmtMoney(data.cashPosition), W - M, cursorY, { align: "right" });
             cursorY += 13;
 
-            heading("Spending Analysis", 1, Math.min(8, data.spendingCategories.length || 1) * 12 + 6);
+            heading("Spending Analysis", 1, 12 + Math.min(8, data.spendingCategories.length || 1) * 12 + 6);
+            lead(data.spendingAnalysisLead);
             if (data.spendingCategories.length > 0) {
                 spendingAnalysis(data.spendingCategories);
             } else {
                 paragraph("No spending recorded for this period.");
+            }
+
+            if (data.budget.length > 0) {
+                heading("Budget vs Actual", 1, 10 + data.budget.length * 8.5);
+                budgetTable(data.budget);
             }
 
             // ── 03 · Operations & Controls ──────────────────────────────────
@@ -860,9 +949,11 @@ export function ManagementReportPdf({ data }: { data: ManagementReportData }) {
             rows.push([csvEsc("Cash Flow Statement"), csvEsc("Net Cash from Financing Activities"), "", data.cashFlow.financing.total.toFixed(2)]);
             rows.push([csvEsc("Cash Flow Statement"), csvEsc("Net Increase / (Decrease) in Cash"), "", data.cashFlow.netChange.toFixed(2)]);
             for (const c of data.spendingCategories) rows.push([csvEsc("Spending by Category"), csvEsc(c.category), `${c.count} items`, c.amount.toFixed(2)]);
+            for (const b of data.budget) rows.push([csvEsc("Budget vs Actual"), csvEsc(b.category), `${b.pctUsed.toFixed(0)}% used, allocated ${b.allocated.toFixed(2)}`, b.spent.toFixed(2)]);
             for (const p of data.pipeline) rows.push([csvEsc("Requisition Pipeline"), csvEsc(p.label), `${p.count} items`, p.amount.toFixed(2)]);
             for (const r of data.risks) rows.push([csvEsc("Risks & Spending Alerts"), csvEsc(r.title), csvEsc(`${r.severity} · ${r.status}`), r.amount.toFixed(2)]);
             for (const a of data.actions) rows.push([csvEsc("Management Actions"), csvEsc(a.action), csvEsc(a.status || "Open"), ""]);
+            for (const d of data.boardDecisions) rows.push([csvEsc("Requires Board Decision"), csvEsc(d), "", ""]);
             for (const t of data.transactions) rows.push([csvEsc("Detailed Transactions"), csvEsc(t.description), csvEsc(`${t.date} · ${t.category} · ${t.requestedBy} · ${t.status}`), t.amount.toFixed(2)]);
 
             const csv = rows.map(r => r.join(",")).join("\n");
