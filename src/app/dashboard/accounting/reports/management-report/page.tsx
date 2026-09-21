@@ -177,6 +177,81 @@ async function getCashPosition(asOf: Date) {
     return total;
 }
 
+// Indirect-method cash flow statement, scoped to the report's period —
+// same approach as cash-flow/page.tsx, but filtered by date range instead
+// of all-time, so it lines up with the rest of this report.
+async function getCashFlowActivity(fromDate: Date, toDate: Date) {
+    const accounts = await prisma.account.findMany({
+        include: {
+            journalLines: {
+                where: { entry: { date: { gte: fromDate, lte: toDate }, status: { in: ['POSTED', 'VOID'] } } },
+            },
+        },
+    });
+
+    const accountBalances = accounts.map(acc => {
+        const dr = acc.journalLines.reduce((s, l) => s + l.debit, 0);
+        const cr = acc.journalLines.reduce((s, l) => s + l.credit, 0);
+        const isDebitNormal = acc.type === 'ASSET' || acc.type === 'EXPENSE';
+        return { id: acc.id, name: acc.name, type: acc.type, subtype: acc.subtype, balance: isDebitNormal ? dr - cr : cr - dr };
+    });
+
+    const isCash = (a: typeof accountBalances[0]) => {
+        if (a.type !== 'ASSET') return false;
+        const n = a.name.toLowerCase();
+        return n.includes('bank') || n.includes('cash') || n.includes('wallet') || n.includes('pesa') || n.includes('stripe');
+    };
+
+    const revenues = accountBalances.filter(a => a.type === 'REVENUE');
+    const expenses = accountBalances.filter(a => a.type === 'EXPENSE');
+    const netIncome = revenues.reduce((s, a) => s + a.balance, 0) - expenses.reduce((s, a) => s + a.balance, 0);
+
+    const depreciationAddBack = expenses.filter(a => a.name.toLowerCase().includes('depreciation')).reduce((s, a) => s + a.balance, 0);
+
+    const receivables = accountBalances.filter(a => a.type === 'ASSET' && !isCash(a) &&
+        (a.subtype?.toUpperCase() === 'RECEIVABLE' || a.name.toLowerCase().includes('receivable')));
+    const changeReceivables = receivables.reduce((s, a) => s + a.balance, 0);
+
+    const payables = accountBalances.filter(a => a.type === 'LIABILITY' &&
+        (a.subtype?.toUpperCase() === 'PAYABLE' || a.name.toLowerCase().includes('payable')));
+    const changePayables = payables.reduce((s, a) => s + a.balance, 0);
+
+    const operatingTotal = netIncome + depreciationAddBack + changePayables - changeReceivables;
+
+    const fixedAssets = accountBalances.filter(a => a.type === 'ASSET' && !isCash(a) && !receivables.includes(a));
+    const investingTotal = -1 * fixedAssets.reduce((s, a) => s + a.balance, 0);
+
+    const loans = accountBalances.filter(a => a.type === 'LIABILITY' && !payables.includes(a));
+    const equity = accountBalances.filter(a => a.type === 'EQUITY');
+    const changeLoans = loans.reduce((s, a) => s + a.balance, 0);
+    const changeEquity = equity.reduce((s, a) => s + a.balance, 0);
+    const financingTotal = changeLoans + changeEquity;
+
+    return {
+        operating: {
+            items: [
+                { name: 'Net Income / (Loss)', amount: netIncome },
+                ...(depreciationAddBack !== 0 ? [{ name: 'Add back: Depreciation', amount: depreciationAddBack }] : []),
+                ...(changeReceivables !== 0 ? [{ name: 'Change in Accounts Receivable', amount: -changeReceivables }] : []),
+                ...(changePayables !== 0 ? [{ name: 'Change in Accounts Payable', amount: changePayables }] : []),
+            ],
+            total: operatingTotal,
+        },
+        investing: {
+            items: fixedAssets.length > 0 ? [{ name: 'Net Purchases of Fixed Assets', amount: investingTotal }] : [],
+            total: investingTotal,
+        },
+        financing: {
+            items: [
+                ...(changeLoans !== 0 ? [{ name: 'Change in Loans & Liabilities', amount: changeLoans }] : []),
+                ...(changeEquity !== 0 ? [{ name: 'Change in Equity & Capital', amount: changeEquity }] : []),
+            ],
+            total: financingTotal,
+        },
+        netChange: operatingTotal + investingTotal + financingTotal,
+    };
+}
+
 export default async function ManagementReportPage({
     searchParams,
 }: {
@@ -199,6 +274,7 @@ export default async function ManagementReportPage({
         pl,
         bs,
         cashPosition,
+        cashFlow,
         systemSettingRows,
         requisitionsInPeriod,
         activeBudgets,
@@ -206,6 +282,7 @@ export default async function ManagementReportPage({
         FinancialReports.getProfitAndLoss(fromDate, toDate),
         FinancialReports.getBalanceSheet(toDate),
         getCashPosition(toDate),
+        getCashFlowActivity(fromDate, toDate),
         (prisma as any).systemSetting.findMany({
             where: { key: { in: ['company_name', 'registration_number', 'headquarters_address', 'watermark_logo'] } },
         }).catch(() => [] as any[]),
@@ -356,6 +433,7 @@ export default async function ManagementReportPage({
             totalLiabilities: bs.liabilities.total,
             totalEquity: bs.equity.total,
         },
+        cashFlow,
         cashPosition,
         spendingCategories: topCategories.map(c => ({
             category: c.category, amount: c.amount, count: c.count,
@@ -547,6 +625,43 @@ export default async function ManagementReportPage({
                     <MetricBlock label="Total Assets" value={fmt(bs.assets.total)} />
                     <MetricBlock label="Total Liabilities" value={fmt(bs.liabilities.total)} />
                     <MetricBlock label="Total Equity" value={fmtSigned(bs.equity.total)} />
+                </div>
+
+                <SubTitle>Cash Flow Statement</SubTitle>
+                <div className="bg-white" style={{ border: HAIRLINE }}>
+                    {([
+                        ['Operating Activities', cashFlow.operating],
+                        ['Investing Activities', cashFlow.investing],
+                        ['Financing Activities', cashFlow.financing],
+                    ] as const).map(([label, g], gi) => (
+                        <div key={label}>
+                            <div className="px-5 pt-3 pb-1" style={gi > 0 ? { borderTop: HAIRLINE } : {}}>
+                                <p className="text-[9.5px] font-[700] uppercase tracking-[0.08em] text-gray-400">{label}</p>
+                            </div>
+                            {g.items.length === 0 ? (
+                                <div className="px-5 py-1.5">
+                                    <span className="text-[11.5px] text-gray-400 italic">No activity recorded</span>
+                                </div>
+                            ) : g.items.map((it, i) => (
+                                <div key={i} className="flex items-center gap-3 px-5 py-1.5">
+                                    <span className="flex-1 text-[12px] text-gray-700 truncate">{it.name}</span>
+                                    <span className="text-[12px] font-mono tabular-nums text-gray-900">{fmtSigned(it.amount)}</span>
+                                </div>
+                            ))}
+                            <div className="flex items-center gap-3 px-5 py-1.5" style={{ background: '#FAFAFA' }}>
+                                <span className="flex-1 text-[11.5px] font-[600] text-gray-600">Net Cash from {label}</span>
+                                <span className="text-[12px] font-[700] font-mono tabular-nums text-gray-900">{fmtSigned(g.total)}</span>
+                            </div>
+                        </div>
+                    ))}
+                    <div className="flex items-center gap-3 px-5 py-3" style={{ borderTop: '1px solid rgba(0,0,0,0.15)' }}>
+                        <span className="flex-1 text-[12.5px] font-[700] text-gray-900">Net Increase / (Decrease) in Cash</span>
+                        <span className={`text-[13px] font-[700] font-mono tabular-nums ${cashFlow.netChange < 0 ? 'text-red-600' : 'text-gray-900'}`}>{fmtSigned(cashFlow.netChange)}</span>
+                    </div>
+                    <div className="flex items-center gap-3 px-5 py-2" style={{ borderTop: HAIRLINE }}>
+                        <span className="flex-1 text-[11px] text-gray-400">Cash Balance on Books</span>
+                        <span className="text-[11px] font-mono tabular-nums text-gray-500">{fmt(cashPosition)}</span>
+                    </div>
                 </div>
 
                 <SubTitle>Spending Analysis</SubTitle>
