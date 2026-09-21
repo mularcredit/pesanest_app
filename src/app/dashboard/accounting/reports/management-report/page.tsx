@@ -7,6 +7,7 @@ import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
 import { BrandLogo } from '@/components/ui/BrandLogo';
 import { EditableImage } from '@/components/finance-studio/EditableImage';
+import { EditableCompanyName } from '@/components/finance-studio/EditableCompanyName';
 import Link from 'next/link';
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
@@ -199,6 +200,30 @@ export default async function ManagementReportPage({
     const periodLabel = `${new Date(from).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })} – ${new Date(to).toLocaleDateString('en-GB', { day: 'numeric', month: 'short', year: 'numeric' })}`;
     const pageUrl = (preset: string) => `?preset=${preset}`;
 
+    // ── Executive summary — a plain-language roll-up of the numbers below,
+    // generated from the same figures rather than free-text AI narration. ──
+    const executiveSummary = `During ${periodLabel}, ${companyName} recorded net revenue of KES ${fmt(pl.revenue.total)} against total expenses of KES ${fmt(pl.expenses.total)}, resulting in a net ${pl.netIncome >= 0 ? 'profit' : 'loss'} of KES ${fmt(pl.netIncome)}. Cash position stood at KES ${fmt(cashPosition)} as of period end. Of ${submitted.length} requisition${submitted.length !== 1 ? 's' : ''} submitted for approval, ${approved.length} (${approvalRate.toFixed(1)}%) were approved, with ${pendingReqs.length} item${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} still pending.`;
+
+    // ── Recommendations — deterministic, derived from data already computed
+    // above (no free-text generation): flag whatever actually needs attention. ──
+    const overBudgetCategories = budgetRows.filter((b: any) => b.allocated > 0 && b.spent / b.allocated >= 0.9);
+    const recommendations: string[] = [];
+    if (pendingReqs.length > 0) {
+        recommendations.push(`Follow up on ${pendingReqs.length} pending requisition${pendingReqs.length !== 1 ? 's' : ''} totaling KES ${fmt(pendingTotal)} awaiting approval.`);
+    }
+    if (overBudgetCategories.length > 0) {
+        recommendations.push(`Review budget allocations for ${overBudgetCategories.map((b: any) => b.category).join(', ')} — utilization has reached or exceeded 90% of the amount allocated for this period.`);
+    }
+    if (alerts.length > 0) {
+        recommendations.push(`Investigate ${alerts.length} flagged transaction${alerts.length !== 1 ? 's' : ''} identified as significantly above this period's average spend.`);
+    }
+    if (submitted.length > 0 && approvalRate < 70) {
+        recommendations.push(`Approval rate for this period was ${approvalRate.toFixed(1)}%, below the typical target — consider reviewing the approval workflow for bottlenecks.`);
+    }
+    if (recommendations.length === 0) {
+        recommendations.push('No immediate action items identified for this period.');
+    }
+
     // ── Assemble export data ──
     const exportData: ReportExportData = {
         title: 'Management Report',
@@ -209,7 +234,18 @@ export default async function ManagementReportPage({
         watermarkUrl: watermarkUrl ?? undefined,
         sections: [
             {
-                title: 'Key Metrics',
+                title: 'Executive Summary',
+                lines: [{ name: executiveSummary, current: 0, note: true }],
+            },
+            {
+                title: 'Reporting Period & Scope',
+                lines: [{
+                    name: `This report covers all requisition, budget, and financial activity for ${companyName} for the period ${periodLabel}, prepared for internal management review.`,
+                    current: 0, note: true,
+                }],
+            },
+            {
+                title: 'Key Financial Metrics',
                 lines: [
                     { name: 'Net Revenue', current: pl.revenue.total },
                     { name: 'Total Expenses', current: pl.expenses.total, isNegative: true },
@@ -242,10 +278,23 @@ export default async function ManagementReportPage({
                 title: 'Requisition Pipeline',
                 lines: pipeline.map(p => ({ name: `${p.label} (${p.count})`, current: p.amount })),
             },
+            ...(budgetRows.length > 0 ? [{
+                title: 'Budget Utilization',
+                lines: budgetRows.map((b: any) => ({ name: b.category, current: b.spent, prior: b.allocated })),
+            }] : []),
+            ...(alerts.length > 0 ? [{
+                title: 'Risks & Spending Alerts',
+                lines: alerts.map((a: any) => ({ name: a.title, current: a.amount })),
+            }] : []),
+            {
+                title: 'Recommendations & Next Steps',
+                lines: recommendations.map(r => ({ name: r, current: 0, note: true })),
+            },
             {
                 // Full itemized listing — every requisition in the period, not just
                 // the rolled-up category/status/pipeline summaries above. This is
-                // the actual auditable detail behind those totals.
+                // the actual auditable detail behind those totals — kept as an
+                // appendix at the very end, after the summary and analysis.
                 title: `Detailed Transactions (${requisitionsInPeriod.length})`,
                 lines: requisitionsInPeriod.length === 0
                     ? [{ name: 'No requisitions recorded in this period', current: 0 }]
@@ -254,14 +303,6 @@ export default async function ManagementReportPage({
                         current: r.amount,
                     })),
             },
-            ...(budgetRows.length > 0 ? [{
-                title: 'Budget Utilization',
-                lines: budgetRows.map((b: any) => ({ name: b.category, current: b.spent, prior: b.allocated })),
-            }] : []),
-            ...(alerts.length > 0 ? [{
-                title: 'Spending Alerts',
-                lines: alerts.map((a: any) => ({ name: a.title, current: a.amount })),
-            }] : []),
         ],
     };
 
@@ -288,7 +329,9 @@ export default async function ManagementReportPage({
                     company's own uploadable logo (right) */}
                 <div className="flex items-center justify-between gap-4 px-5 pt-4 pb-3">
                     <BrandLogo width={110} height={30} color="#111827" />
-                    <h2 className="text-[13px] font-[700] text-gray-900 text-center flex-1 truncate px-2">{companyName}</h2>
+                    <div className="flex-1 flex justify-center px-2 min-w-0">
+                        <EditableCompanyName value={companyName} className="text-[13px] font-[700] text-gray-900 text-center truncate max-w-full" />
+                    </div>
                     <EditableImage
                         settingKey="watermark_logo"
                         defaultSrc=""

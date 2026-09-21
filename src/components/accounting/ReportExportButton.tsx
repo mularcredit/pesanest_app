@@ -18,6 +18,7 @@ export interface ReportLine {
     isSubtotal?: boolean;
     isGrandTotal?: boolean;
     spacer?: boolean;   // blank separator row
+    note?: boolean;     // text-only row (e.g. a scope sentence or a recommendation bullet) — no amount column
 }
 
 export interface ReportSection {
@@ -99,30 +100,47 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             doc.addFont("Outfit-Bold.ttf", "Outfit", "bold");
             doc.setFont("Outfit", "normal");
 
-            // Watermark — drawn first, before anything else, so it sits behind
-            // everything else on the page.
-            if (data.watermarkUrl) {
-                const wm = await loadImageForPdf(data.watermarkUrl);
-                if (wm) {
+            const logo = data.logoUrl ? await loadImageForPdf(data.logoUrl) : null;
+            const companyLogo = data.watermarkUrl ? await loadImageForPdf(data.watermarkUrl) : null;
+
+            // Chrome (watermark + footer) is redrawn on whatever page is
+            // currently active — called once per page (letterhead, TOC, and
+            // every page each section's autoTable produces) so both persist
+            // across the whole document instead of just page 1.
+            function drawChrome() {
+                if (companyLogo) {
                     const maxSize = 120;
-                    const scale = Math.min(maxSize / wm.width, maxSize / wm.height);
-                    const w = wm.width * scale, h = wm.height * scale;
+                    const scale = Math.min(maxSize / companyLogo.width, maxSize / companyLogo.height);
+                    const w = companyLogo.width * scale, h = companyLogo.height * scale;
                     doc.setGState(new (doc as any).GState({ opacity: 0.06 }));
-                    doc.addImage(wm.dataUri, wm.format, (W - w) / 2, (H - h) / 2, w, h);
+                    doc.addImage(companyLogo.dataUri, companyLogo.format, (W - w) / 2, (H - h) / 2, w, h);
                     doc.setGState(new (doc as any).GState({ opacity: 1 }));
                 }
+
+                const pg = doc.getCurrentPageInfo().pageNumber;
+                const footY = H - 16;
+                doc.setDrawColor(220, 220, 220);
+                doc.line(8, footY, W - 8, footY);
+
+                if (logo) {
+                    const iconH = 6;
+                    const iconW = (logo.width / logo.height) * iconH;
+                    doc.addImage(logo.dataUri, logo.format, 8, footY + 4, iconW, iconH);
+                }
+
+                doc.setFontSize(7); doc.setFont("Outfit", "normal"); doc.setTextColor(140, 140, 140);
+                doc.text(`Prepared by ${data.company} · Powered by Pesanest`, logo ? 20 : 8, footY + 8.5);
+                doc.text(`Page ${pg}`, W - 20, footY + 8.5);
             }
 
-            // ── Letterhead ──────────────────────────────────────────────────
+            // ── Letterhead (page 1) ────────────────────────────────────────
             // Logo row: brand mark (left), company name (center), the
             // company's own uploaded logo (right, same image as the watermark).
-            const logo = data.logoUrl ? await loadImageForPdf(data.logoUrl) : null;
             if (logo) {
                 const boxH = 14;
                 const w = (logo.width / logo.height) * boxH;
                 doc.addImage(logo.dataUri, logo.format, 14, 6, w, boxH);
             }
-            const companyLogo = data.watermarkUrl ? await loadImageForPdf(data.watermarkUrl) : null;
             if (companyLogo) {
                 const boxH = 14;
                 const w = (companyLogo.width / companyLogo.height) * boxH;
@@ -161,9 +179,33 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             doc.setFontSize(13); doc.setFont("Outfit", "bold");
             doc.text(data.title.toUpperCase(), W / 2, 48, { align: "center" });
 
-            const rows: (string | { content: string; styles: object })[][] = [];
+            drawChrome(); // page 1 (letterhead) chrome
+
+            // Reserve page 2 for the Table of Contents — content is filled in
+            // once every section's real starting page is known.
+            doc.addPage();
+            const tocPage = doc.getCurrentPageInfo().pageNumber;
+            drawChrome();
+
+            doc.addPage();
+
+            const colHeader = data.showPrior
+                ? ["Description / Account", "", "Prior Period", `${currency}`]
+                : ["Description / Account", "", `${currency}`];
+
+            const columnStyles: any = data.showPrior
+                ? { 0: { cellWidth: 100 }, 1: { cellWidth: 5 }, 2: { cellWidth: 35, halign: "right" as const }, 3: { cellWidth: 42, halign: "right" as const } }
+                : { 0: { cellWidth: 130 }, 1: { cellWidth: 5 }, 2: { cellWidth: 50, halign: "right" as const } };
+
+            let cursorY = 16;
+            const toc: { title: string; page: number }[] = [];
 
             for (const section of data.sections) {
+                if (cursorY > H - 40) { doc.addPage(); drawChrome(); cursorY = 16; }
+                toc.push({ title: section.title, page: doc.getCurrentPageInfo().pageNumber });
+
+                const rows: (string | { content: string; styles: object; colSpan?: number })[][] = [];
+
                 // Section header row
                 rows.push([
                     { content: section.title.toUpperCase(), styles: { fillColor: [236, 253, 245], textColor: [5, 150, 105], fontStyle: "bold", fontSize: 7.5 } },
@@ -174,6 +216,13 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
 
                 for (const line of section.lines) {
                     if (line.spacer) { rows.push(["", "", ...(data.showPrior ? [""] : []), ""]); continue; }
+
+                    if (line.note) {
+                        rows.push([
+                            { content: line.name, colSpan: data.showPrior ? 4 : 3, styles: { fontStyle: line.isBold ? "bold" : "normal", textColor: [70, 70, 70] } },
+                        ]);
+                        continue;
+                    }
 
                     const nameStyle: any = {};
                     const amtStyle: any = { halign: "right" };
@@ -199,43 +248,48 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
                         { content: amount, styles: amtStyle },
                     ]);
                 }
+
+                autoTable(doc, {
+                    startY: cursorY,
+                    head: [colHeader],
+                    body: rows as any,
+                    theme: "plain",
+                    headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", font: "Outfit" },
+                    bodyStyles: { fontSize: 8, minCellHeight: 5.5, font: "Outfit" },
+                    columnStyles,
+                    margin: { left: 8, right: 8, bottom: 22 },
+                    styles: { overflow: "linebreak", font: "Outfit" },
+                    // Redraws the watermark + footer on every page this section's
+                    // table spans, matching the on-screen report's footer.
+                    didDrawPage: () => drawChrome(),
+                });
+
+                cursorY = (doc as any).lastAutoTable.finalY + 10;
             }
 
-            const colHeader = data.showPrior
-                ? ["Description / Account", "", "Prior Period", `${currency}`]
-                : ["Description / Account", "", `${currency}`];
+            // ── Fill in the reserved Table of Contents page ──────────────────
+            doc.setPage(tocPage);
+            let tocY = 20;
+            doc.setFontSize(14); doc.setFont("Outfit", "bold"); doc.setTextColor(30, 30, 30);
+            doc.text("TABLE OF CONTENTS", W / 2, tocY, { align: "center" });
+            tocY += 14;
+            for (const entry of toc) {
+                doc.setFontSize(10); doc.setFont("Outfit", "normal"); doc.setTextColor(30, 30, 30);
+                doc.text(entry.title, 14, tocY);
+                const pageStr = String(entry.page);
+                doc.text(pageStr, W - 14, tocY, { align: "right" });
 
-            autoTable(doc, {
-                startY: 58,
-                head: [colHeader],
-                body: rows as any,
-                theme: "plain",
-                headStyles: { fillColor: [5, 150, 105], textColor: [255, 255, 255], fontSize: 8, fontStyle: "bold", font: "Outfit" },
-                bodyStyles: { fontSize: 8, minCellHeight: 5.5, font: "Outfit" },
-                columnStyles: data.showPrior
-                    ? { 0: { cellWidth: 100 }, 1: { cellWidth: 5 }, 2: { cellWidth: 35, halign: "right" }, 3: { cellWidth: 42, halign: "right" } }
-                    : { 0: { cellWidth: 130 }, 1: { cellWidth: 5 }, 2: { cellWidth: 50, halign: "right" } },
-                margin: { left: 8, right: 8, bottom: 22 },
-                styles: { overflow: "linebreak", font: "Outfit" },
-                didDrawPage: () => {
-                    // ── Footer: hairline rule, brand note, small brand mark, page number —
-                    // drawn on every page, matching the on-screen report's footer.
-                    const pg = doc.getNumberOfPages();
-                    const footY = H - 16;
-                    doc.setDrawColor(220, 220, 220);
-                    doc.line(8, footY, W - 8, footY);
-
-                    if (logo) {
-                        const iconH = 6;
-                        const iconW = (logo.width / logo.height) * iconH;
-                        doc.addImage(logo.dataUri, logo.format, 8, footY + 4, iconW, iconH);
-                    }
-
-                    doc.setFontSize(7); doc.setFont("Outfit", "normal"); doc.setTextColor(140, 140, 140);
-                    doc.text(`Prepared by ${data.company} · Powered by Pesanest`, logo ? 20 : 8, footY + 8.5);
-                    doc.text(`Page ${pg}`, W - 20, footY + 8.5);
-                },
-            });
+                const titleW = doc.getTextWidth(entry.title);
+                const pageW = doc.getTextWidth(pageStr);
+                const dotsStart = 14 + titleW + 2;
+                const dotsEnd = W - 14 - pageW - 2;
+                if (dotsEnd > dotsStart) {
+                    doc.setTextColor(190, 190, 190);
+                    const dotW = doc.getTextWidth(". ");
+                    doc.text(". ".repeat(Math.max(0, Math.floor((dotsEnd - dotsStart) / dotW))), dotsStart, tocY);
+                }
+                tocY += 8;
+            }
 
             doc.save(`${data.title.replace(/\s+/g, "_")}_${new Date().toISOString().slice(0, 10)}.pdf`);
         } catch (e: any) {
@@ -255,6 +309,12 @@ export function ReportExportButton({ data }: { data: ReportExportData }) {
             for (const section of data.sections) {
                 for (const line of section.lines) {
                     if (line.spacer) continue;
+                    if (line.note) {
+                        rows.push(data.showPrior
+                            ? [csvEsc(section.title), "", csvEsc(line.name), "", ""]
+                            : [csvEsc(section.title), "", csvEsc(line.name), ""]);
+                        continue;
+                    }
                     const sign = line.isNegative ? -1 : 1;
                     const row = data.showPrior
                         ? [csvEsc(section.title), line.code ?? "", csvEsc(line.name), (sign * line.current).toFixed(2), line.prior !== undefined ? (sign * line.prior).toFixed(2) : ""]
