@@ -583,9 +583,6 @@ export default async function ManagementReportPage({
     if (overBudgetCategories.length > 0) {
         actionItems.push(`Review budget allocations for ${overBudgetCategories.map((b: any) => b.category).join(', ')} — utilization has reached or exceeded 90% of the amount allocated for this period.`);
     }
-    if (risks.length > 0) {
-        actionItems.push(`Investigate ${risks.length} flagged transaction${risks.length !== 1 ? 's' : ''} identified as significantly above this period's average spend.`);
-    }
     if (submitted.length > 0 && approvalRate < 70) {
         actionItems.push(`Approval rate for this period was ${approvalRate.toFixed(1)}%, below the typical target — consider reviewing the approval workflow for bottlenecks.`);
     }
