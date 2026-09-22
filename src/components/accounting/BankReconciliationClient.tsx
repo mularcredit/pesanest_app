@@ -110,25 +110,21 @@ function parseStatementDate(raw: unknown): Date | null {
     return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
-/** Finds the real header row, resolves aliased columns, and normalizes rows into {date, description, amount}. */
-function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; description: string; amount: number }[]; skipped: number; headerRowIdx: number } {
-    const headerRowIdx = findHeaderRow(rawRows);
-    if (headerRowIdx === -1) {
-        throw new Error("Couldn't find a header row with recognizable date/amount columns in this file");
-    }
+interface ColumnMapping { date: number; description: number; amount: number; credit: number; debit: number }
 
-    const headerCells = Array.from(rawRows[headerRowIdx], normalizeHeader);
-    const dateCol = findCol(headerCells, HEADER_ALIASES.date);
-    const descCol = findCol(headerCells, HEADER_ALIASES.description);
-    const amountCol = findCol(headerCells, HEADER_ALIASES.amount);
-    const creditCol = findCol(headerCells, HEADER_ALIASES.credit);
-    const debitCol = findCol(headerCells, HEADER_ALIASES.debit);
+/** Resolves the aliased columns for a header row — shared by the initial auto-detect and the preview step's manual remap. */
+function resolveColumns(headerCells: string[]): ColumnMapping {
+    return {
+        date: findCol(headerCells, HEADER_ALIASES.date),
+        description: findCol(headerCells, HEADER_ALIASES.description),
+        amount: findCol(headerCells, HEADER_ALIASES.amount),
+        credit: findCol(headerCells, HEADER_ALIASES.credit),
+        debit: findCol(headerCells, HEADER_ALIASES.debit),
+    };
+}
 
-    if (dateCol === -1) throw new Error("Couldn't find a date column in this file");
-    if (amountCol === -1 && creditCol === -1 && debitCol === -1) {
-        throw new Error("Couldn't find an amount, or paid-in/withdrawn columns in this file");
-    }
-
+/** Normalizes rows into {date, description, amount} using an explicit column mapping (auto-detected or user-remapped). */
+function buildRowsFromMapping(rawRows: any[][], headerRowIdx: number, cols: ColumnMapping): { parsed: { date: Date; description: string; amount: number }[]; skipped: number } {
     const parsed: { date: Date; description: string; amount: number }[] = [];
     let skipped = 0;
 
@@ -136,24 +132,43 @@ function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; descripti
         const row = rawRows[i] || [];
         if (row.length === 0 || row.every((c: any) => c === undefined || c === null || c === '')) continue;
 
-        const date = parseStatementDate(row[dateCol]);
+        const date = parseStatementDate(row[cols.date]);
         if (!date) { skipped++; continue; }
 
-        const description = descCol !== -1 ? String(row[descCol] ?? '').trim() : '';
+        const description = cols.description !== -1 ? String(row[cols.description] ?? '').trim() : '';
         // Some banks (e.g. ABSA) prepend a synthetic "OPENING BALANCE" row carrying the
         // opening balance as if it were a transaction — it isn't one, skip it.
         if (description.toUpperCase() === 'OPENING BALANCE') { skipped++; continue; }
         // Debit is taken at face value, not abs()'d — some banks (e.g. ABSA) record a
         // reversal of a debit as a *negative* number in the debit column itself, which
         // should add back to the balance rather than subtract again.
-        const amount = amountCol !== -1
-            ? toNum(row[amountCol])
-            : (creditCol !== -1 ? toNum(row[creditCol]) : 0) - (debitCol !== -1 ? toNum(row[debitCol]) : 0);
+        const amount = cols.amount !== -1
+            ? toNum(row[cols.amount])
+            : (cols.credit !== -1 ? toNum(row[cols.credit]) : 0) - (cols.debit !== -1 ? toNum(row[cols.debit]) : 0);
 
         parsed.push({ date, description: description || 'Unknown', amount });
     }
 
-    return { parsed, skipped, headerRowIdx };
+    return { parsed, skipped };
+}
+
+/** Finds the real header row, resolves aliased columns, and normalizes rows into {date, description, amount}. */
+function parseStatementRows(rawRows: any[][]): { parsed: { date: Date; description: string; amount: number }[]; skipped: number; headerRowIdx: number; cols: ColumnMapping } {
+    const headerRowIdx = findHeaderRow(rawRows);
+    if (headerRowIdx === -1) {
+        throw new Error("Couldn't find a header row with recognizable date/amount columns in this file");
+    }
+
+    const headerCells = Array.from(rawRows[headerRowIdx], normalizeHeader);
+    const cols = resolveColumns(headerCells);
+
+    if (cols.date === -1) throw new Error("Couldn't find a date column in this file");
+    if (cols.amount === -1 && cols.credit === -1 && cols.debit === -1) {
+        throw new Error("Couldn't find an amount, or paid-in/withdrawn columns in this file");
+    }
+
+    const { parsed, skipped } = buildRowsFromMapping(rawRows, headerRowIdx, cols);
+    return { parsed, skipped, headerRowIdx, cols };
 }
 
 /** Scans the rows above the header for "Opening/Closing Balance:" labels, e.g. M-Pesa's preamble. */
@@ -176,7 +191,7 @@ export function BankReconciliationClient({
     initialSelectedStatementLineId,
 }: Props) {
     const { showToast } = useToast();
-    const [step, setStep] = useState<'upload' | 'match' | 'review'>(initialStatementLines.length > 0 ? 'match' : 'upload')
+    const [step, setStep] = useState<'upload' | 'preview' | 'match' | 'review'>(initialStatementLines.length > 0 ? 'match' : 'upload')
     const [bankTransactions, setBankTransactions] = useState<BankTransaction[]>(initialStatementLines)
     const [bookLines, setBookLines] = useState<JournalLine[]>(journalLines)
     const [sessionMatches, setSessionMatches] = useState<{ key: string; bankTxs: BankTransaction[]; bookLines: JournalLine[] }[]>([])
@@ -194,6 +209,20 @@ export function BankReconciliationClient({
         () => initialSelectedStatementLineId ? new Set([initialSelectedStatementLineId]) : new Set()
     )
     const [selectedBookLineIds, setSelectedBookLineIds] = useState<Set<string>>(new Set())
+
+    // ── Preview/customize step — populated after a file is parsed, before
+    // anything is committed to the database. `rawFileRows`/`headerRowIdx` are
+    // null for a PDF import (no real "columns" to remap there, since the rows
+    // already come back as normalized text extracted from the PDF's table). ──
+    const [rawFileRows, setRawFileRows] = useState<any[][] | null>(null)
+    const [headerRowIdx, setHeaderRowIdx] = useState<number>(-1)
+    const [headerCells, setHeaderCells] = useState<string[]>([])
+    const [colMapping, setColMapping] = useState<ColumnMapping>({ date: -1, description: -1, amount: -1, credit: -1, debit: -1 })
+    const [amountMode, setAmountMode] = useState<'single' | 'split'>('single')
+    const [previewRows, setPreviewRows] = useState<{ id: string; date: string; description: string; amount: number; included: boolean }[]>([])
+    const [previewSkipped, setPreviewSkipped] = useState(0)
+    const [isImportingPreview, setIsImportingPreview] = useState(false)
+    const [uploadedFileName, setUploadedFileName] = useState('')
 
     // Scroll the deep-linked transaction into view once, on landing.
     useEffect(() => {
@@ -229,26 +258,132 @@ export function BankReconciliationClient({
     // columns rather than a single signed figure.
     const fmtNum = (amount: number) => amount.toLocaleString(undefined, { minimumFractionDigits: 2 })
 
+    const previewRowSeq = useRef(0)
+    const nextPreviewId = () => `preview-${Date.now()}-${previewRowSeq.current++}`
+
+    // Local calendar date, not toISOString().slice(0,10) — that converts to
+    // UTC first and can shift the date back a day depending on the viewer's
+    // timezone, silently corrupting the transaction date shown/saved.
+    const toLocalDateInput = (d: Date) =>
+        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`
+
+    const loadPreviewFromRawRows = (rawRows: any[][]) => {
+        if (rawRows.length === 0) throw new Error('That file has no rows we could read')
+
+        const { parsed, skipped, headerRowIdx: hIdx, cols } = parseStatementRows(rawRows)
+        if (parsed.length === 0) throw new Error('No usable transaction rows were found in that file')
+
+        const { opening, closing } = detectBalances(rawRows, hIdx)
+        if (opening != null) setOpeningBalance(String(opening))
+        if (closing != null) setClosingBalance(String(closing))
+
+        setRawFileRows(rawRows)
+        setHeaderRowIdx(hIdx)
+        setHeaderCells(Array.from(rawRows[hIdx], normalizeHeader))
+        setColMapping(cols)
+        setAmountMode(cols.amount !== -1 ? 'single' : 'split')
+        setPreviewSkipped(skipped)
+        setPreviewRows(parsed.map(p => ({
+            id: nextPreviewId(),
+            date: toLocalDateInput(p.date),
+            description: p.description,
+            amount: p.amount,
+            included: true,
+        })))
+        setStep('preview')
+    }
+
     const handleFileUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
         const file = e.target.files?.[0]
         if (!file) return
         setIsUploading(true)
+        setUploadedFileName(file.name)
         try {
-            const bstr = await readAsBinaryString(file)
-            const wb = read(bstr, { type: 'binary', cellDates: true })
-            const ws = wb.Sheets[wb.SheetNames[0]]
-            const rawRows = utils.sheet_to_json(ws, { header: 1 }) as any[][]
+            if (file.name.toLowerCase().endsWith('.pdf')) {
+                const fd = new FormData()
+                fd.append('file', file)
+                const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/parse-pdf`, { method: 'POST', body: fd })
+                const data = await res.json()
+                if (!res.ok) throw new Error(data.error || 'Failed to read that PDF')
+                loadPreviewFromRawRows(data.rawRows)
+            } else {
+                const bstr = await readAsBinaryString(file)
+                // cellDates only for real Excel files — a genuine .xlsx date
+                // cell is unambiguous. A .csv has no cell types at all; with
+                // cellDates on (or even just left default), SheetJS still
+                // "helpfully" auto-detects date-like text and parses it as
+                // MM/DD/YYYY, silently swapping day and month against this
+                // app's DD/MM/YYYY convention (M-Pesa/most bank exports)
+                // whenever both readings happen to be valid dates. `raw:
+                // true` at read() time is what actually suppresses that
+                // auto-conversion and hands back the untouched source text,
+                // which parseStatementDate/parseStatementDate() then parses
+                // itself with the correct convention.
+                const isCsv = file.name.toLowerCase().endsWith('.csv')
+                const wb = read(bstr, isCsv ? { type: 'binary', raw: true } : { type: 'binary', cellDates: true })
+                const ws = wb.Sheets[wb.SheetNames[0]]
+                const rawRows = utils.sheet_to_json(ws, { header: 1, raw: true }) as any[][]
+                loadPreviewFromRawRows(rawRows)
+            }
+        } catch (err: any) {
+            showToast(err.message || 'Could not import that file', 'error')
+        } finally {
+            setIsUploading(false)
+            if (fileInputRef.current) fileInputRef.current.value = ''
+        }
+    }
 
-            if (rawRows.length === 0) throw new Error('That file has no rows we could read')
+    // Re-derives the preview rows from the raw file using a manually-picked
+    // column mapping — the "customize columns" path. Only meaningful for
+    // CSV/Excel imports, which carry real columns to remap; a PDF's rows are
+    // already normalized text, with nothing left to remap.
+    const applyColumnMapping = (nextCols: ColumnMapping) => {
+        if (!rawFileRows) return
+        setColMapping(nextCols)
+        const { parsed, skipped } = buildRowsFromMapping(rawFileRows, headerRowIdx, nextCols)
+        setPreviewSkipped(skipped)
+        setPreviewRows(parsed.map(p => ({
+            id: nextPreviewId(),
+            date: toLocalDateInput(p.date),
+            description: p.description,
+            amount: p.amount,
+            included: true,
+        })))
+    }
 
-            const { parsed, skipped, headerRowIdx } = parseStatementRows(rawRows)
-            if (parsed.length === 0) throw new Error('No usable transaction rows were found in that file')
+    const togglePreviewRow = (id: string) => {
+        setPreviewRows(prev => prev.map(r => r.id === id ? { ...r, included: !r.included } : r))
+    }
+    const setAllPreviewIncluded = (included: boolean) => {
+        setPreviewRows(prev => prev.map(r => ({ ...r, included })))
+    }
+    const updatePreviewRow = (id: string, field: 'date' | 'description' | 'amount', value: string) => {
+        setPreviewRows(prev => prev.map(r => {
+            if (r.id !== id) return r
+            if (field === 'amount') return { ...r, amount: parseFloat(value) || 0 }
+            return { ...r, [field]: value }
+        }))
+    }
+    const cancelPreview = () => {
+        setStep('upload')
+        setRawFileRows(null)
+        setHeaderRowIdx(-1)
+        setHeaderCells([])
+        setPreviewRows([])
+        setUploadedFileName('')
+    }
 
-            const { opening, closing } = detectBalances(rawRows, headerRowIdx)
-
-            const validDates = parsed.map(p => p.date.getTime()).filter(t => !Number.isNaN(t))
-            const periodStart = validDates.length ? new Date(Math.min(...validDates)) : new Date()
-            const periodEnd = validDates.length ? new Date(Math.max(...validDates)) : new Date()
+    const confirmPreview = async () => {
+        const included = previewRows.filter(r => r.included)
+        if (included.length === 0) {
+            showToast('Select at least one transaction to import', 'error')
+            return
+        }
+        setIsImportingPreview(true)
+        try {
+            const dates = included.map(r => new Date(r.date).getTime()).filter(t => !Number.isNaN(t))
+            const periodStart = dates.length ? new Date(Math.min(...dates)) : new Date()
+            const periodEnd = dates.length ? new Date(Math.max(...dates)) : new Date()
 
             const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/statements`, {
                 method: 'POST',
@@ -256,13 +391,13 @@ export function BankReconciliationClient({
                 body: JSON.stringify({
                     periodStart: periodStart.toISOString().slice(0, 10),
                     periodEnd: periodEnd.toISOString().slice(0, 10),
-                    openingBalance: opening ?? (parseFloat(openingBalance) || 0),
-                    closingBalance: closing ?? (parseFloat(closingBalance) || 0),
-                    lines: parsed.map(p => ({
-                        transactionDate: p.date.toISOString(),
-                        description: p.description,
-                        debit: p.amount < 0 ? Math.abs(p.amount) : 0,
-                        credit: p.amount > 0 ? p.amount : 0,
+                    openingBalance: parseFloat(openingBalance) || 0,
+                    closingBalance: parseFloat(closingBalance) || 0,
+                    lines: included.map(r => ({
+                        transactionDate: new Date(r.date).toISOString(),
+                        description: r.description,
+                        debit: r.amount < 0 ? Math.abs(r.amount) : 0,
+                        credit: r.amount > 0 ? r.amount : 0,
                     })),
                 }),
             })
@@ -283,16 +418,17 @@ export function BankReconciliationClient({
 
             setBankTransactions(prev => [...prev, ...imported])
             setStep('match')
+            setRawFileRows(null)
+            setPreviewRows([])
             showToast(
                 `Imported ${imported.length} transaction${imported.length !== 1 ? 's' : ''}` +
-                (skipped > 0 ? ` — ${skipped} row${skipped !== 1 ? 's' : ''} skipped (no recognizable date)` : ''),
+                (previewSkipped > 0 ? ` — ${previewSkipped} row${previewSkipped !== 1 ? 's' : ''} skipped (no recognizable date)` : ''),
                 'success'
             )
         } catch (err: any) {
             showToast(err.message || 'Could not import that file', 'error')
         } finally {
-            setIsUploading(false)
-            if (fileInputRef.current) fileInputRef.current.value = ''
+            setIsImportingPreview(false)
         }
     }
 
@@ -555,10 +691,11 @@ export function BankReconciliationClient({
             <div className="bg-white rounded-[var(--r-md)] px-6 py-5" style={CARD_STYLE}>
                 <div className="flex items-center">
                     {(['upload', 'match', 'review'] as const).map((s, idx) => {
-                        const labels = ['Upload Bank Statement', 'Match Transactions', 'Review & Complete']
-                        const subs = ['Import your CSV or Excel file', 'Connect bank items to your books', 'Verify everything matches']
-                        const isActive = step === s
-                        const isDone = (step === 'match' && s === 'upload') || (step === 'review' && s !== 'review')
+                        const labels = ['Upload & Preview', 'Match Transactions', 'Review & Complete']
+                        const subs = ['Import CSV, Excel or PDF, then check the preview', 'Connect bank items to your books', 'Verify everything matches']
+                        // The preview screen is a checkpoint within "Upload", not a separate numbered step.
+                        const isActive = step === s || (step === 'preview' && s === 'upload')
+                        const isDone = (s === 'upload' && (step === 'match' || step === 'review')) || (s === 'match' && step === 'review')
                         return (
                             <div key={s} className="flex items-center flex-1">
                                 <div className={cn('flex items-center gap-3', !isActive && !isDone && 'opacity-40')}>
@@ -591,7 +728,8 @@ export function BankReconciliationClient({
                     </div>
                     <h3 className="text-[15px] font-[600] text-gray-900 mb-1.5">Upload Your Bank Statement</h3>
                     <p className="text-[12.5px] text-gray-400 mb-6 text-center max-w-md leading-relaxed">
-                        Download your bank statement as a CSV or Excel file from your bank's website, then upload it here.
+                        Download your bank statement from your bank's website — CSV, Excel or PDF, in whatever layout
+                        they export it — then upload it here. You'll get a preview to check before anything is saved.
                     </p>
 
                     <div className="grid grid-cols-2 gap-3 w-full max-w-xs mb-6">
@@ -610,13 +748,178 @@ export function BankReconciliationClient({
                     </div>
 
                     <label className={cn("cursor-pointer", isUploading && "pointer-events-none opacity-60")}>
-                        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                        <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.pdf" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
                         <div className="inline-flex items-center gap-1.5 px-5 py-2.5 rounded-[6px] bg-[#6366F1] text-white text-[13px] font-[500] hover:bg-indigo-600 transition-colors">
                             {isUploading ? <PiSpinner className="text-[15px] animate-spin" /> : <PiUploadSimple className="text-[15px]" />}
-                            {isUploading ? 'Importing…' : 'Choose Bank Statement File'}
+                            {isUploading ? 'Reading…' : 'Choose Bank Statement File'}
                         </div>
                     </label>
-                    <p className="text-[11px] text-gray-400 mt-3">Supported: CSV, XLSX, XLS</p>
+                    <p className="text-[11px] text-gray-400 mt-3">Supported: CSV, XLSX, XLS, PDF</p>
+                </div>
+            )}
+
+            {/* Step 1.5: Preview & customize — nothing is saved to the database
+                until "Continue to Matching" below is clicked. */}
+            {step === 'preview' && (
+                <div className="space-y-4">
+                    <div className="bg-white rounded-[var(--r-md)] px-5 py-4 flex items-center justify-between flex-wrap gap-3" style={CARD_STYLE}>
+                        <div className="flex items-center gap-3 min-w-0">
+                            <div className="w-8 h-8 rounded-[7px] flex items-center justify-center shrink-0" style={{ background: 'var(--p-dim)' }}>
+                                <PiFileText className="text-[15px]" style={{ color: 'var(--p)' }} />
+                            </div>
+                            <div className="min-w-0">
+                                <p className="text-[13px] font-[600] text-gray-900 truncate">{uploadedFileName || 'Preview'}</p>
+                                <p className="text-[12px] text-gray-400">
+                                    {previewRows.filter(r => r.included).length} of {previewRows.length} transactions selected
+                                    {previewSkipped > 0 ? ` · ${previewSkipped} row${previewSkipped !== 1 ? 's' : ''} skipped (no recognizable date)` : ''}
+                                </p>
+                            </div>
+                        </div>
+                        <div className="flex items-center gap-2 shrink-0">
+                            <button onClick={() => setAllPreviewIncluded(true)}
+                                className="px-3 py-1.5 rounded-[6px] text-[12px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors" style={CARD_STYLE}>
+                                Select all
+                            </button>
+                            <button onClick={() => setAllPreviewIncluded(false)}
+                                className="px-3 py-1.5 rounded-[6px] text-[12px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors" style={CARD_STYLE}>
+                                Deselect all
+                            </button>
+                        </div>
+                    </div>
+
+                    {/* Customize columns — only meaningful for CSV/Excel, which carry
+                        real source columns; a PDF's rows are already normalized. */}
+                    {rawFileRows && (
+                        <details className="bg-white rounded-[var(--r-md)] px-5 py-4" style={CARD_STYLE}>
+                            <summary className="text-[12.5px] font-[600] text-gray-700 cursor-pointer select-none">
+                                Customize columns
+                            </summary>
+                            <div className="mt-4 flex items-end gap-4 flex-wrap">
+                                <div>
+                                    <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Date column</label>
+                                    <select value={colMapping.date}
+                                        onChange={e => applyColumnMapping({ ...colMapping, date: Number(e.target.value) })}
+                                        className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
+                                        style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                        <option value={-1}>—</option>
+                                        {headerCells.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                                    </select>
+                                </div>
+                                <div>
+                                    <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Description column</label>
+                                    <select value={colMapping.description}
+                                        onChange={e => applyColumnMapping({ ...colMapping, description: Number(e.target.value) })}
+                                        className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
+                                        style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                        <option value={-1}>—</option>
+                                        {headerCells.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                                    </select>
+                                </div>
+
+                                <div className="flex items-center gap-1.5 pb-2">
+                                    <button onClick={() => setAmountMode('single')}
+                                        className={cn("px-2.5 py-1 rounded-[5px] text-[11.5px] font-[500] transition-colors",
+                                            amountMode === 'single' ? 'bg-[#6366F1] text-white' : 'bg-gray-100 text-gray-500')}>
+                                        Single amount column
+                                    </button>
+                                    <button onClick={() => setAmountMode('split')}
+                                        className={cn("px-2.5 py-1 rounded-[5px] text-[11.5px] font-[500] transition-colors",
+                                            amountMode === 'split' ? 'bg-[#6366F1] text-white' : 'bg-gray-100 text-gray-500')}>
+                                        Separate debit/credit
+                                    </button>
+                                </div>
+
+                                {amountMode === 'single' ? (
+                                    <div>
+                                        <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Amount column</label>
+                                        <select value={colMapping.amount}
+                                            onChange={e => applyColumnMapping({ ...colMapping, amount: Number(e.target.value), credit: -1, debit: -1 })}
+                                            className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
+                                            style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                            <option value={-1}>—</option>
+                                            {headerCells.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                                        </select>
+                                    </div>
+                                ) : (
+                                    <>
+                                        <div>
+                                            <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Credit (money in)</label>
+                                            <select value={colMapping.credit}
+                                                onChange={e => applyColumnMapping({ ...colMapping, credit: Number(e.target.value), amount: -1 })}
+                                                className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
+                                                style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                                <option value={-1}>—</option>
+                                                {headerCells.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                                            </select>
+                                        </div>
+                                        <div>
+                                            <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Debit (money out)</label>
+                                            <select value={colMapping.debit}
+                                                onChange={e => applyColumnMapping({ ...colMapping, debit: Number(e.target.value), amount: -1 })}
+                                                className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
+                                                style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                                                <option value={-1}>—</option>
+                                                {headerCells.map((h, i) => <option key={i} value={i}>{h || `Column ${i + 1}`}</option>)}
+                                            </select>
+                                        </div>
+                                    </>
+                                )}
+                            </div>
+                        </details>
+                    )}
+
+                    <div className="bg-white rounded-[var(--r-md)] overflow-hidden" style={CARD_STYLE}>
+                        <div className="max-h-[420px] overflow-y-auto">
+                            <table className="w-full text-[12.5px]">
+                                <thead className="sticky top-0 bg-white z-10">
+                                    <tr style={{ borderBottom: '1px solid rgba(0,0,0,0.09)' }}>
+                                        <th className="w-10 px-4 py-2.5"></th>
+                                        <th className="text-left px-3 py-2.5 text-[11px] font-[600] text-gray-400 uppercase tracking-[0.05em]">Date</th>
+                                        <th className="text-left px-3 py-2.5 text-[11px] font-[600] text-gray-400 uppercase tracking-[0.05em]">Description</th>
+                                        <th className="text-right px-4 py-2.5 text-[11px] font-[600] text-gray-400 uppercase tracking-[0.05em]">Amount</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {previewRows.map(row => (
+                                        <tr key={row.id} style={{ borderBottom: '1px solid rgba(0,0,0,0.05)' }} className={cn(!row.included && 'opacity-40')}>
+                                            <td className="px-4 py-2 text-center">
+                                                <input type="checkbox" checked={row.included} onChange={() => togglePreviewRow(row.id)}
+                                                    className="w-[15px] h-[15px] accent-[#6366F1] cursor-pointer" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input type="date" value={row.date} onChange={e => updatePreviewRow(row.id, 'date', e.target.value)}
+                                                    className="w-[130px] rounded-[5px] px-2 py-1 text-[12px] text-gray-900 bg-transparent outline-none focus:ring-1 focus:ring-[#6366F1] focus:bg-white" />
+                                            </td>
+                                            <td className="px-3 py-2">
+                                                <input type="text" value={row.description} onChange={e => updatePreviewRow(row.id, 'description', e.target.value)}
+                                                    className="w-full rounded-[5px] px-2 py-1 text-[12px] text-gray-900 bg-transparent outline-none focus:ring-1 focus:ring-[#6366F1] focus:bg-white" />
+                                            </td>
+                                            <td className="px-4 py-2">
+                                                <input type="number" step="0.01" value={row.amount} onChange={e => updatePreviewRow(row.id, 'amount', e.target.value)}
+                                                    className="w-[110px] text-right rounded-[5px] px-2 py-1 text-[12px] font-mono bg-transparent outline-none focus:ring-1 focus:ring-[#6366F1] focus:bg-white"
+                                                    style={{ color: row.amount < 0 ? '#dc2626' : '#059669' }} />
+                                            </td>
+                                        </tr>
+                                    ))}
+                                    {previewRows.length === 0 && (
+                                        <tr><td colSpan={4} className="text-center text-gray-400 text-[12.5px] py-10">No transactions parsed from that file</td></tr>
+                                    )}
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+
+                    <div className="flex items-center justify-between">
+                        <button onClick={cancelPreview}
+                            className="px-4 py-2.5 rounded-[6px] text-[12.5px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors" style={CARD_STYLE}>
+                            Cancel, choose a different file
+                        </button>
+                        <button onClick={confirmPreview} disabled={isImportingPreview || previewRows.filter(r => r.included).length === 0}
+                            className="flex items-center gap-1.5 px-5 py-2.5 rounded-[6px] bg-[#6366F1] text-white text-[13px] font-[500] hover:bg-indigo-600 transition-colors disabled:opacity-50">
+                            {isImportingPreview ? <PiSpinner className="text-[15px] animate-spin" /> : <PiCheckCircle className="text-[15px]" />}
+                            {isImportingPreview ? 'Importing…' : 'Continue to Matching'}
+                        </button>
+                    </div>
                 </div>
             )}
 
@@ -659,7 +962,7 @@ export function BankReconciliationClient({
                                 </button>
                             )}
                             <label className={cn("cursor-pointer", isUploading && "pointer-events-none opacity-60")}>
-                                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
+                                <input ref={fileInputRef} type="file" accept=".csv,.xlsx,.xls,.pdf" className="hidden" onChange={handleFileUpload} disabled={isUploading} />
                                 <div className="flex items-center gap-1.5 px-3.5 py-2 rounded-[6px] text-[12.5px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors" style={CARD_STYLE}>
                                     {isUploading ? <PiSpinner className="text-[13px] animate-spin" /> : <PiUploadSimple className="text-[13px]" />}
                                     Import more
