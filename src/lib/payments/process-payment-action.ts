@@ -246,6 +246,17 @@ export async function processPaymentAction(params: {
         }
     }
 
+    // WALLET-method payouts actually leave through Paystack, so their GL cash
+    // leg belongs on the Paystack Settlement Clearing account (code 1003) —
+    // the one linked to the reconcilable PaystackAccount — not the generic,
+    // unlinked "Cash & Bank" (1000) fallback used elsewhere. Posting to 1000
+    // here made every WALLET-disbursed payment invisible to Bank
+    // Reconciliation: nothing in the app treats 1000 as any account's GL
+    // account, so its balance can never be matched against a bank statement.
+    const walletCashAccount = paymentMethod === 'WALLET'
+        ? await prisma.account.findFirst({ where: { code: '1003' } })
+        : null;
+
     const { estimatePaystackPayoutFee } = await import('@/lib/payments/paymentFees');
 
     let estimatedTotalFees = 0;
@@ -372,7 +383,7 @@ export async function processPaymentAction(params: {
                 await (prisma as any).requisition.update({ where: { id: req.id }, data: { status: 'PAID' } });
             }
 
-            const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
+            const cashAccount = walletCashAccount ?? await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postRequisitionPayment(req.id, cashAccount.id);
 
             if (req.user?.phoneNumber) smsQueue.push({ phone: req.user.phoneNumber, name: req.user.name ?? 'User', amount: req.amount, ref: txId });
@@ -431,7 +442,7 @@ export async function processPaymentAction(params: {
                 await prisma.expense.update({ where: { id: exp.id }, data: { status: 'PAID', paidAt: new Date() } });
             }
 
-            const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
+            const cashAccount = walletCashAccount ?? await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postExpensePayment(exp.id, cashAccount.id);
 
             if (exp.user?.phoneNumber) smsQueue.push({ phone: exp.user.phoneNumber, name: exp.user.name ?? 'User', amount: exp.amount, ref: txId });
@@ -499,7 +510,7 @@ export async function processPaymentAction(params: {
                 });
             }
 
-            const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
+            const cashAccount = walletCashAccount ?? await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postInvoicePayment(inv.id, cashAccount.id);
 
             if (inv.vendor?.phone) vendorSmsQueue.push({ phone: inv.vendor.phone, name: inv.vendor.name ?? 'Vendor', amount: inv.amount, ref: txId });
