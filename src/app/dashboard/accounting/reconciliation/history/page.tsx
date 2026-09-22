@@ -151,7 +151,7 @@ export default async function ReconciliationHistoryPage({
             ) : (
                 <div className="space-y-3">
                     {historyStatements.map((s, i) => (
-                        <StatementHistoryCard key={s.id} statement={s} currency={account.currency} defaultOpen={i === 0} />
+                        <StatementHistoryCard key={s.id} statement={s} currency={account.currency} accountId={account.id} defaultOpen={i === 0} />
                     ))}
                 </div>
             )}

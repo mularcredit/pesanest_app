@@ -1,6 +1,6 @@
 'use client'
 
-import { useState, useMemo, useRef } from 'react'
+import { useState, useMemo, useRef, useEffect } from 'react'
 import { read, utils } from 'xlsx'
 import {
     PiUploadSimple, PiCheckCircle, PiWarning, PiX, PiPlus,
@@ -28,6 +28,10 @@ interface Props {
     bankAccountId: string; glBalance: number; journalLines: JournalLine[]; currency?: string;
     initialStatementLines?: BankTransaction[];
     initialDrafts?: ReconciliationDraft[];
+    /** Deep-linked from the History page's "Not matched" status — pre-selects
+        that one bank transaction on the Match step so the user lands ready to
+        complete it, instead of hunting for it again in the full unmatched list. */
+    initialSelectedStatementLineId?: string;
 }
 
 const CARD_STYLE: React.CSSProperties = { boxShadow: 'var(--card-rim), var(--card-elevation)' };
@@ -169,6 +173,7 @@ function detectBalances(rawRows: any[][], headerRowIdx: number): { opening: numb
 
 export function BankReconciliationClient({
     bankAccountId, glBalance, journalLines, currency = 'KES', initialStatementLines = [], initialDrafts = [],
+    initialSelectedStatementLineId,
 }: Props) {
     const { showToast } = useToast();
     const [step, setStep] = useState<'upload' | 'match' | 'review'>(initialStatementLines.length > 0 ? 'match' : 'upload')
@@ -185,8 +190,17 @@ export function BankReconciliationClient({
     const [discardingDraftId, setDiscardingDraftId] = useState<string | null>(null)
     const [searchBank, setSearchBank] = useState('')
     const [searchBooks, setSearchBooks] = useState('')
-    const [selectedBankTxIds, setSelectedBankTxIds] = useState<Set<string>>(new Set())
+    const [selectedBankTxIds, setSelectedBankTxIds] = useState<Set<string>>(
+        () => initialSelectedStatementLineId ? new Set([initialSelectedStatementLineId]) : new Set()
+    )
     const [selectedBookLineIds, setSelectedBookLineIds] = useState<Set<string>>(new Set())
+
+    // Scroll the deep-linked transaction into view once, on landing.
+    useEffect(() => {
+        if (!initialSelectedStatementLineId) return
+        const el = document.getElementById(`bank-tx-${initialSelectedStatementLineId}`)
+        el?.scrollIntoView({ block: 'center', behavior: 'smooth' })
+    }, [initialSelectedStatementLineId])
 
     const toggleBankTx = (id: string) => {
         setSelectedBankTxIds(prev => {
@@ -766,7 +780,7 @@ export function BankReconciliationClient({
                                 {filteredBankTx.map(tx => {
                                     const isSelected = selectedBankTxIds.has(tx.id)
                                     return (
-                                        <div key={tx.id}
+                                        <div key={tx.id} id={`bank-tx-${tx.id}`}
                                             className="p-3 rounded-[6px] cursor-pointer transition-colors hover:bg-gray-50 flex items-start gap-2.5"
                                             style={{
                                                 border: isSelected ? '1px solid rgba(99,102,241,0.4)' : '1px solid rgba(0,0,0,0.09)',

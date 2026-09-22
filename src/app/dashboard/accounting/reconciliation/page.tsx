@@ -11,12 +11,12 @@ const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' }
 export default async function BankReconciliationPage({
     searchParams,
 }: {
-    searchParams: Promise<{ bankAccountId?: string }>;
+    searchParams: Promise<{ bankAccountId?: string; statementLineId?: string }>;
 }) {
     const session = await auth();
     if (!session?.user) return redirect("/login");
 
-    const { bankAccountId: requestedId } = await searchParams;
+    const { bankAccountId: requestedId, statementLineId } = await searchParams;
 
     const [bankRows, paybillRows, walletRows, paystackRows] = await Promise.all([
         prisma.bankAccount.findMany({
@@ -179,6 +179,7 @@ export default async function BankReconciliationPage({
                     };
                 })}
                 initialDrafts={initialDrafts}
+                initialSelectedStatementLineId={statementLineId}
             />
         </div>
     );

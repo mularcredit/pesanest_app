@@ -1,8 +1,9 @@
 "use client";
 
 import { useState } from "react";
+import Link from "next/link";
 import { cn } from "@/lib/utils";
-import { PiCaretDown, PiCheckCircle, PiClock } from "react-icons/pi";
+import { PiCaretDown, PiCheckCircle, PiClock, PiArrowSquareOut } from "react-icons/pi";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 const ROW_BORDER: React.CSSProperties = { borderBottom: '1px solid rgba(0,0,0,0.06)' };
@@ -39,8 +40,8 @@ function fmt(amount: number, currency: string) {
     return `${currency} ${amount.toLocaleString(undefined, { minimumFractionDigits: 2 })}`;
 }
 
-export function StatementHistoryCard({ statement, currency, defaultOpen = false }: {
-    statement: HistoryStatement; currency: string; defaultOpen?: boolean;
+export function StatementHistoryCard({ statement, currency, accountId, defaultOpen = false }: {
+    statement: HistoryStatement; currency: string; accountId: string; defaultOpen?: boolean;
 }) {
     const [open, setOpen] = useState(defaultOpen);
     const matched = statement.lines.filter(l => l.isMatched);
@@ -109,7 +110,13 @@ export function StatementHistoryCard({ statement, currency, defaultOpen = false 
                                                 ))}
                                             </div>
                                         ) : (
-                                            <span className="text-amber-600 text-[11.5px] font-[500]">Not matched</span>
+                                            <Link
+                                                href={`/dashboard/accounting/reconciliation?bankAccountId=${accountId}&statementLineId=${line.id}`}
+                                                className="inline-flex items-center gap-1 text-amber-600 text-[11.5px] font-[500] hover:text-amber-700 hover:underline underline-offset-2 transition-colors"
+                                                title="Open this transaction to complete reconciliation"
+                                            >
+                                                Not matched <PiArrowSquareOut className="text-[11px]" />
+                                            </Link>
                                         )}
                                     </td>
                                     <td className="px-4 py-2.5 text-gray-500">
