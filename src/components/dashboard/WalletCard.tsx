@@ -98,8 +98,14 @@ export function WalletCard({
                                 WebkitMaskPosition: 'left center',
                                 maskPosition: 'left center',
                             }} />
-                            <span className="text-[8px] font-[600] uppercase tracking-[0.18em]"
-                                style={{ color: 'rgba(255,255,255,0.35)' }}>
+                            <span className="text-[8px] font-[700] uppercase tracking-[0.18em]"
+                                style={{
+                                    background: 'linear-gradient(180deg, #FBE9A8 0%, #D4AF37 45%, #9C6E17 100%)',
+                                    WebkitBackgroundClip: 'text',
+                                    backgroundClip: 'text',
+                                    color: 'transparent',
+                                    textShadow: '0 1px 0 rgba(255,255,255,0.45), 0 -1px 0 rgba(0,0,0,0.55)',
+                                }}>
                                 Fahari Gold
                             </span>
                         </div>
