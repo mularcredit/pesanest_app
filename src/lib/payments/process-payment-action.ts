@@ -202,20 +202,37 @@ export async function processPaymentAction(params: {
         return { ok: true, summary: { success: allItems.length, failed: 0, errors: [], details: [] } };
     }
 
-    const wallet = await prisma.wallet.findUnique({ where: { userId } });
+    let wallet = await prisma.wallet.findUnique({ where: { userId } });
 
     // A Wallet row is only ever created by the public signup flow — a user
-    // added any other way (invited by an admin, seeded, etc.) has none. Fail
-    // before any money moves: without this guard, `wallet!.id` below crashes
-    // with "Cannot read properties of null (reading 'id')" AFTER the Paystack
-    // payout has already succeeded and BEFORE the item's status is set to
-    // PAID, leaving it eligible to be disbursed again for real money.
+    // added any other way (invited by an admin, seeded, etc.) has none. Without
+    // this guard, `wallet!.id` below crashes with "Cannot read properties of
+    // null (reading 'id')" AFTER the Paystack payout has already succeeded and
+    // BEFORE the item's status is set to PAID, leaving it eligible to be
+    // disbursed again for real money.
+    //
+    // A system admin disbursing centrally (not tied to any branch) is exactly
+    // the case a wallet exists for in the first place, so provision one for
+    // them automatically here rather than making that a manual setup step —
+    // its balance starts at 0 and isn't itself what gates a WALLET-method
+    // disbursement (that checks the live Paystack balance below); it's just
+    // the ledger row this user's payouts get tracked against.
     if ((paymentMethod === 'WALLET' || paymentMethod === 'BRANCH_WALLET') && !wallet) {
-        return {
-            ok: false,
-            error: 'No wallet is set up for your account — an administrator needs to create one before you can disburse payments.',
-            status: 400,
-        };
+        const actor = await prisma.user.findUnique({
+            where: { id: userId },
+            select: { role: true, customRole: { select: { isSystem: true } } },
+        });
+        const isSystemAdmin = actor?.role === 'SYSTEM_ADMIN' || actor?.customRole?.isSystem;
+
+        if (isSystemAdmin) {
+            wallet = await prisma.wallet.create({ data: { userId, balance: 0, currency: 'KES' } });
+        } else {
+            return {
+                ok: false,
+                error: 'No wallet is set up for your account — an administrator needs to create one before you can disburse payments.',
+                status: 400,
+            };
+        }
     }
 
     let liveBalance = wallet?.balance ?? 0;
