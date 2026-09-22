@@ -59,6 +59,10 @@ const HEADER_ALIASES = {
     amount: ['amount', 'difference'],
     credit: ['paid in', 'credit', 'money in', 'cr'],
     debit: ['withdrawn', 'debit', 'money out', 'dr'],
+    // Fallback description only — used when the real description column is
+    // blank for a given row (e.g. Paystack's own "Transaction" type entries,
+    // typically wallet top-ups, carry no "Reason" text at all).
+    type: ['transaction type', 'txn type', 'type'],
 };
 
 // Collapse embedded newlines/tabs too — bank exports (e.g. ABSA's "Money Out\n(Debit)")
@@ -115,7 +119,7 @@ function parseStatementDate(raw: unknown): Date | null {
     return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
-interface ColumnMapping { date: number; description: number; amount: number; credit: number; debit: number }
+interface ColumnMapping { date: number; description: number; amount: number; credit: number; debit: number; type: number }
 
 /** Resolves the aliased columns for a header row — shared by the initial auto-detect and the preview step's manual remap. */
 function resolveColumns(headerCells: string[]): ColumnMapping {
@@ -125,6 +129,7 @@ function resolveColumns(headerCells: string[]): ColumnMapping {
         amount: findCol(headerCells, HEADER_ALIASES.amount),
         credit: findCol(headerCells, HEADER_ALIASES.credit),
         debit: findCol(headerCells, HEADER_ALIASES.debit),
+        type: findCol(headerCells, HEADER_ALIASES.type),
     };
 }
 
@@ -151,7 +156,12 @@ function buildRowsFromMapping(rawRows: any[][], headerRowIdx: number, cols: Colu
             ? toNum(row[cols.amount])
             : (cols.credit !== -1 ? toNum(row[cols.credit]) : 0) - (cols.debit !== -1 ? toNum(row[cols.debit]) : 0);
 
-        parsed.push({ date, description: description || 'Unknown', amount });
+        // When the real description is blank (e.g. Paystack's own "Transaction"
+        // entries — usually wallet top-ups — carry no "Reason" text), fall back
+        // to a Transaction Type-style column before giving up and saying
+        // "Unknown", so the preview shows something meaningful.
+        const typeFallback = cols.type !== -1 ? String(row[cols.type] ?? '').trim() : '';
+        parsed.push({ date, description: description || typeFallback || 'Unknown', amount });
     }
 
     return { parsed, skipped };
@@ -222,7 +232,7 @@ export function BankReconciliationClient({
     const [rawFileRows, setRawFileRows] = useState<any[][] | null>(null)
     const [headerRowIdx, setHeaderRowIdx] = useState<number>(-1)
     const [headerCells, setHeaderCells] = useState<string[]>([])
-    const [colMapping, setColMapping] = useState<ColumnMapping>({ date: -1, description: -1, amount: -1, credit: -1, debit: -1 })
+    const [colMapping, setColMapping] = useState<ColumnMapping>({ date: -1, description: -1, amount: -1, credit: -1, debit: -1, type: -1 })
     const [amountMode, setAmountMode] = useState<'single' | 'split'>('single')
     const [previewRows, setPreviewRows] = useState<{ id: string; date: string; description: string; amount: number; included: boolean }[]>([])
     const [previewSkipped, setPreviewSkipped] = useState(0)
