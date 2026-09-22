@@ -1,6 +1,6 @@
 import { AccountingActions } from "@/components/accounting/AccountingActions";
 import { LedgerMoveToAccount } from "./LedgerMoveToAccount";
-import { PiBookOpenText } from "react-icons/pi";
+import { PiBookOpenText, PiPaperclip } from "react-icons/pi";
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
@@ -81,6 +81,15 @@ export function LedgerEntryList({ entries, readOnly, emptyTitle, emptySubtitle }
                             </div>
 
                             <div className="flex items-center gap-2 shrink-0">
+                                {/* Receipt/supporting document, if one was attached */}
+                                {entry.receiptUrl && (
+                                    <a href={entry.receiptUrl} target="_blank" rel="noopener noreferrer"
+                                        title="View attached receipt"
+                                        className="inline-flex items-center gap-1 text-[10px] font-[600] px-2 py-0.5 rounded-full text-emerald-700 hover:bg-emerald-50 transition-colors"
+                                        style={{ background: 'rgba(5,150,105,0.07)' }}>
+                                        <PiPaperclip className="text-[11px]" /> Receipt
+                                    </a>
+                                )}
                                 {/* Balance indicator */}
                                 <span className="text-[10px] font-[600] px-2 py-0.5 rounded-full"
                                     style={{
@@ -108,6 +117,7 @@ export function LedgerEntryList({ entries, readOnly, emptyTitle, emptySubtitle }
                                                     date: new Date(entry.date).toISOString().split('T')[0],
                                                     description: entry.description,
                                                     reference: entry.reference || '',
+                                                    receiptUrl: entry.receiptUrl || '',
                                                     lines: entry.lines.map((l: any) => ({
                                                         accountId: l.accountId,
                                                         debit: l.debit,

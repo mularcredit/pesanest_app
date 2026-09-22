@@ -735,6 +735,7 @@ model JournalEntry {
   entryNumber     String?        @unique
   isBackdated     Boolean        @default(false)
   reversalOfId    String?
+  receiptUrl      String?
   creditNote      CreditNote?    @relation(fields: [creditNoteId], references: [id])
   expense         Expense?       @relation(fields: [expenseId], references: [id])
   invoice         Invoice?       @relation(fields: [invoiceId], references: [id])

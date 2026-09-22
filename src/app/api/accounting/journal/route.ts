@@ -106,6 +106,7 @@ export async function POST(req: Request) {
                     date: entryDate,
                     description: body.description,
                     reference: body.reference || null,
+                    receiptUrl: body.receiptUrl || null,
                     status: 'DRAFT',
                     createdBy: session.user.id,
                     isBackdated,
@@ -128,6 +129,7 @@ export async function POST(req: Request) {
             date: entryDate,
             description: body.description,
             reference: body.reference,
+            receiptUrl: body.receiptUrl || null,
             createdBy: session.user.id,
             lines,
             isBackdated
@@ -150,7 +152,7 @@ export async function PATCH(req: Request) {
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
 
     const body = await req.json();
-    const { entryId, date, description, reference, lines } = body;
+    const { entryId, date, description, reference, receiptUrl, lines } = body;
     if (!entryId) return NextResponse.json({ error: "entryId is required" }, { status: 400 });
     if (!Array.isArray(lines) || lines.length < 2) {
         return NextResponse.json({ error: "At least 2 lines are required" }, { status: 400 });
@@ -179,6 +181,7 @@ export async function PATCH(req: Request) {
         date: new Date(date),
         description,
         reference: reference || undefined,
+        receiptUrl: receiptUrl || null,
         lines: lines.map((l: any) => ({
             accountId: l.accountId,
             debit: Number(l.debit || 0),

@@ -3,7 +3,7 @@
 
 import { useState, useEffect, useRef } from "react";
 import { createPortal } from "react-dom";
-import { PiPlus, PiX, PiBookOpenText, PiSpinner, PiBank, PiNotebook, PiTrash, PiArrowsClockwise, PiMagicWand, PiPencil, PiCheck, PiWarningCircle } from "react-icons/pi";
+import { PiPlus, PiX, PiBookOpenText, PiSpinner, PiBank, PiNotebook, PiTrash, PiArrowsClockwise, PiMagicWand, PiPencil, PiCheck, PiWarningCircle, PiPaperclip } from "react-icons/pi";
 import { cn } from "@/lib/utils";
 import { useRouter } from "next/navigation";
 import { useToast } from "@/components/ui/ToastProvider";
@@ -24,6 +24,7 @@ interface AccountingActionsProps {
         date: string;
         description: string;
         reference?: string;
+        receiptUrl?: string | null;
         lines: { accountId: string; debit: number; credit: number }[];
     };
     /** 'primary' = indigo filled (default for CoA page), 'secondary' = subtle outlined (for inline use) */
@@ -201,6 +202,7 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
                 date: initialEntry.date,
                 description: initialEntry.description,
                 reference: initialEntry.reference || "",
+                receiptUrl: initialEntry.receiptUrl || "",
                 lines: initialEntry.lines.map((l, i) => ({ id: i + 1, ...l })) as JournalLine[]
             };
         }
@@ -208,12 +210,33 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
             date: new Date().toISOString().split('T')[0],
             description: "",
             reference: "",
+            receiptUrl: "",
             lines: [
                 { id: 1, accountId: "", debit: 0, credit: 0 },
                 { id: 2, accountId: "", debit: 0, credit: 0 }
             ] as JournalLine[]
         };
     });
+    const [isUploadingReceipt, setIsUploadingReceipt] = useState(false);
+
+    const handleReceiptChange = async (e: React.ChangeEvent<HTMLInputElement>) => {
+        const file = e.target.files?.[0];
+        if (!file) return;
+        setIsUploadingReceipt(true);
+        try {
+            const fd = new FormData();
+            fd.append("file", file);
+            const res = await fetch("/api/upload", { method: "POST", body: fd });
+            const data = await res.json();
+            if (!res.ok || !data.url) throw new Error(data.error || "Upload failed");
+            setJournalData(prev => ({ ...prev, receiptUrl: data.url }));
+        } catch (err: any) {
+            showToast(err.message || "Failed to upload receipt", "error");
+        } finally {
+            setIsUploadingReceipt(false);
+            e.target.value = "";
+        }
+    };
 
     // VOID FORM STATE
     const [voidReason, setVoidReason] = useState("");
@@ -611,6 +634,33 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
                                         <Input placeholder="Reference" value={journalData.reference} onChange={e => setJournalData(p => ({ ...p, reference: e.target.value }))} />
                                         <Input placeholder="Description" value={journalData.description} onChange={e => setJournalData(p => ({ ...p, description: e.target.value }))} />
                                     </div>
+
+                                    {/* Receipt/supporting document — for entries the accountant posts directly
+                                        via the ledger rather than through a Requisition/Expense/Invoice, which
+                                        otherwise have no place to attach proof. */}
+                                    <div className="flex items-center gap-3">
+                                        {journalData.receiptUrl ? (
+                                            <div className="flex items-center gap-2 px-3 py-2 rounded-lg bg-emerald-50 border border-emerald-200 text-sm text-emerald-700">
+                                                <PiPaperclip />
+                                                <a href={journalData.receiptUrl} target="_blank" rel="noopener noreferrer" className="underline">
+                                                    View attached receipt
+                                                </a>
+                                                <button type="button" onClick={() => setJournalData(p => ({ ...p, receiptUrl: "" }))} className="text-emerald-600 hover:text-emerald-800">
+                                                    <PiX />
+                                                </button>
+                                            </div>
+                                        ) : (
+                                            <label className={cn(
+                                                "flex items-center gap-2 px-3 py-2 rounded-lg border border-dashed border-gray-300 text-sm text-gray-500 cursor-pointer hover:border-[#6366F1] hover:text-[#6366F1]",
+                                                isUploadingReceipt && "opacity-60 pointer-events-none"
+                                            )}>
+                                                {isUploadingReceipt ? <PiSpinner className="animate-spin" /> : <PiPaperclip />}
+                                                {isUploadingReceipt ? "Uploading..." : "Attach receipt (optional)"}
+                                                <input type="file" accept="image/*,.pdf" className="hidden" onChange={handleReceiptChange} disabled={isUploadingReceipt} />
+                                            </label>
+                                        )}
+                                    </div>
+
                                     <div className="bg-white rounded-xl border border-gray-200 overflow-hidden">
                                         {journalData.lines.map(line => (
                                             <div key={line.id} className="p-4 grid grid-cols-12 gap-3 border-b border-gray-100 last:border-0">

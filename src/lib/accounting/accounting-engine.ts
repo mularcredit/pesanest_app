@@ -72,6 +72,7 @@ export class AccountingEngine {
             date: Date;
             description: string;
             reference?: string;
+            receiptUrl?: string | null;
             lines: { accountId: string; debit: number; credit: number; description?: string; costCentreId?: string }[];
             source?: {
                 expenseId?: string;
@@ -113,6 +114,7 @@ export class AccountingEngine {
                 date: data.date,
                 description: data.description,
                 reference: data.reference,
+                receiptUrl: data.receiptUrl,
                 expenseId: data.source?.expenseId,
                 invoiceId: data.source?.invoiceId,
                 saleId: data.source?.saleId,
@@ -267,6 +269,7 @@ export class AccountingEngine {
             date: Date;
             description: string;
             reference?: string;
+            receiptUrl?: string | null;
             lines: { accountId: string; debit: number; credit: number; description?: string }[];
         }
     ) {
@@ -290,6 +293,7 @@ export class AccountingEngine {
                     date: data.date,
                     description: data.description,
                     reference: data.reference,
+                    receiptUrl: data.receiptUrl,
                     lines: {
                         create: data.lines.map(line => ({
                             accountId: line.accountId,
@@ -318,6 +322,7 @@ export class AccountingEngine {
             date: Date;
             description: string;
             reference?: string;
+            receiptUrl?: string | null;
             lines: { accountId: string; debit: number; credit: number; description?: string }[];
         }
     ) {
@@ -351,6 +356,7 @@ export class AccountingEngine {
                     date: data.date,
                     description: data.description,
                     reference: data.reference,
+                    receiptUrl: data.receiptUrl,
                     lines: {
                         create: data.lines.map((line) => ({
                             accountId: line.accountId,
