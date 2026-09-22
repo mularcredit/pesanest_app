@@ -50,8 +50,13 @@ function readAsBinaryString(file: File): Promise<string> {
 // tend to use "Date" / "Description" / "Amount" or split "Debit"/"Credit".
 const HEADER_ALIASES = {
     date: ['completion time', 'transaction date', 'trans date', 'txn date', 'date', 'value date', 'posting date'],
-    description: ['details', 'description', 'narration', 'particulars', 'transaction details'],
-    amount: ['amount'],
+    // "Reason" is what Paystack's own wallet/transaction CSV export calls its
+    // description column (e.g. "Requisition: TEST AIRTIME PAYMENT").
+    description: ['details', 'description', 'narration', 'particulars', 'transaction details', 'reason'],
+    // "Difference" is Paystack's wallet export's signed movement column
+    // (positive = credit, negative = debit) — functionally identical to a
+    // plain "Amount" column, just under a different name.
+    amount: ['amount', 'difference'],
     credit: ['paid in', 'credit', 'money in', 'cr'],
     debit: ['withdrawn', 'debit', 'money out', 'dr'],
 };
