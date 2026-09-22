@@ -15,7 +15,7 @@ export async function POST(
         }
 
         const body = await request.json();
-        const { amount, paymentDate, method, reference, notes } = body;
+        const { amount, paymentDate, method, reference, notes, bankAccountId, paybillAccountId } = body;
 
         // Fetch the invoice
         const invoice = await prisma.invoice.findUnique({
@@ -45,6 +45,8 @@ export async function POST(
                 status: 'PAID',
                 makerId: session.user.id,
                 processedAt: new Date(paymentDate),
+                bankAccountId: bankAccountId || null,
+                paybillAccountId: paybillAccountId || null,
                 invoices: {
                     connect: { id }
                 }
@@ -65,7 +67,7 @@ export async function POST(
 
         // ✨ NEW: Auto-post to General Ledger
         try {
-            await AccountingEngine.postVendorPayment(id, amount);
+            await AccountingEngine.postVendorPayment(id, amount, { bankAccountId, paybillAccountId });
             console.log(`✅ Posted vendor payment for Invoice ${invoice.invoiceNumber} to GL`);
         } catch (glError) {
             console.error(`❌ Failed to post vendor payment to GL:`, glError);

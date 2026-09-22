@@ -14,6 +14,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { DocumentDropzone } from "@/components/ui/DocumentDropzone";
 import { getReceiptViewerUrl } from "@/lib/receipt-url";
+import { SettlementAccountPicker } from "@/components/accounting/SettlementAccountPicker";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 const ROW_BORDER: React.CSSProperties = { borderBottom: '1px solid rgba(0,0,0,0.06)' };
@@ -41,6 +42,7 @@ const BLANK_ASSET = {
     purchasePrice: "", serialNumber: "", assetTag: "",
     location: "Main Office", assignedToId: "", notes: "",
     depreciationMethod: "NONE", usefulLifeYears: "", salvageValue: "", depreciationRate: "",
+    bankAccountId: "", paybillAccountId: "",
 };
 
 type AssetRecord = {
@@ -62,6 +64,8 @@ type AssetRecord = {
     salvageValue?: number | null;
     depreciationRate?: number | null;
     isPosted?: boolean;
+    bankAccountId?: string | null;
+    paybillAccountId?: string | null;
 };
 
 type AssetStats = {
@@ -88,7 +92,8 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
     const [purchaseReceipt, setPurchaseReceipt] = useState<File | string | null>(null);
     const [editingAssetId, setEditingAssetId]   = useState<string | null>(null);
     const [disposingAssetId, setDisposingAssetId] = useState<string | null>(null);
-    const [disposeForm, setDisposeForm]         = useState({ proceeds: '', disposalDate: new Date().toISOString().slice(0, 10), reason: '' });
+    const [disposeForm, setDisposeForm]         = useState({ proceeds: '', disposalDate: new Date().toISOString().slice(0, 10), reason: '', proceedsGlAccountId: '' });
+    const [disposeSettlementId, setDisposeSettlementId] = useState(''); // BankAccount/PaybillAccount.id backing the picker below
     const [isDisposing, setIsDisposing]         = useState(false);
 
     useEffect(() => { setMounted(true); }, []);
@@ -149,6 +154,8 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
             usefulLifeYears: asset.usefulLife ? String(asset.usefulLife / 12) : "",
             salvageValue: asset.salvageValue != null ? String(asset.salvageValue) : "",
             depreciationRate: asset.depreciationRate != null ? String(asset.depreciationRate) : "",
+            bankAccountId: asset.bankAccountId || "",
+            paybillAccountId: asset.paybillAccountId || "",
         });
         setPurchaseReceipt(asset.receiptUrl || null);
         setEditingAssetId(asset.id);
@@ -166,10 +173,21 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
         if (!disposingAssetId) return;
         setIsDisposing(true);
         try {
+            const proceeds = Number(disposeForm.proceeds || 0);
+            if (proceeds > 0 && !disposeForm.proceedsGlAccountId) {
+                showToast("Select which account received the proceeds", "error");
+                setIsDisposing(false);
+                return;
+            }
             const res = await fetch(`/api/assets/${disposingAssetId}/dispose`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ ...disposeForm, proceeds: Number(disposeForm.proceeds || 0) })
+                body: JSON.stringify({
+                    disposalDate: disposeForm.disposalDate,
+                    reason: disposeForm.reason,
+                    proceeds,
+                    proceedsAccountId: proceeds > 0 ? disposeForm.proceedsGlAccountId : undefined,
+                })
             });
             const data = await res.json();
             if (!res.ok) throw new Error(data.error);
@@ -299,6 +317,19 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                                     placeholder="0.00" value={newAsset.purchasePrice}
                                     onChange={e => setNewAsset({ ...newAsset, purchasePrice: e.target.value })} />
                             </div>
+                        </div>
+
+                        {/* Paid from */}
+                        <div>
+                            <SettlementAccountPicker
+                                label="Paid from"
+                                value={newAsset.bankAccountId || newAsset.paybillAccountId}
+                                onChange={acc => setNewAsset({
+                                    ...newAsset,
+                                    bankAccountId: acc?.kind === "BANK" ? acc.id : "",
+                                    paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                })}
+                            />
                         </div>
 
                         {/* Purchase Date */}
@@ -471,6 +502,17 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                                 placeholder="0.00" className={cn(INPUT_CLASS, 'pl-3 tabular-nums')} style={INPUT_STYLE} />
                         </div>
                     </div>
+                    {Number(disposeForm.proceeds || 0) > 0 && (
+                        <SettlementAccountPicker
+                            label="Which account received the proceeds?"
+                            required
+                            value={disposeSettlementId}
+                            onChange={acc => {
+                                setDisposeSettlementId(acc?.id || '');
+                                setDisposeForm(f => ({ ...f, proceedsGlAccountId: acc?.glAccountId || '' }));
+                            }}
+                        />
+                    )}
                     <div>
                         <label className={LABEL_CLASS}>Reason</label>
                         <input type="text" value={disposeForm.reason}
@@ -622,7 +664,7 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                                                 <div className="flex items-center justify-end gap-1.5">
                                                     {asset.status === 'ACTIVE' && (
                                                         <button
-                                                            onClick={() => { setDisposingAssetId(asset.id); setDisposeForm({ proceeds: '', disposalDate: new Date().toISOString().slice(0, 10), reason: '' }); }}
+                                                            onClick={() => { setDisposingAssetId(asset.id); setDisposeForm({ proceeds: '', disposalDate: new Date().toISOString().slice(0, 10), reason: '', proceedsGlAccountId: '' }); setDisposeSettlementId(''); }}
                                                             className="px-2.5 py-1.5 rounded-[5px] text-[11.5px] font-[500] text-orange-600 hover:bg-orange-50 transition-colors"
                                                             style={{ border: '1px solid rgba(234,88,12,0.2)' }}>
                                                             Dispose

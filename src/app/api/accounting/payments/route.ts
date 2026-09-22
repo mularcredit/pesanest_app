@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from "next/server";
 import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
+import { resolveTransferLeg } from "@/lib/accounting/cash-movement-gl";
 
 // POST /api/accounting/payments - Record a customer payment
 export async function POST(req: NextRequest) {
@@ -18,7 +19,9 @@ export async function POST(req: NextRequest) {
             method,
             reference,
             saleId,
-            notes
+            notes,
+            bankAccountId,
+            paybillAccountId,
         } = body;
 
         // Validation
@@ -79,7 +82,9 @@ export async function POST(req: NextRequest) {
                 method,
                 reference: reference || null,
                 saleId: saleId || null,
-                notes: notes || null
+                notes: notes || null,
+                bankAccountId: bankAccountId || null,
+                paybillAccountId: paybillAccountId || null,
             },
             include: {
                 customer: {
@@ -127,13 +132,16 @@ export async function POST(req: NextRequest) {
 
         // Post to General Ledger (Journal Entry)
         try {
-            // 1. Get or Create Accounts
-            let cashAccount = await prisma.account.findUnique({ where: { code: '1000' } });
-            if (!cashAccount) {
-                cashAccount = await prisma.account.create({
-                    data: { code: '1000', name: 'Cash & Bank', type: 'ASSET', subtype: 'CURRENT_ASSET', description: 'Main operating bank account' }
-                });
-            }
+            // 1. Get or Create Accounts — the cash side resolves to whichever
+            // real bank/paybill account this actually settled through (so it
+            // lands on that account's own glAccountId and is visible to Bank
+            // Reconciliation), falling back to a generic Cash on Hand bucket
+            // only when no specific account was picked (e.g. genuine cash-in-hand).
+            const cashAccount = await resolveTransferLeg(prisma as any, {
+                bankAccountId: bankAccountId || null,
+                paybillAccountId: paybillAccountId || null,
+                kind: paybillAccountId ? 'PAYBILL' : 'BANK',
+            });
 
             let arAccount = await prisma.account.findUnique({ where: { code: '1200' } });
             if (!arAccount) {
@@ -199,7 +207,7 @@ export async function PATCH(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { id, amount, paymentDate, method, reference, notes } = body;
+        const { id, amount, paymentDate, method, reference, notes, bankAccountId, paybillAccountId } = body;
 
         if (!id) {
             return NextResponse.json({ error: "Payment ID is required" }, { status: 400 });
@@ -223,7 +231,9 @@ export async function PATCH(req: NextRequest) {
                 paymentDate: paymentDate ? new Date(paymentDate) : undefined,
                 method: method || undefined,
                 reference: reference, // Allow null/empty updates
-                notes: notes // Allow null/empty updates
+                notes: notes, // Allow null/empty updates
+                bankAccountId: bankAccountId !== undefined ? (bankAccountId || null) : undefined,
+                paybillAccountId: paybillAccountId !== undefined ? (paybillAccountId || null) : undefined,
             },
             include: {
                 customer: true,
@@ -260,11 +270,12 @@ export async function PATCH(req: NextRequest) {
         // 4. Manage GL Entry (Update or Create/Backfill)
         let glResult = { success: false, message: "Starting" };
         try {
-            // 1. Get or Create Accounts (Using upsert for safety)
-            const cashAccount = await prisma.account.upsert({
-                where: { code: '1000' },
-                update: {},
-                create: { code: '1000', name: 'Cash & Bank', type: 'ASSET', subtype: 'CURRENT_ASSET', description: 'Main operating bank account' }
+            // 1. Get or Create Accounts — cash side resolves to the payment's
+            // own settlement account, same as POST above.
+            const cashAccount = await resolveTransferLeg(prisma as any, {
+                bankAccountId: updatedPayment.bankAccountId || null,
+                paybillAccountId: updatedPayment.paybillAccountId || null,
+                kind: updatedPayment.paybillAccountId ? 'PAYBILL' : 'BANK',
             });
 
             const arAccount = await prisma.account.upsert({

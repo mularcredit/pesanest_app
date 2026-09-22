@@ -9,6 +9,9 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { DatePicker } from "@/components/ui/DatePicker";
 import { format, parseISO } from "date-fns";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import { SettlementAccountPicker } from "@/components/accounting/SettlementAccountPicker";
+
+const SETTLEMENT_METHODS = new Set(["BANK_TRANSFER", "MOBILE_MONEY", "WIRE"]);
 
 interface PayInvoiceModalProps {
     invoice: {
@@ -43,13 +46,20 @@ export function PayInvoiceModal({ invoice, onClose }: PayInvoiceModalProps) {
         paymentDate: new Date().toISOString().split('T')[0],
         method: 'BANK_TRANSFER',
         reference: '',
-        notes: ''
+        notes: '',
+        settlementId: '',
+        bankAccountId: '',
+        paybillAccountId: '',
     });
 
     useEffect(() => { setMounted(true); }, []);
 
     const handleSubmit = async (e: React.FormEvent) => {
         e.preventDefault();
+        if (SETTLEMENT_METHODS.has(formData.method) && !formData.settlementId) {
+            showToast('Select which account this payment went out from', 'error');
+            return;
+        }
         setLoading(true);
         try {
             const response = await fetch(`/api/invoices/${invoice.id}/pay`, {
@@ -161,6 +171,20 @@ export function PayInvoiceModal({ invoice, onClose }: PayInvoiceModalProps) {
                                 style={INPUT_STYLE}
                             />
                         </div>
+
+                        {SETTLEMENT_METHODS.has(formData.method) && (
+                            <SettlementAccountPicker
+                                label="Which account did this go out from?"
+                                required
+                                value={formData.settlementId}
+                                onChange={acc => setFormData(prev => ({
+                                    ...prev,
+                                    settlementId: acc?.id || "",
+                                    bankAccountId: acc?.kind === "BANK" ? acc.id : "",
+                                    paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                }))}
+                            />
+                        )}
 
                         <div>
                             <label className={LABEL_CLASS}>Reference / Transaction ID</label>

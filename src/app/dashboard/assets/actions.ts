@@ -24,6 +24,8 @@ type AssetInput = {
     usefulLifeYears?: string;
     salvageValue?: string;
     depreciationRate?: string;
+    bankAccountId?: string;
+    paybillAccountId?: string;
 };
 
 /*
@@ -121,7 +123,9 @@ export async function createAsset(data: AssetInput) {
                 depreciationMethod: data.depreciationMethod || "NONE",
                 usefulLife: data.usefulLifeYears ? Math.round(parseFloat(data.usefulLifeYears) * 12) : null,
                 salvageValue: data.salvageValue ? parseFloat(data.salvageValue) : 0,
-                depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null
+                depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null,
+                bankAccountId: data.bankAccountId || null,
+                paybillAccountId: data.paybillAccountId || null,
             }
         });
 
@@ -199,7 +203,9 @@ export async function updateAsset(id: string, data: AssetInput) {
                 depreciationMethod: data.depreciationMethod || "NONE",
                 usefulLife: data.usefulLifeYears ? Math.round(parseFloat(data.usefulLifeYears) * 12) : null,
                 salvageValue: data.salvageValue ? parseFloat(data.salvageValue) : 0,
-                depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null
+                depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null,
+                bankAccountId: data.bankAccountId || null,
+                paybillAccountId: data.paybillAccountId || null,
             }
         });
 

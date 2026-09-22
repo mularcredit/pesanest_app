@@ -21,6 +21,7 @@ import { FormModal } from "@/components/ui/Modal";
 import { Select } from "@/components/ui/Select"; // Assuming this exists or I should use standard select
 import { DatePicker } from "@/components/ui/DatePicker";
 import { format, parseISO } from "date-fns";
+import { SettlementAccountPicker } from "@/components/accounting/SettlementAccountPicker";
 
 interface Sale {
     id: string;
@@ -66,7 +67,10 @@ export function RecordPaymentModal({
         method: "BANK_TRANSFER",
         reference: "",
         saleId: "",
-        notes: ""
+        notes: "",
+        settlementId: "",
+        bankAccountId: "",
+        paybillAccountId: "",
     });
 
     // Reset form when modal opens/closes
@@ -87,6 +91,11 @@ export function RecordPaymentModal({
             return;
         }
 
+        if ((formData.method === "BANK_TRANSFER" || formData.method === "MOBILE_MONEY") && !formData.settlementId) {
+            showToast("Select which account received this payment", "error");
+            return;
+        }
+
         setIsSubmitting(true);
 
         try {
@@ -100,7 +109,9 @@ export function RecordPaymentModal({
                     method: formData.method,
                     reference: formData.reference || undefined,
                     saleId: formData.saleId || undefined,
-                    notes: formData.notes || undefined
+                    notes: formData.notes || undefined,
+                    bankAccountId: formData.bankAccountId || undefined,
+                    paybillAccountId: formData.paybillAccountId || undefined,
                 })
             });
 
@@ -120,7 +131,10 @@ export function RecordPaymentModal({
                 method: "BANK_TRANSFER",
                 reference: "",
                 saleId: "",
-                notes: ""
+                notes: "",
+                settlementId: "",
+                bankAccountId: "",
+                paybillAccountId: "",
             });
 
         } catch (error: any) {
@@ -208,6 +222,22 @@ export function RecordPaymentModal({
                                 })}
                             </div>
                         </div>
+
+                        {(formData.method === "BANK_TRANSFER" || formData.method === "MOBILE_MONEY") && (
+                            <div className="space-y-2 col-span-2">
+                                <SettlementAccountPicker
+                                    label="Which account received this payment?"
+                                    required
+                                    value={formData.settlementId}
+                                    onChange={acc => setFormData(prev => ({
+                                        ...prev,
+                                        settlementId: acc?.id || "",
+                                        bankAccountId: acc?.kind === "BANK" ? acc.id : "",
+                                        paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                    }))}
+                                />
+                            </div>
+                        )}
 
                         <div className="space-y-2">
                             <label className="block text-[11px] font-semibold text-gray-500 pl-1 mb-1.5">Payment date</label>

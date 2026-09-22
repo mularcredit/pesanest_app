@@ -1,5 +1,6 @@
 
 import prisma from "@/lib/prisma";
+import { resolveTransferLeg } from "./cash-movement-gl";
 
 // ─── Helpers ────────────────────────────────────────────────────────────────
 
@@ -637,16 +638,14 @@ export class AccountingEngine {
             });
         }
 
-        const bankAccount = await prisma.account.upsert({
-            where: { code: '1000' },
-            update: {},
-            create: {
-                code: '1000',
-                name: 'Cash & Bank',
-                type: 'ASSET',
-                subtype: 'CURRENT_ASSET',
-                description: 'Default cash account for asset purchases'
-            }
+        // Cash side resolves to whichever real bank/paybill account this
+        // actually settled through, so it lands on that account's own
+        // glAccountId and is visible to Bank Reconciliation — falling back
+        // to a generic Cash on Hand bucket only when no account was picked.
+        const bankAccount = await resolveTransferLeg(prisma as any, {
+            bankAccountId: asset.bankAccountId || null,
+            paybillAccountId: asset.paybillAccountId || null,
+            kind: asset.paybillAccountId ? 'PAYBILL' : 'BANK',
         });
 
         try {
@@ -778,7 +777,11 @@ export class AccountingEngine {
      * WHT-aware: if the invoice has a whtAmount, splits posting into
      *   Dr AP (gross) / Cr Cash (net of WHT) / Cr WHT Payable 2300
      */
-    static async postVendorPayment(invoiceId: string, paymentAmount: number) {
+    static async postVendorPayment(
+        invoiceId: string,
+        paymentAmount: number,
+        settlement?: { bankAccountId?: string | null; paybillAccountId?: string | null }
+    ) {
         const invoice = await prisma.invoice.findUnique({
             where: { id: invoiceId },
             include: { vendor: true }
@@ -787,7 +790,15 @@ export class AccountingEngine {
         if (!invoice) throw new Error("Invoice not found");
 
         const apAccount = await prisma.account.findFirst({ where: { code: '2000' } });
-        const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
+        // Cash side resolves to whichever real bank/paybill account this
+        // actually settled through, so it lands on that account's own
+        // glAccountId and is visible to Bank Reconciliation — falling back
+        // to a generic Cash on Hand bucket only when no account was picked.
+        const cashAccount = await resolveTransferLeg(prisma as any, {
+            bankAccountId: settlement?.bankAccountId || null,
+            paybillAccountId: settlement?.paybillAccountId || null,
+            kind: settlement?.paybillAccountId ? 'PAYBILL' : 'BANK',
+        });
 
         if (!apAccount || !cashAccount) throw new Error("Missing AP (2000) or Cash (1000) Account");
 
