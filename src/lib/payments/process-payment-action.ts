@@ -204,6 +204,20 @@ export async function processPaymentAction(params: {
 
     const wallet = await prisma.wallet.findUnique({ where: { userId } });
 
+    // A Wallet row is only ever created by the public signup flow — a user
+    // added any other way (invited by an admin, seeded, etc.) has none. Fail
+    // before any money moves: without this guard, `wallet!.id` below crashes
+    // with "Cannot read properties of null (reading 'id')" AFTER the Paystack
+    // payout has already succeeded and BEFORE the item's status is set to
+    // PAID, leaving it eligible to be disbursed again for real money.
+    if ((paymentMethod === 'WALLET' || paymentMethod === 'BRANCH_WALLET') && !wallet) {
+        return {
+            ok: false,
+            error: 'No wallet is set up for your account — an administrator needs to create one before you can disburse payments.',
+            status: 400,
+        };
+    }
+
     let liveBalance = wallet?.balance ?? 0;
     if (paymentMethod === 'WALLET') {
         try {
@@ -291,13 +305,24 @@ export async function processPaymentAction(params: {
                     throw new Error('No recipient details available');
                 }
 
-                await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: req.amount } } });
-                await prisma.walletTransaction.create({
-                    data: {
-                        walletId: wallet!.id, userId, type: 'PAYOUT', amount: -req.amount,
-                        description: `Payout for Requisition: ${req.title}`, reference: txId,
-                    },
-                });
+                // The money has now actually moved via Paystack and cannot be
+                // undone — mark this requisition PAID immediately, before any
+                // further step that could still fail (wallet ledger, GL
+                // posting). Otherwise a failure here leaves the requisition
+                // payable again while the payout already went through.
+                await (prisma as any).requisition.update({ where: { id: req.id }, data: { status: 'PAID' } });
+
+                try {
+                    await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: req.amount } } });
+                    await prisma.walletTransaction.create({
+                        data: {
+                            walletId: wallet!.id, userId, type: 'PAYOUT', amount: -req.amount,
+                            description: `Payout for Requisition: ${req.title}`, reference: txId,
+                        },
+                    });
+                } catch (ledgerErr) {
+                    console.error(`[Disbursement] Requisition ${req.id} paid via Paystack (ref ${txId}) but wallet ledger update failed — needs manual reconciliation:`, ledgerErr);
+                }
             } else if (paymentMethod === 'BRANCH_WALLET') {
                 const branchId = req.branchId || req.branch;
                 if (!branchId) throw new Error('No branch ID associated with this requisition for branch funding.');
@@ -323,9 +348,12 @@ export async function processPaymentAction(params: {
                         },
                     });
                 });
-            }
 
-            await (prisma as any).requisition.update({ where: { id: req.id }, data: { status: 'PAID' } });
+                // Purely an internal ledger transfer wrapped in the $transaction
+                // above (no external, irreversible call) — safe to mark PAID
+                // only once that transaction has committed.
+                await (prisma as any).requisition.update({ where: { id: req.id }, data: { status: 'PAID' } });
+            }
 
             const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postRequisitionPayment(req.id, cashAccount.id);
@@ -366,16 +394,25 @@ export async function processPaymentAction(params: {
                     throw new Error('No recipient details available');
                 }
 
-                await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: exp.amount } } });
-                await prisma.walletTransaction.create({
-                    data: {
-                        walletId: wallet!.id, userId, type: 'PAYOUT', amount: -exp.amount,
-                        description: `Payout for Expense: ${exp.title}`, reference: txId,
-                    },
-                });
-            }
+                // Mark PAID immediately after the (irreversible) Paystack payout
+                // succeeds, before wallet bookkeeping that could still fail —
+                // see the matching comment in the requisitions loop above.
+                await prisma.expense.update({ where: { id: exp.id }, data: { status: 'PAID', paidAt: new Date() } });
 
-            await prisma.expense.update({ where: { id: exp.id }, data: { status: 'PAID', paidAt: new Date() } });
+                try {
+                    await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: exp.amount } } });
+                    await prisma.walletTransaction.create({
+                        data: {
+                            walletId: wallet!.id, userId, type: 'PAYOUT', amount: -exp.amount,
+                            description: `Payout for Expense: ${exp.title}`, reference: txId,
+                        },
+                    });
+                } catch (ledgerErr) {
+                    console.error(`[Disbursement] Expense ${exp.id} paid via Paystack (ref ${txId}) but wallet ledger update failed — needs manual reconciliation:`, ledgerErr);
+                }
+            } else {
+                await prisma.expense.update({ where: { id: exp.id }, data: { status: 'PAID', paidAt: new Date() } });
+            }
 
             const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postExpensePayment(exp.id, cashAccount.id);
@@ -419,19 +456,31 @@ export async function processPaymentAction(params: {
                     throw new Error('No recipient details available for vendor');
                 }
 
-                await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: inv.amount } } });
-                await prisma.walletTransaction.create({
-                    data: {
-                        walletId: wallet!.id, userId, type: 'PAYOUT', amount: -inv.amount,
-                        description: `Payout for Invoice: ${inv.invoiceNumber}`, reference: txId,
-                    },
+                // Mark PAID immediately after the (irreversible) Paystack payout
+                // succeeds, before wallet bookkeeping that could still fail —
+                // see the matching comment in the requisitions loop above.
+                await prisma.invoice.update({
+                    where: { id: inv.id },
+                    data: { status: 'PAID', paymentStatus: 'PAID', paidAt: new Date() },
+                });
+
+                try {
+                    await prisma.wallet.update({ where: { id: wallet!.id }, data: { balance: { decrement: inv.amount } } });
+                    await prisma.walletTransaction.create({
+                        data: {
+                            walletId: wallet!.id, userId, type: 'PAYOUT', amount: -inv.amount,
+                            description: `Payout for Invoice: ${inv.invoiceNumber}`, reference: txId,
+                        },
+                    });
+                } catch (ledgerErr) {
+                    console.error(`[Disbursement] Invoice ${inv.id} paid via Paystack (ref ${txId}) but wallet ledger update failed — needs manual reconciliation:`, ledgerErr);
+                }
+            } else {
+                await prisma.invoice.update({
+                    where: { id: inv.id },
+                    data: { status: 'PAID', paymentStatus: 'PAID', paidAt: new Date() },
                 });
             }
-
-            await prisma.invoice.update({
-                where: { id: inv.id },
-                data: { status: 'PAID', paymentStatus: 'PAID', paidAt: new Date() },
-            });
 
             const cashAccount = await prisma.account.findFirst({ where: { code: '1000' } });
             if (cashAccount) await (AccountingEngine as any).postInvoicePayment(inv.id, cashAccount.id);
