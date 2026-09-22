@@ -100,7 +100,7 @@ export function WalletCard({
                             }} />
                             <span className="text-[8px] font-[600] uppercase tracking-[0.18em]"
                                 style={{ color: 'rgba(255,255,255,0.35)' }}>
-                                Corporate
+                                Fahari Gold
                             </span>
                         </div>
 

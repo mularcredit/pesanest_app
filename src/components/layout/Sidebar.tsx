@@ -88,7 +88,7 @@ const menuCategories: MenuCategory[] = [
         title: "Financial",
         icon: PiCoins,
         items: [
-            { name: "Corporate wallet", href: "/dashboard/wallet", icon: PiChartPieSlice },
+            { name: "Fahari wallet", href: "/dashboard/wallet", icon: PiChartPieSlice },
             { name: "Petty cash", href: "/dashboard/petty-cash", icon: PiCoins },
             { name: "Transfers", href: "/dashboard/transfers", icon: PiArrowsLeftRight },
             { name: "Budgets", href: "/dashboard/budgets", icon: PiTrendUp },

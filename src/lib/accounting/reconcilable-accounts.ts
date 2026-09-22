@@ -35,7 +35,7 @@ export async function resolveReconcilableAccount(id: string): Promise<Reconcilab
         where: { id },
         select: { id: true, glAccountId: true },
     });
-    if (wallet?.glAccountId) return { kind: 'WALLET', id: wallet.id, label: 'Corporate Wallet', glAccountId: wallet.glAccountId };
+    if (wallet?.glAccountId) return { kind: 'WALLET', id: wallet.id, label: 'Fahari Wallet', glAccountId: wallet.glAccountId };
 
     const paystack = await prisma.paystackAccount.findUnique({
         where: { id },

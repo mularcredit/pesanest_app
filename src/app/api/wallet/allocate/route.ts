@@ -25,8 +25,8 @@ export async function POST(req: NextRequest) {
 
         // Pre-fetch outside transaction to keep it short
         const wallet = await prisma.wallet.findUnique({ where: { userId: (session as any).user.id } });
-        if (!wallet) throw new Error('Corporate wallet not found for your account.');
-        if (wallet.balance < allocationAmount) throw new Error('Insufficient balance in Corporate wallet.');
+        if (!wallet) throw new Error('Fahari wallet not found for your account.');
+        if (wallet.balance < allocationAmount) throw new Error('Insufficient balance in Fahari wallet.');
 
         let branchWallet = await prisma.branchWallet.findUnique({ where: { branchId } });
         if (!branchWallet) {

@@ -98,7 +98,7 @@ export async function postVirtualTopup(tx: Tx, params: {
 }) {
     const cashAcct = params.walletGlAccountId
         ? await tx.account.findUnique({ where: { id: params.walletGlAccountId } })
-        : await findOrCreate(tx, '1001', 'Cash — Corporate Wallet', 'ASSET', 'CASH');
+        : await findOrCreate(tx, '1001', 'Cash — Fahari Wallet', 'ASSET', 'CASH');
 
     if (!cashAcct) throw new Error('Wallet GL account not found');
 
@@ -127,7 +127,7 @@ export async function postPaystackTopup(tx: Tx, params: {
 }) {
     const cashAcct = params.walletGlAccountId
         ? await tx.account.findUnique({ where: { id: params.walletGlAccountId } })
-        : await findOrCreate(tx, '1001', 'Cash — Corporate Wallet', 'ASSET', 'CASH');
+        : await findOrCreate(tx, '1001', 'Cash — Fahari Wallet', 'ASSET', 'CASH');
 
     if (!cashAcct) throw new Error('Wallet GL account not found');
 
@@ -158,7 +158,7 @@ export async function postWalletAllocation(tx: Tx, params: {
 }) {
     const hqAcct = params.hqGlAccountId
         ? await tx.account.findUnique({ where: { id: params.hqGlAccountId } })
-        : await findOrCreate(tx, '1001', 'Cash — Corporate Wallet', 'ASSET', 'CASH');
+        : await findOrCreate(tx, '1001', 'Cash — Fahari Wallet', 'ASSET', 'CASH');
 
     const branchAcct = params.branchGlAccountId
         ? await tx.account.findUnique({ where: { id: params.branchGlAccountId } })

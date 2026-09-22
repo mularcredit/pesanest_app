@@ -59,7 +59,7 @@ export function WalletPageClient({
             {/* Page header */}
             <div className="pb-5 flex items-start justify-between gap-4">
                 <div>
-                    <h1 className="text-[20px] font-[600] text-gray-900 tracking-tight">Corporate Wallet</h1>
+                    <h1 className="text-[20px] font-[600] text-gray-900 tracking-tight">Fahari Wallet</h1>
                     <p className="text-[12.5px] text-gray-400 mt-0.5">
                         {`${txLedger.length} ${txLedger.length === 1 ? 'transaction' : 'transactions'} · balance auto-synced`}
                     </p>

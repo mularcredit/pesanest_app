@@ -428,7 +428,7 @@ export default async function DashboardPage() {
                         currency={wallet?.currency === 'USD' ? 'KES' : (wallet?.currency ?? 'KES')}
                         branches={branchesData.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))}
                         isPaystack={paystackConnected}
-                        holderName={currentUserWithPaystack?.name || "Corporate Wallet"}
+                        holderName={currentUserWithPaystack?.name || "Fahari Wallet"}
                     />
 
                     {/* Approval ring chart */}

@@ -133,7 +133,7 @@ export default async function WalletPage() {
                 dbBalance={dbBalance}
                 currency={wallet.currency}
                 branches={branchesData.map(b => ({ id: b.id, name: b.name }))}
-                holderName={session.user.name || "Corporate Wallet"}
+                holderName={session.user.name || "Fahari Wallet"}
                 isAdmin={isAdmin}
                 txLedger={txLedger}
             />

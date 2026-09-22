@@ -284,7 +284,7 @@ export function BulkAllocateModal({
                             style={{ borderTop: HAIRLINE, background: isOverBudget ? 'rgba(239,68,68,0.03)' : 'rgba(0,0,0,0.015)' }}>
                             <div className="flex items-center gap-1.5">
                                 <PiCurrencyDollar className="text-gray-400 text-[13px]" />
-                                <span className="text-[11px] text-gray-500">Corporate balance:</span>
+                                <span className="text-[11px] text-gray-500">Fahari balance:</span>
                                 <span className="text-[12px] font-[600] text-gray-900 tabular-nums font-mono">
                                     {currency} {fmtAmt(corporateBalance)}
                                 </span>

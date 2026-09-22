@@ -42,7 +42,7 @@ export async function POST(req: NextRequest) {
             const wallet = await tx.wallet.findUnique({
                 where: { userId }
             });
-            if (!wallet) throw new Error('Corporate wallet not found.');
+            if (!wallet) throw new Error('Fahari wallet not found.');
             if (wallet.balance < totalAmount) {
                 throw new Error(
                     `Insufficient balance. Wallet has ${wallet.currency} ${wallet.balance.toFixed(2)} but total allocation is ${wallet.currency} ${totalAmount.toFixed(2)}.`
@@ -64,13 +64,13 @@ export async function POST(req: NextRequest) {
                     });
                 }
 
-                // Deduct from corporate wallet
+                // Deduct from Fahari wallet
                 await tx.wallet.update({
                     where: { id: wallet.id },
                     data: { balance: { decrement: amount } }
                 });
 
-                // Corporate wallet debit transaction
+                // Fahari wallet debit transaction
                 await tx.walletTransaction.create({
                     data: {
                         walletId: wallet.id,

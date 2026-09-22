@@ -42,7 +42,7 @@ export default async function BankReconciliationPage({
     const accounts = [
         ...bankRows.map(b => ({ id: b.id, kind: 'BANK' as const, label: `${b.name} — ${b.bankName}`, currency: b.currency, glAccountId: b.glAccountId })),
         ...paybillRows.map(p => ({ id: p.id, kind: 'PAYBILL' as const, label: `${p.name} — ${p.paybillNumber}`, currency: 'KES', glAccountId: p.glAccountId })),
-        ...walletRows.map(w => ({ id: w.id, kind: 'WALLET' as const, label: 'Corporate Wallet', currency: w.currency, glAccountId: w.glAccountId! })),
+        ...walletRows.map(w => ({ id: w.id, kind: 'WALLET' as const, label: 'Fahari Wallet', currency: w.currency, glAccountId: w.glAccountId! })),
         ...paystackRows.map(p => ({ id: p.id, kind: 'PAYSTACK' as const, label: p.name, currency: p.currency, glAccountId: p.glAccountId })),
     ];
 
