@@ -14,6 +14,8 @@ import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/Modal";
+import { useSession } from "next-auth/react";
+import Avatar, { genConfig } from "react-nice-avatar";
 
 interface Notification {
     id: string;
@@ -33,6 +35,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const pathname = usePathname();
     const router = useRouter();
     const { showToast } = useToast();
+    const { data: session } = useSession();
+    const user = session?.user;
     
     
     const notificationsRef = useRef<HTMLDivElement>(null);
@@ -307,6 +311,14 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                     className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-[var(--glass-h)] group text-gray-500">
                     <PiSquaresFour className="text-xl group-hover:text-[var(--p)] transition-colors" />
                 </button>
+
+                {/* User avatar */}
+                <Link href="/dashboard/settings" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-[var(--p-line)] transition-all">
+                    <Avatar
+                        style={{ width: '34px', height: '34px', borderRadius: '50%' }}
+                        {...genConfig(user?.name || "User")}
+                    />
+                </Link>
             </div>
 
         </header>

@@ -278,7 +278,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
         <aside className={cn("sb", isOpen ? 'translate-x-0' : '-translate-x-full', "lg:translate-x-0 fixed lg:static transition-transform duration-300 z-50")}>
             <div className="sb-logo justify-between">
                 <Link href="/dashboard" className="flex items-center gap-2">
-                    <BrandLogo width={112} height={36} color="rgba(255,255,255,0.88)" />
+                    <BrandLogo width={112} height={36} color="var(--sb-logo)" />
                 </Link>
                 <button onClick={onClose} className="lg:hidden text-[var(--t-muted)] hover:text-[var(--t1)] transition-colors">
                     <PiX />
@@ -294,7 +294,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
                     return (
                         <div key={category.title} className={cn("nav-group", isOpen ? 'open' : '')}>
                             <div
-                                className={cn("nav-group-trigger", hasActiveChild && !isOpen ? 'text-[var(--sb-active)] font-bold' : '')}
+                                className={cn("nav-group-trigger", hasActiveChild && !isOpen ? 'text-[var(--nav-accent)] font-bold' : '')}
                                 onClick={() => toggleGroup(category.title)}
                             >
                                 <Icon />
@@ -370,7 +370,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
 
                 <div className="sb-powered">
                     <span>Powered by</span>
-                    <BrandLogo width={78} height={24} color="#ffffff" />
+                    <BrandLogo width={78} height={24} color="var(--sb-logo)" />
                 </div>
             </div>
         </aside>
