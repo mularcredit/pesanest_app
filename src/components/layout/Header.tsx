@@ -16,6 +16,7 @@ import { useToast } from "@/components/ui/ToastProvider";
 import { ConfirmationModal } from "@/components/ui/Modal";
 import { useSession } from "next-auth/react";
 import Avatar, { genConfig } from "react-nice-avatar";
+import { EditableImage } from "@/components/finance-studio/EditableImage";
 
 interface Notification {
     id: string;
@@ -178,12 +179,22 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     return (
         <div className="flex-shrink-0 sticky top-0 z-40" style={{ background: 'var(--sidebar)' }}>
         <header className="topbar px-4 md:px-8">
-            {/* Left: Breadcrumbs & Search */}
+            {/* Left: Company logo, Breadcrumbs & Search */}
             <div className="flex items-center gap-4 md:gap-6 flex-1">
                 {/* Mobile Menu Toggle */}
-                <button onClick={onMenuClick} className="lg:hidden p-2 -ml-2 text-2xl transition-colors hover:bg-white/10 rounded-lg text-white/70">
+                <button onClick={onMenuClick} className="lg:hidden p-2 -ml-2 text-2xl transition-colors hover:bg-white/10 hover:text-[#FBBF24] rounded-lg text-white">
                     <PiList />
                 </button>
+
+                {/* Company logo — each tenant uploads their own, shown here once signed in.
+                    White backing chip so the logo stays legible regardless of what
+                    color the uploaded artwork is, against this green header. */}
+                <EditableImage
+                    settingKey="watermark_logo"
+                    defaultSrc="__REMOVE__"
+                    alt="Company Logo"
+                    className="h-9 w-[120px] shrink-0 hidden sm:flex items-center justify-center bg-white rounded-[7px] px-2 py-1"
+                />
 
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-2 text-sm">
@@ -209,16 +220,16 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* Help */}
                 <button
                     onClick={() => handleNotImplemented("Help Center")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white/70">
-                    <PiQuestion className="text-xl group-hover:text-white transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white">
+                    <PiQuestion className="text-xl group-hover:text-[#FBBF24] transition-colors" />
                 </button>
 
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                     <button
                         onClick={() => setNotificationsOpen(!notificationsOpen)}
-                        className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white/70">
-                        <PiEnvelope className="text-[22px] group-hover:text-white transition-colors" />
+                        className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white">
+                        <PiEnvelope className="text-[22px] group-hover:text-[#FBBF24] transition-colors" />
                         {unreadCount > 0 && (
                             <>
                                 <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--p)', boxShadow: '0 0 8px var(--p-glow)' }}></span>
@@ -308,8 +319,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* App Switcher */}
                 <button
                     onClick={() => handleNotImplemented("App Switcher")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-white/10 group text-white/70">
-                    <PiSquaresFour className="text-xl group-hover:text-white transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-white/10 group text-white">
+                    <PiSquaresFour className="text-xl group-hover:text-[#FBBF24] transition-colors" />
                 </button>
 
                 {/* User avatar */}
