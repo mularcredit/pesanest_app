@@ -638,14 +638,15 @@ export class AccountingEngine {
             });
         }
 
-        // Cash side resolves to whichever real bank/paybill account this
-        // actually settled through, so it lands on that account's own
+        // Cash side resolves to whichever real bank/paybill/Paystack account
+        // this actually settled through, so it lands on that account's own
         // glAccountId and is visible to Bank Reconciliation — falling back
         // to a generic Cash on Hand bucket only when no account was picked.
         const bankAccount = await resolveTransferLeg(prisma as any, {
             bankAccountId: asset.bankAccountId || null,
             paybillAccountId: asset.paybillAccountId || null,
-            kind: asset.paybillAccountId ? 'PAYBILL' : 'BANK',
+            paystackAccountId: asset.paystackAccountId || null,
+            kind: asset.paystackAccountId ? 'PAYSTACK' : asset.paybillAccountId ? 'PAYBILL' : 'BANK',
         });
 
         try {
@@ -780,7 +781,7 @@ export class AccountingEngine {
     static async postVendorPayment(
         invoiceId: string,
         paymentAmount: number,
-        settlement?: { bankAccountId?: string | null; paybillAccountId?: string | null }
+        settlement?: { bankAccountId?: string | null; paybillAccountId?: string | null; paystackAccountId?: string | null }
     ) {
         const invoice = await prisma.invoice.findUnique({
             where: { id: invoiceId },
@@ -790,14 +791,15 @@ export class AccountingEngine {
         if (!invoice) throw new Error("Invoice not found");
 
         const apAccount = await prisma.account.findFirst({ where: { code: '2000' } });
-        // Cash side resolves to whichever real bank/paybill account this
-        // actually settled through, so it lands on that account's own
+        // Cash side resolves to whichever real bank/paybill/Paystack account
+        // this actually settled through, so it lands on that account's own
         // glAccountId and is visible to Bank Reconciliation — falling back
         // to a generic Cash on Hand bucket only when no account was picked.
         const cashAccount = await resolveTransferLeg(prisma as any, {
             bankAccountId: settlement?.bankAccountId || null,
             paybillAccountId: settlement?.paybillAccountId || null,
-            kind: settlement?.paybillAccountId ? 'PAYBILL' : 'BANK',
+            paystackAccountId: settlement?.paystackAccountId || null,
+            kind: settlement?.paystackAccountId ? 'PAYSTACK' : settlement?.paybillAccountId ? 'PAYBILL' : 'BANK',
         });
 
         if (!apAccount || !cashAccount) throw new Error("Missing AP (2000) or Cash (1000) Account");

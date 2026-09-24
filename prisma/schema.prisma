@@ -513,11 +513,12 @@ model Payment {
   method         String          @default("BANK_TRANSFER")
   reference      String?
   notes          String?
-  // Which real bank/paybill account this settled through — lets the GL cash
-  // leg post to that account's own glAccountId instead of a generic
-  // fallback, so it's visible to Bank Reconciliation.
+  // Which real bank/paybill/Paystack account this settled through — lets
+  // the GL cash leg post to that account's own glAccountId instead of a
+  // generic fallback, so it's visible to Bank Reconciliation.
   bankAccountId    String?
   paybillAccountId String?
+  paystackAccountId String?
   authorizedAt   DateTime?
   processedAt    DateTime?
   createdAt      DateTime        @default(now())
@@ -658,11 +659,12 @@ model CustomerPayment {
   saleId      String?
   notes       String?
   invoiceUrl  String?
-  // Which real bank/paybill account this actually settled through — lets the
-  // GL cash-side entry post to that account's own glAccountId instead of a
-  // generic fallback, so it's visible to Bank Reconciliation.
+  // Which real bank/paybill/Paystack account this actually settled through —
+  // lets the GL cash-side entry post to that account's own glAccountId
+  // instead of a generic fallback, so it's visible to Bank Reconciliation.
   bankAccountId    String?
   paybillAccountId String?
+  paystackAccountId String?
   createdAt   DateTime @default(now())
   updatedAt   DateTime @updatedAt
   customer    Customer @relation(fields: [customerId], references: [id])
@@ -826,11 +828,12 @@ model Asset {
   notes              String?
   imageUrl           String?
   receiptUrl         String?
-  // Which real bank/paybill account this was actually paid from — lets the
-  // GL cash-side entry post to that account's own glAccountId instead of a
-  // generic fallback, so it's visible to Bank Reconciliation.
+  // Which real bank/paybill/Paystack account this was actually paid from —
+  // lets the GL cash-side entry post to that account's own glAccountId
+  // instead of a generic fallback, so it's visible to Bank Reconciliation.
   bankAccountId      String?
   paybillAccountId   String?
+  paystackAccountId  String?
   createdAt          DateTime  @default(now())
   updatedAt          DateTime  @updatedAt
   assignedTo         User?     @relation(fields: [assignedToId], references: [id])

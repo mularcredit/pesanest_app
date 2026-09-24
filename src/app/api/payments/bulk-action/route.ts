@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
             paymentMethod?: any;
             proofUrl?: string;
             settlementAccountId?: string;
-            settlementKind?: 'BANK' | 'PAYBILL';
+            settlementKind?: 'BANK' | 'PAYBILL' | 'PAYSTACK';
         };
         const settlement = settlementAccountId || settlementKind ? { accountId: settlementAccountId, kind: settlementKind } : undefined;
 

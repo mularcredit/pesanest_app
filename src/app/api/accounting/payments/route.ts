@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
             notes,
             bankAccountId,
             paybillAccountId,
+            paystackAccountId,
         } = body;
 
         // Validation
@@ -85,6 +86,7 @@ export async function POST(req: NextRequest) {
                 notes: notes || null,
                 bankAccountId: bankAccountId || null,
                 paybillAccountId: paybillAccountId || null,
+                paystackAccountId: paystackAccountId || null,
             },
             include: {
                 customer: {
@@ -140,7 +142,8 @@ export async function POST(req: NextRequest) {
             const cashAccount = await resolveTransferLeg(prisma as any, {
                 bankAccountId: bankAccountId || null,
                 paybillAccountId: paybillAccountId || null,
-                kind: paybillAccountId ? 'PAYBILL' : 'BANK',
+                paystackAccountId: paystackAccountId || null,
+                kind: paystackAccountId ? 'PAYSTACK' : paybillAccountId ? 'PAYBILL' : 'BANK',
             });
 
             let arAccount = await prisma.account.findUnique({ where: { code: '1200' } });
@@ -207,7 +210,7 @@ export async function PATCH(req: NextRequest) {
         }
 
         const body = await req.json();
-        const { id, amount, paymentDate, method, reference, notes, bankAccountId, paybillAccountId } = body;
+        const { id, amount, paymentDate, method, reference, notes, bankAccountId, paybillAccountId, paystackAccountId } = body;
 
         if (!id) {
             return NextResponse.json({ error: "Payment ID is required" }, { status: 400 });
@@ -234,6 +237,7 @@ export async function PATCH(req: NextRequest) {
                 notes: notes, // Allow null/empty updates
                 bankAccountId: bankAccountId !== undefined ? (bankAccountId || null) : undefined,
                 paybillAccountId: paybillAccountId !== undefined ? (paybillAccountId || null) : undefined,
+                paystackAccountId: paystackAccountId !== undefined ? (paystackAccountId || null) : undefined,
             },
             include: {
                 customer: true,
@@ -275,7 +279,8 @@ export async function PATCH(req: NextRequest) {
             const cashAccount = await resolveTransferLeg(prisma as any, {
                 bankAccountId: updatedPayment.bankAccountId || null,
                 paybillAccountId: updatedPayment.paybillAccountId || null,
-                kind: updatedPayment.paybillAccountId ? 'PAYBILL' : 'BANK',
+                paystackAccountId: updatedPayment.paystackAccountId || null,
+                kind: updatedPayment.paystackAccountId ? 'PAYSTACK' : updatedPayment.paybillAccountId ? 'PAYBILL' : 'BANK',
             });
 
             const arAccount = await prisma.account.upsert({

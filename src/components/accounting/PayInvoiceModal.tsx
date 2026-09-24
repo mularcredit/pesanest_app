@@ -50,6 +50,7 @@ export function PayInvoiceModal({ invoice, onClose }: PayInvoiceModalProps) {
         settlementId: '',
         bankAccountId: '',
         paybillAccountId: '',
+        paystackAccountId: '',
     });
 
     useEffect(() => { setMounted(true); }, []);
@@ -182,6 +183,7 @@ export function PayInvoiceModal({ invoice, onClose }: PayInvoiceModalProps) {
                                     settlementId: acc?.id || "",
                                     bankAccountId: acc?.kind === "BANK" ? acc.id : "",
                                     paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                    paystackAccountId: acc?.kind === "PAYSTACK" ? acc.id : "",
                                 }))}
                             />
                         )}

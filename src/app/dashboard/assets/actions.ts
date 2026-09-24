@@ -26,6 +26,7 @@ type AssetInput = {
     depreciationRate?: string;
     bankAccountId?: string;
     paybillAccountId?: string;
+    paystackAccountId?: string;
 };
 
 /*
@@ -126,6 +127,7 @@ export async function createAsset(data: AssetInput) {
                 depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null,
                 bankAccountId: data.bankAccountId || null,
                 paybillAccountId: data.paybillAccountId || null,
+                paystackAccountId: data.paystackAccountId || null,
             }
         });
 
@@ -206,6 +208,7 @@ export async function updateAsset(id: string, data: AssetInput) {
                 depreciationRate: data.depreciationRate ? parseFloat(data.depreciationRate) : null,
                 bankAccountId: data.bankAccountId || null,
                 paybillAccountId: data.paybillAccountId || null,
+                paystackAccountId: data.paystackAccountId || null,
             }
         });
 

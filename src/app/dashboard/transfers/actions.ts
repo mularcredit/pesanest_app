@@ -136,6 +136,15 @@ export async function getPaybillAccounts() {
     }));
 }
 
+export async function getPaystackAccounts() {
+    const rows = await (prisma as any).paystackAccount.findMany({
+        where: { isActive: true },
+        select: { id: true, name: true, currency: true },
+        orderBy: { name: 'asc' },
+    });
+    return rows.map((p: any) => ({ id: p.id, label: p.name, currency: p.currency }));
+}
+
 /**
  * Which legs of each transfer type map onto a GL account we can post to.
  * A leg that is an outside party (a customer paying our paybill, a payee's

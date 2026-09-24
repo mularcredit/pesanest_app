@@ -42,7 +42,7 @@ const BLANK_ASSET = {
     purchasePrice: "", serialNumber: "", assetTag: "",
     location: "Main Office", assignedToId: "", notes: "",
     depreciationMethod: "NONE", usefulLifeYears: "", salvageValue: "", depreciationRate: "",
-    bankAccountId: "", paybillAccountId: "",
+    bankAccountId: "", paybillAccountId: "", paystackAccountId: "",
 };
 
 type AssetRecord = {
@@ -66,6 +66,7 @@ type AssetRecord = {
     isPosted?: boolean;
     bankAccountId?: string | null;
     paybillAccountId?: string | null;
+    paystackAccountId?: string | null;
 };
 
 type AssetStats = {
@@ -156,6 +157,7 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
             depreciationRate: asset.depreciationRate != null ? String(asset.depreciationRate) : "",
             bankAccountId: asset.bankAccountId || "",
             paybillAccountId: asset.paybillAccountId || "",
+            paystackAccountId: asset.paystackAccountId || "",
         });
         setPurchaseReceipt(asset.receiptUrl || null);
         setEditingAssetId(asset.id);
@@ -323,11 +325,12 @@ export function AssetManager({ assets, stats }: { assets: AssetRecord[]; stats: 
                         <div>
                             <SettlementAccountPicker
                                 label="Paid from"
-                                value={newAsset.bankAccountId || newAsset.paybillAccountId}
+                                value={newAsset.bankAccountId || newAsset.paybillAccountId || newAsset.paystackAccountId}
                                 onChange={acc => setNewAsset({
                                     ...newAsset,
                                     bankAccountId: acc?.kind === "BANK" ? acc.id : "",
                                     paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                    paystackAccountId: acc?.kind === "PAYSTACK" ? acc.id : "",
                                 })}
                             />
                         </div>

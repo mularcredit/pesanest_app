@@ -14,19 +14,20 @@ import { resolveTransferLeg } from "@/lib/accounting/cash-movement-gl";
 
 export type PaymentAction = 'AUTHORIZE' | 'REJECT' | 'DISBURSE' | 'CLOSE';
 export type PaymentMethod = 'WALLET' | 'BRANCH_WALLET' | 'CASH';
-export type CashSettlement = { accountId?: string | null; kind?: 'BANK' | 'PAYBILL' };
+export type CashSettlement = { accountId?: string | null; kind?: 'BANK' | 'PAYBILL' | 'PAYSTACK' };
 
 /**
  * Where a CASH ("already paid") disbursement actually credits in the GL.
  * Without a settlement pick, everything piles into the generic Cash & Bank
- * (1000) account, making it impossible to reconcile a specific bank/paybill
- * statement against money that really moved through it.
+ * (1000) account, making it impossible to reconcile a specific bank/paybill/
+ * Paystack statement against money that really moved through it.
  */
 async function resolveCashGlAccount(settlement?: CashSettlement) {
     return resolveTransferLeg(prisma as any, {
         bankAccountId: settlement?.kind === 'BANK' ? (settlement.accountId ?? null) : null,
         paybillAccountId: settlement?.kind === 'PAYBILL' ? (settlement.accountId ?? null) : null,
-        kind: settlement?.kind === 'PAYBILL' ? 'PAYBILL' : 'BANK',
+        paystackAccountId: settlement?.kind === 'PAYSTACK' ? (settlement.accountId ?? null) : null,
+        kind: settlement?.kind === 'PAYBILL' ? 'PAYBILL' : settlement?.kind === 'PAYSTACK' ? 'PAYSTACK' : 'BANK',
     });
 }
 

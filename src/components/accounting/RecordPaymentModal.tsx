@@ -71,6 +71,7 @@ export function RecordPaymentModal({
         settlementId: "",
         bankAccountId: "",
         paybillAccountId: "",
+        paystackAccountId: "",
     });
 
     // Reset form when modal opens/closes
@@ -112,6 +113,7 @@ export function RecordPaymentModal({
                     notes: formData.notes || undefined,
                     bankAccountId: formData.bankAccountId || undefined,
                     paybillAccountId: formData.paybillAccountId || undefined,
+                    paystackAccountId: formData.paystackAccountId || undefined,
                 })
             });
 
@@ -135,6 +137,7 @@ export function RecordPaymentModal({
                 settlementId: "",
                 bankAccountId: "",
                 paybillAccountId: "",
+                paystackAccountId: "",
             });
 
         } catch (error: any) {
@@ -234,6 +237,7 @@ export function RecordPaymentModal({
                                         settlementId: acc?.id || "",
                                         bankAccountId: acc?.kind === "BANK" ? acc.id : "",
                                         paybillAccountId: acc?.kind === "PAYBILL" ? acc.id : "",
+                                        paystackAccountId: acc?.kind === "PAYSTACK" ? acc.id : "",
                                     }))}
                                 />
                             </div>

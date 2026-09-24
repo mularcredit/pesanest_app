@@ -17,6 +17,7 @@ export const GL_CODES = {
     CASH_ON_HAND: '1000',
     MOBILE_MONEY: '1030',
     PAYBILL_CLEARING: '1040',
+    PAYSTACK_CLEARING: '1003',
     BANK_CHARGES: '6100',
     CASH_OVER_SHORT: '6110',
 } as const;
@@ -55,7 +56,12 @@ async function pettyCashAccount(tx: Tx, glAccountId?: string | null) {
 /** Resolve the GL account for one leg of a transfer. */
 export async function resolveTransferLeg(
     tx: Tx,
-    leg: { bankAccountId?: string | null; paybillAccountId?: string | null; kind: 'BANK' | 'MOBILE' | 'PAYBILL' }
+    leg: {
+        bankAccountId?: string | null;
+        paybillAccountId?: string | null;
+        paystackAccountId?: string | null;
+        kind: 'BANK' | 'MOBILE' | 'PAYBILL' | 'PAYSTACK';
+    }
 ) {
     if (leg.bankAccountId) {
         const bank = await tx.bankAccount.findUnique({
@@ -71,12 +77,23 @@ export async function resolveTransferLeg(
         });
         if (paybill?.glAccount) return paybill.glAccount;
     }
+    if (leg.paystackAccountId) {
+        const paystack = await (tx as any).paystackAccount.findUnique({
+            where: { id: leg.paystackAccountId },
+            include: { glAccount: true },
+        });
+        if (paystack?.glAccount) return paystack.glAccount;
+    }
     if (leg.kind === 'MOBILE') {
         return findOrCreate(tx, GL_CODES.MOBILE_MONEY, 'Mobile Money Float', 'ASSET', 'CURRENT_ASSET');
     }
     if (leg.kind === 'PAYBILL') {
         // No saved paybill was picked — fall back to the shared clearing bucket.
         return findOrCreate(tx, GL_CODES.PAYBILL_CLEARING, 'Paybill Clearing', 'ASSET', 'CURRENT_ASSET');
+    }
+    if (leg.kind === 'PAYSTACK') {
+        // No saved Paystack account was picked — fall back to the shared clearing bucket.
+        return findOrCreate(tx, GL_CODES.PAYSTACK_CLEARING, 'Paystack Settlement Clearing', 'ASSET', 'CURRENT_ASSET');
     }
     return findOrCreate(tx, GL_CODES.CASH_ON_HAND, 'Cash on Hand', 'ASSET', 'CURRENT_ASSET');
 }

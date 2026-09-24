@@ -164,6 +164,7 @@ interface PaymentQueueProps {
     isSystemAdmin?: boolean;
     settlementBankAccounts?: { id: string; label: string; currency: string }[];
     settlementPaybillAccounts?: { id: string; label: string; paybillNumber: string; accountNumber: string | null }[];
+    settlementPaystackAccounts?: { id: string; label: string; currency: string }[];
 }
 
 export function PaymentQueue({
@@ -179,7 +180,8 @@ export function PaymentQueue({
     paystackStatus = 'NOT_CONNECTED',
     isSystemAdmin = false,
     settlementBankAccounts = [],
-    settlementPaybillAccounts = []
+    settlementPaybillAccounts = [],
+    settlementPaystackAccounts = []
 }: PaymentQueueProps) {
     const { showToast } = useToast();
     const router = useRouter();
@@ -227,11 +229,11 @@ export function PaymentQueue({
     const [paymentMethod, setPaymentMethod] = useState<'WALLET' | 'BRANCH_WALLET' | 'CASH'>('WALLET');
     // Only meaningful when paymentMethod === 'CASH' — which real account the cash settled
     // through, so the GL credit lands on that account instead of the generic Cash & Bank.
-    const [settlementChoice, setSettlementChoice] = useState(''); // encoded as "BANK:<id>" | "PAYBILL:<id>" | ""
+    const [settlementChoice, setSettlementChoice] = useState(''); // encoded as "BANK:<id>" | "PAYBILL:<id>" | "PAYSTACK:<id>" | ""
     const settlement = useMemo(() => {
         if (!settlementChoice) return null;
         const [kind, accountId] = settlementChoice.split(':');
-        return { kind: kind as 'BANK' | 'PAYBILL', accountId };
+        return { kind: kind as 'BANK' | 'PAYBILL' | 'PAYSTACK', accountId };
     }, [settlementChoice]);
     const [mounted, setMounted] = useState(false);
     // Default to list view for compact readability
@@ -469,6 +471,13 @@ export function PaymentQueue({
                     <optgroup label="Paybill accounts">
                         {settlementPaybillAccounts.map(p => (
                             <option key={p.id} value={`PAYBILL:${p.id}`}>{p.label}</option>
+                        ))}
+                    </optgroup>
+                )}
+                {settlementPaystackAccounts.length > 0 && (
+                    <optgroup label="Paystack accounts">
+                        {settlementPaystackAccounts.map(p => (
+                            <option key={p.id} value={`PAYSTACK:${p.id}`}>{p.label}</option>
                         ))}
                     </optgroup>
                 )}

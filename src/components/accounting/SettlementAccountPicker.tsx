@@ -4,7 +4,7 @@ import { useEffect, useState } from "react";
 
 export interface SettlementAccount {
     id: string;
-    kind: "BANK" | "PAYBILL";
+    kind: "BANK" | "PAYBILL" | "PAYSTACK";
     label: string;
     glAccountId: string | null;
 }
