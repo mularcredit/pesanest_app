@@ -17,8 +17,9 @@ import { SyncPermissionsButton } from "./SyncPermissionsButton";
 export default async function RolesPage() {
     const session = await auth();
 
-    // Roles management is restricted to SYSTEM_ADMIN only
-    if ((session?.user as any)?.role !== 'SYSTEM_ADMIN') redirect('/dashboard');
+    // Roles management is restricted to SYSTEM_ADMIN (Master Viewer may look, read-only)
+    const viewerRole = (session?.user as any)?.role;
+    if (viewerRole !== 'SYSTEM_ADMIN' && viewerRole !== 'MASTER_VIEWER') redirect('/dashboard');
 
     const roles = await prisma.role.findMany({
         include: {

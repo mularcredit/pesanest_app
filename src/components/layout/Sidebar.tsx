@@ -192,10 +192,13 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
         const role = (user as any).role || "EMPLOYEE";
         const permissions = (user as any).permissions || [];
 
-        // System Admin has full access
-        if (role === 'SYSTEM_ADMIN' || permissions.includes('*')) return true;
+        // System Admin has full access. Master Viewer can see every page too —
+        // this only decides nav visibility, never a mutation, and the Prisma
+        // client (src/lib/prisma.ts) is what actually blocks this role's writes.
+        if (role === 'SYSTEM_ADMIN' || role === 'MASTER_VIEWER' || permissions.includes('*')) return true;
 
-        // Roles management is SYSTEM_ADMIN only — no permission grant can open this
+        // Roles management is SYSTEM_ADMIN only — no permission grant can open
+        // this (Master Viewer already returned true above)
         if (href.startsWith('/dashboard/roles')) return role === 'SYSTEM_ADMIN';
 
         const requiredPermissions: Record<string, string[]> = {

@@ -19,6 +19,7 @@ const ROLE_LABELS: Record<string, string> = {
     FINANCE_APPROVER: 'Finance Approver',
     FINANCE_TEAM: 'Finance Team',
     SYSTEM_ADMIN: 'System Admin',
+    MASTER_VIEWER: 'Master Viewer',
     CUSTOM: 'Custom Role',
 };
 
@@ -29,6 +30,7 @@ const ROLE_META: Record<string, { cls: string; border: string }> = {
     MANAGER:          { cls: 'text-blue-600 bg-blue-50',       border: 'rgba(59,130,246,0.2)' },
     FINANCE_APPROVER: { cls: 'text-emerald-600 bg-emerald-50', border: 'rgba(16,185,129,0.2)' },
     FINANCE_WRITER:   { cls: 'text-teal-600 bg-teal-50',       border: 'rgba(20,184,166,0.2)' },
+    MASTER_VIEWER:    { cls: 'text-slate-600 bg-slate-100',    border: 'rgba(71,85,105,0.2)' },
     DEFAULT:          { cls: 'text-gray-500 bg-gray-100',      border: 'rgba(0,0,0,0.09)' },
 };
 

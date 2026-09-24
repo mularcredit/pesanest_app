@@ -69,6 +69,17 @@ const LEGACY_PERMISSIONS: Record<string, string[]> = {
         'EXPENSES.VIEW_OWN', 'EXPENSES.CREATE',
         'REQUISITIONS.VIEW_OWN', 'REQUISITIONS.CREATE',
     ],
+    // Read-only, everywhere. Deliberately left empty rather than granted
+    // any *.VIEW permissions individually: view access for this role is
+    // instead special-cased directly in access-control.ts/Sidebar.tsx
+    // (bypassing the permission list entirely, since the permission
+    // catalogue has gaps and this role needs to see every page regardless).
+    // An empty list here means any component that gates a Create/Edit/
+    // Delete/Approve button via permissions.includes(...) correctly hides
+    // it for this role — and the Prisma client (src/lib/prisma.ts) blocks
+    // every actual write at the database layer regardless of what any UI
+    // check does or doesn't hide.
+    'MASTER_VIEWER': [],
 };
 
 export const { handlers, signIn, signOut, auth } = NextAuth({

@@ -44,7 +44,9 @@ async function isAdmin(userId: string) {
         where: { id: userId },
         select: { role: true, customRole: { select: { isSystem: true } } },
     });
-    return user?.role === 'SYSTEM_ADMIN' || !!user?.customRole?.isSystem;
+    // Master Viewer's one interactive permission is chatting with Nuri — every
+    // tool below only reads data, so this is safe to allow same as an admin.
+    return user?.role === 'SYSTEM_ADMIN' || user?.role === 'MASTER_VIEWER' || !!user?.customRole?.isSystem;
 }
 
 async function glBalance(accountId: string) {

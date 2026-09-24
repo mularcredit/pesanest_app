@@ -36,6 +36,7 @@ const STANDARD_ROLES = [
     { value: 'FINANCE_WRITER', label: 'Finance Writer' },
     { value: 'FINANCE_APPROVER', label: 'Finance Approver' },
     { value: 'SYSTEM_ADMIN', label: 'System Admin' },
+    { value: 'MASTER_VIEWER', label: 'Master Viewer (read-only)' },
 ];
 
 const STANDARD_DEPARTMENTS = [
