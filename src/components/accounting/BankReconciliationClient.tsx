@@ -423,13 +423,17 @@ export function BankReconciliationClient({
             const recData = await recRes.json()
             if (!recRes.ok) throw new Error(recData.error || 'Statement saved, but could not load it back')
 
-            const imported: BankTransaction[] = (recData.unmatchedStatementLines || []).map((l: any) => ({
-                id: l.id,
-                date: l.transactionDate,
-                description: l.description,
-                amount: l.credit > 0 ? l.credit : -l.debit,
-                statementId: l.statementId,
-            }))
+            const imported: BankTransaction[] = (recData.unmatchedStatementLines || []).map((l: any) => {
+                const credit = Number(l.credit)
+                const debit = Number(l.debit)
+                return {
+                    id: l.id,
+                    date: l.transactionDate,
+                    description: l.description,
+                    amount: credit > 0 ? credit : -debit,
+                    statementId: l.statementId,
+                }
+            })
 
             setBankTransactions(prev => [...prev, ...imported])
             setStep('match')
@@ -451,13 +455,17 @@ export function BankReconciliationClient({
         const res = await fetch(`/api/accounting/bank-accounts/${bankAccountId}/reconciliation`)
         const data = await res.json()
         if (!res.ok) throw new Error(data.error || 'Could not refresh')
-        setBankTransactions((data.unmatchedStatementLines || []).map((l: any) => ({
-            id: l.id, date: l.transactionDate, description: l.description,
-            amount: l.credit > 0 ? l.credit : -l.debit, statementId: l.statementId,
-        })))
+        setBankTransactions((data.unmatchedStatementLines || []).map((l: any) => {
+            const credit = Number(l.credit)
+            const debit = Number(l.debit)
+            return {
+                id: l.id, date: l.transactionDate, description: l.description,
+                amount: credit > 0 ? credit : -debit, statementId: l.statementId,
+            }
+        }))
         setBookLines((data.unmatchedGlLines || []).map((l: any) => ({
             id: l.id, entryId: l.entryId, date: l.date, description: l.description,
-            reference: l.reference || '', debit: l.debit, credit: l.credit, amount: l.net,
+            reference: l.reference || '', debit: Number(l.debit), credit: Number(l.credit), amount: Number(l.net),
         })))
     }
 

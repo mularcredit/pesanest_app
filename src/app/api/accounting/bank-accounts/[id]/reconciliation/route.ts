@@ -95,7 +95,20 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
 
     return NextResponse.json({
         account,
-        unmatchedStatementLines: unmatchedLines,
+        // debit/credit/balance are Prisma Decimal — these serialize to JSON as
+        // strings (Decimal.toJSON = toString), not numbers. Left unconverted,
+        // a client-side `l.credit > 0 ? l.credit : -l.debit` keeps deposit rows
+        // as strings while turning withdrawal rows into real numbers via unary
+        // minus — so a reduce() summing a mix of both silently does string
+        // concatenation instead of addition the moment 2+ lines are selected.
+        // Converting here, once, means every current and future consumer of
+        // this endpoint gets real numbers by construction.
+        unmatchedStatementLines: unmatchedLines.map((l: any) => ({
+            ...l,
+            debit: Number(l.debit),
+            credit: Number(l.credit),
+            balance: l.balance === null || l.balance === undefined ? null : Number(l.balance),
+        })),
         unmatchedGlLines: unmatchedGlLines.map(l => ({
             id: l.id,
             entryId: l.entryId,
