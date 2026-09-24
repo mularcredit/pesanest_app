@@ -294,7 +294,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
                     return (
                         <div key={category.title} className={cn("nav-group", isOpen ? 'open' : '')}>
                             <div
-                                className={cn("nav-group-trigger", hasActiveChild && !isOpen ? 'text-[var(--nav-accent)] font-bold' : '')}
+                                className={cn("nav-group-trigger", hasActiveChild && !isOpen ? 'text-[var(--sb-active)] font-bold' : '')}
                                 onClick={() => toggleGroup(category.title)}
                             >
                                 <Icon />

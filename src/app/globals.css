@@ -124,8 +124,8 @@
 [data-theme='light'] {
   /* Light Mode Surfaces — neutral base */
   --page: #F5F5F5;
-  --sidebar: #FFFFFF;
-  --sidebar-grad: #FFFFFF;
+  --sidebar: #007A3D;
+  --sidebar-grad: #007A3D;
   --card: #FFFFFF;
   --card-h: #F5F4FF;
   --bg-elevated: #FFFFFF;
@@ -154,12 +154,12 @@
   --t4: #888888;
   --t-muted: #555555;
 
-  /* Sidebar — white surface, brand-green accents */
-  --sb-inactive: #5B6270;
-  --sb-active: #111111;
-  --nav-line: rgba(0, 0, 0, 0.08);
-  --nav-accent: #007A3D;
-  --sb-logo: #046A38;
+  /* Sidebar — green surface, white text */
+  --sb-inactive: rgba(255, 255, 255, 0.78);
+  --sb-active: #FFFFFF;
+  --nav-line: rgba(255, 255, 255, 0.15);
+  --nav-accent: #A3E635;
+  --sb-logo: #FFFFFF;
 
   /* Subtle Light Mode Shadows */
   --shadow: 0 4px 20px rgba(0, 0, 0, 0.03);
@@ -492,12 +492,12 @@
 }
 
 /* ─────────────────────────────────────────────────────────────
-   Sidebar light mode — white surface, solid-green active pill
+   Sidebar light mode — green surface (brand color), white text
 ───────────────────────────────────────────────────────────── */
-[data-theme='light'] .sb { background: #FFFFFF !important; border-color: rgba(0,0,0,0.07) !important; box-shadow: 0 1px 2px rgba(0,0,0,0.02), 0 8px 24px rgba(0,0,0,0.04) !important; }
-[data-theme='light'] .sb-logo { background: #FFFFFF !important; border-bottom: 1px solid rgba(0,0,0,0.06) !important; }
+[data-theme='light'] .sb { background: #007A3D !important; border-color: rgba(255,255,255,0.08) !important; box-shadow: 0 1px 2px rgba(0,0,0,0.04), 0 8px 24px rgba(0,0,0,0.12) !important; }
+[data-theme='light'] .sb-logo { background: transparent !important; border-bottom: 1px solid rgba(255,255,255,0.07) !important; }
 [data-theme='light'] .nav-sub-list::before { background: var(--nav-line) !important; }
-[data-theme='light'] .sb-foot { background: transparent !important; border-top-color: rgba(0,0,0,0.06) !important; }
+[data-theme='light'] .sb-foot { background: transparent !important; border-top-color: rgba(255,255,255,0.07) !important; }
 [data-theme='light'] .user-card { background: transparent !important; }
 [data-theme='light'] .sb input { border-color: var(--edge) !important; }
 [data-theme='light'] .sb input:not([type="checkbox"]):not([type="radio"]),
@@ -506,38 +506,38 @@
     background-color: #FFFFFF !important;
 }
 
-/* White sidebar — hover & active overrides */
+/* Green sidebar — hover & active overrides */
 [data-theme='light'] .nav-item:hover,
 [data-theme='light'] .nav-group-trigger:hover {
-    background: #F2F4F3 !important;
+    background: rgba(255,255,255,0.07) !important;
     border-left-color: transparent !important;
 }
 [data-theme='light'] .nav-item.on {
-    background: var(--nav-accent) !important;
+    background: rgba(255,255,255,0.14) !important;
     border-left-color: transparent !important;
     color: #FFFFFF !important;
 }
-[data-theme='light'] .nav-item.on svg { color: #FFFFFF !important; opacity: 1 !important; }
-[data-theme='light'] .nav-group.open .chevron { color: var(--t4) !important; }
-[data-theme='light'] .nav-sub-item:hover { background: #F2F4F3 !important; }
+[data-theme='light'] .nav-item.on svg { color: var(--nav-accent) !important; opacity: 1 !important; }
+[data-theme='light'] .nav-group.open .chevron { color: rgba(255,255,255,0.6) !important; }
+[data-theme='light'] .nav-sub-item:hover { background: rgba(255,255,255,0.07) !important; }
 [data-theme='light'] .nav-sub-item.on {
-    background: var(--nav-accent) !important;
+    background: rgba(255,255,255,0.14) !important;
     color: #FFFFFF !important;
 }
-[data-theme='light'] .nav-sub-item.on svg { color: #FFFFFF !important; opacity: 1 !important; }
-[data-theme='light'] .nav-sub-item.on:hover { background: #00632F !important; }
-[data-theme='light'] .nav-tab:hover { background: #F2F4F3 !important; }
-[data-theme='light'] .nav-tab.on { background: var(--nav-accent) !important; color: #FFFFFF !important; }
+[data-theme='light'] .nav-sub-item.on svg { color: var(--nav-accent) !important; opacity: 1 !important; }
+[data-theme='light'] .nav-sub-item.on:hover { background: rgba(255,255,255,0.18) !important; }
+[data-theme='light'] .nav-tab:hover { background: rgba(255,255,255,0.07) !important; }
+[data-theme='light'] .nav-tab.on { background: rgba(255,255,255,0.14) !important; color: #FFFFFF !important; }
 
 /* Footer / user card text */
-[data-theme='light'] .u-name { color: var(--t1) !important; }
-[data-theme='light'] .u-email { color: var(--t4) !important; }
-[data-theme='light'] .sb-powered { color: var(--t4) !important; }
-[data-theme='light'] .sb-mark { background: rgba(0,122,61,0.08) !important; border-color: rgba(0,122,61,0.18) !important; }
-[data-theme='light'] .sb-mark svg { color: var(--nav-accent) !important; }
-[data-theme='light'] .avatar { background: rgba(0,122,61,0.08) !important; border-color: rgba(0,122,61,0.2) !important; color: var(--nav-accent) !important; }
-[data-theme='light'] .btn-logout { color: var(--t4) !important; border-color: rgba(0,0,0,0.08) !important; }
-[data-theme='light'] .btn-logout:hover { background: #F2F4F3 !important; color: var(--nav-accent) !important; border-color: rgba(0,122,61,0.2) !important; }
+[data-theme='light'] .u-name { color: #FFFFFF !important; }
+[data-theme='light'] .u-email { color: rgba(255,255,255,0.5) !important; }
+[data-theme='light'] .sb-powered { color: rgba(255,255,255,0.6) !important; }
+[data-theme='light'] .sb-mark { background: rgba(255,255,255,0.08) !important; border-color: rgba(255,255,255,0.15) !important; }
+[data-theme='light'] .sb-mark svg { color: #FFFFFF !important; }
+[data-theme='light'] .avatar { background: rgba(255,255,255,0.1) !important; border-color: rgba(255,255,255,0.2) !important; color: #FFFFFF !important; }
+[data-theme='light'] .btn-logout { color: rgba(255,255,255,0.5) !important; border-color: rgba(255,255,255,0.12) !important; }
+[data-theme='light'] .btn-logout:hover { background: rgba(255,255,255,0.1) !important; color: #FFFFFF !important; border-color: rgba(255,255,255,0.2) !important; }
 
 /* ─────────────────────────────────────────────────────────────
    Header / Topbar — global styles (style jsx doesn't work in App Router)
