@@ -550,8 +550,8 @@
     height: 64px;
     position: relative;
     border: none;
-    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
-    background: var(--sidebar);
+    border-bottom: 1px solid rgba(0, 0, 0, 0.07);
+    background: var(--page);
 }
 .nav-tabbar {
     display: flex;
