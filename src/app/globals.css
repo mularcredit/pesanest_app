@@ -1864,7 +1864,7 @@ button { font-weight: 400 !important; }
 }
 
 [data-theme='light'] .u-name {
-    color: var(--t1);
+    color: #FFFFFF;
 }
 
 .u-email {
@@ -1876,7 +1876,7 @@ button { font-weight: 400 !important; }
 }
 
 [data-theme='light'] .u-email {
-    color: var(--t4);
+    color: rgba(255,255,255,0.5);
 }
 
 .sb-powered {

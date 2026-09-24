@@ -57,16 +57,11 @@ export function BillingAssistant() {
     const scrollRef = useRef<HTMLDivElement>(null);
     const abortRef = useRef<AbortController | null>(null);
 
-    // A quiet greeting: appears a beat after load, then withdraws. Hovering the
-    // trigger brings it back, so the invitation is repeatable without nagging.
+    // A quiet greeting: appears a beat after load and stays put.
     useEffect(() => {
         if (open) return;
         const show = setTimeout(() => setGreetingShown(true), 1400);
-        const hide = setTimeout(() => setGreetingShown(false), 7600);
-        return () => {
-            clearTimeout(show);
-            clearTimeout(hide);
-        };
+        return () => clearTimeout(show);
     }, [open]);
 
     // Portalled to body: the dashboard page wrapper animates with a transform,
