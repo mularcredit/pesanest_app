@@ -93,7 +93,7 @@ export default async function RequisitionDetailPage({ params }: { params: Promis
 
     const userRole = (session.user as any).role;
     const isOwner = req.userId === session.user.id;
-    const isPrivileged = ["SYSTEM_ADMIN", "FINANCE_APPROVER", "FINANCE_TEAM", "MANAGER", "TEAM_LEADER"].includes(userRole);
+    const isPrivileged = ["SYSTEM_ADMIN", "FINANCE_APPROVER", "FINANCE_TEAM", "MANAGER", "TEAM_LEADER", "MASTER_VIEWER"].includes(userRole);
     if (!isOwner && !isPrivileged) redirect("/dashboard/requisitions");
 
     const paymentMethod = req.paymentMethod ?? null;

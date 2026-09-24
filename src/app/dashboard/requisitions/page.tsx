@@ -14,7 +14,7 @@ export default async function RequisitionsPage() {
         select: { role: true, customRole: { select: { isSystem: true } } }
     });
 
-    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.customRole?.isSystem;
+    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'MASTER_VIEWER' || currentUser?.customRole?.isSystem;
     const whereReq = isAdmin ? {} : { userId };
 
     const [accounts, rawRequisitions, monthlyBudgets] = await Promise.all([

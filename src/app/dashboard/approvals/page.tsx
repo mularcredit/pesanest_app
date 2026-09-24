@@ -12,7 +12,7 @@ export default async function ApprovalsPage() {
         select: { role: true }
     });
 
-    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN';
+    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'MASTER_VIEWER';
 
     // Fetch pending approvals
     const myPendingApprovals = await prisma.approval.findMany({

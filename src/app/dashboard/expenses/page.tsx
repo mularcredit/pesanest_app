@@ -15,7 +15,7 @@ export default async function ExpensesPage() {
         select: { role: true, customRole: { select: { isSystem: true } } }
     });
 
-    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.customRole?.isSystem;
+    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'MASTER_VIEWER' || currentUser?.customRole?.isSystem;
 
     // Fetch expenses based on role
     const whereDrafts = isAdmin ? { status: 'DRAFT' } : { userId, status: 'DRAFT' };

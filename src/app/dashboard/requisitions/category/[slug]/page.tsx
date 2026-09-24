@@ -17,7 +17,7 @@ export default async function AccountCategoryPage({ params }: { params: Promise<
         where: { id: userId },
         select: { role: true, customRole: { select: { isSystem: true } } }
     });
-    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.customRole?.isSystem;
+    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.role === 'MASTER_VIEWER' || currentUser?.customRole?.isSystem;
 
     const account = await prisma.account.findFirst({
         where: { name: accountName, type: 'EXPENSE' },

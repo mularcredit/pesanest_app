@@ -44,8 +44,8 @@ export default async function DashboardPage() {
     `.catch(() => [{ paystackCustomerCode: null }]);
     const currentUserWithPaystack = { ...currentUser, paystackCustomerCode: paystackRows[0]?.paystackCustomerCode ?? null };
 
-    const isPrivileged = ['SYSTEM_ADMIN', 'FINANCE_APPROVER', 'MANAGER'].includes(currentUserWithPaystack?.role || '');
-    const isSystemAdmin = currentUserWithPaystack?.role === 'SYSTEM_ADMIN';
+    const isPrivileged = ['SYSTEM_ADMIN', 'FINANCE_APPROVER', 'MANAGER', 'MASTER_VIEWER'].includes(currentUserWithPaystack?.role || '');
+    const isSystemAdmin = currentUserWithPaystack?.role === 'SYSTEM_ADMIN' || currentUserWithPaystack?.role === 'MASTER_VIEWER';
     const expenseFilter = isPrivileged ? {} : { userId };
 
     const firstDayThisMonth = new Date(now.getTime() - 30 * 24 * 60 * 60 * 1000);
