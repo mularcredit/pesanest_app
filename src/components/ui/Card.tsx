@@ -23,7 +23,7 @@ const CardHeader = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("bg-[var(--card)] px-6 py-5 md:py-0 md:h-[64px] flex flex-col justify-center border-b border-[var(--p-line)] shrink-0", className)}
+        className={cn("bg-[var(--card)] px-5 py-3.5 md:py-0 md:h-[52px] flex flex-col justify-center border-b border-[var(--p-line)] shrink-0", className)}
         {...props}
     />
 ))
@@ -60,7 +60,7 @@ const CardContent = React.forwardRef<
     HTMLDivElement,
     React.HTMLAttributes<HTMLDivElement>
 >(({ className, ...props }, ref) => (
-    <div ref={ref} className={cn("bg-[var(--card)] p-6 flex-1", className)} {...props} />
+    <div ref={ref} className={cn("bg-[var(--card)] p-5 flex-1", className)} {...props} />
 ))
 CardContent.displayName = "CardContent"
 
@@ -70,7 +70,7 @@ const CardFooter = React.forwardRef<
 >(({ className, ...props }, ref) => (
     <div
         ref={ref}
-        className={cn("bg-[var(--card)] px-6 md:h-[64px] py-5 md:py-0 flex items-center border-t border-[var(--p-line)] shrink-0", className)}
+        className={cn("bg-[var(--card)] px-5 md:h-[52px] py-3.5 md:py-0 flex items-center border-t border-[var(--p-line)] shrink-0", className)}
         {...props}
     />
 ))

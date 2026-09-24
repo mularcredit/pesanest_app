@@ -22,20 +22,20 @@ export function StatsCard({ title, value, trend, trendUp, icon: Icon, lastMonthL
     const isUp = trendUp !== false;
 
     return (
-        <div className="bg-white rounded-[10px] p-5 flex flex-col gap-3 relative overflow-hidden" style={{ border: HAIRLINE }}>
+        <div className="bg-white rounded-[10px] p-4 flex flex-col gap-2 relative overflow-hidden" style={{ border: HAIRLINE }}>
 
             {sparkline && sparkline.length > 0 && (
                 <SparklineMini data={sparkline} color={color} />
             )}
 
-            <div className="flex items-center gap-3 relative z-10">
-                <div className="w-9 h-9 rounded-[7px] flex items-center justify-center shrink-0 bg-gray-50" style={{ color: '#059669' }}>
-                    <Icon className="text-[15px]" />
+            <div className="flex items-center gap-2 relative z-10">
+                <div className="w-8 h-8 rounded-[7px] flex items-center justify-center shrink-0 bg-gray-50" style={{ color: '#059669' }}>
+                    <Icon className="text-[14px]" />
                 </div>
                 <p className="flex-1 text-[10px] font-[600] uppercase tracking-[0.09em] text-gray-400 truncate leading-tight">{title}</p>
             </div>
 
-            <div className="flex flex-col gap-2 min-w-0 relative z-10">
+            <div className="flex flex-col gap-1.5 min-w-0 relative z-10">
                 <span className="text-[22px] font-[600] text-gray-900 leading-none tracking-tight truncate tabular-nums" title={value}>
                     {value}
                 </span>

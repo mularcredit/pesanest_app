@@ -44,7 +44,7 @@ export default function DashboardLayout({
 
                 <div className="flex-1 flex flex-col min-w-0 w-full relative">
                     <div className="flex-1 overflow-y-auto w-full" style={{ scrollbarWidth: 'thin', scrollbarColor: 'var(--t4) transparent' }}>
-                        <main className="w-full" style={{ padding: '22px 26px 52px' }}>
+                        <main className="w-full" style={{ padding: '16px 24px 28px' }}>
                             {children}
                         </main>
                     </div>

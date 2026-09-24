@@ -269,7 +269,7 @@ export default async function DashboardPage() {
     }
 
     return (
-        <div className="space-y-6 pb-12 relative">
+        <div className="space-y-4 pb-6 relative">
             {/* ── HEADER ── */}
             <div className="flex items-end justify-between">
                 <div>
@@ -288,7 +288,7 @@ export default async function DashboardPage() {
             </div>
 
             {/* ── STAT CARDS with sparklines ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
                 <StatsCard
                     title="Submitted This Month"
                     value={`KES ${submittedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
@@ -332,10 +332,10 @@ export default async function DashboardPage() {
             </div>
 
             {/* ── MAIN GRID ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
 
                 {/* LEFT — charts + funnel + table */}
-                <div className="lg:col-span-2 space-y-5">
+                <div className="lg:col-span-2 space-y-4">
 
                     {/* 12-month trend area chart */}
                     <OverviewChart data={monthlyData} />
@@ -422,7 +422,7 @@ export default async function DashboardPage() {
                 </div>
 
                 {/* RIGHT — wallet + gauge + status + budget */}
-                <div className="space-y-5">
+                <div className="space-y-4">
                     <WalletCard
                         balance={liveBalance}
                         currency={wallet?.currency === 'USD' ? 'KES' : (wallet?.currency ?? 'KES')}
