@@ -7,7 +7,8 @@ import {
     PiList,
     PiReceipt,
     PiCheckCircle,
-    PiBell
+    PiBell,
+    PiPencilSimple
 } from "react-icons/pi";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -187,14 +188,23 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 </button>
 
                 {/* Company logo — each tenant uploads their own, shown here once signed in.
-                    White backing chip so the logo stays legible regardless of what
-                    color the uploaded artwork is, against this green header. */}
-                <EditableImage
-                    settingKey="watermark_logo"
-                    defaultSrc="__REMOVE__"
-                    alt="Company Logo"
-                    className="h-9 w-[120px] shrink-0 hidden sm:flex items-center justify-center bg-white rounded-[7px] px-2 py-1"
-                />
+                    The edit/remove controls only appear on hover with no visible cue
+                    at rest, so a small always-on pencil badge marks it as clickable. */}
+                <div className="relative shrink-0 hidden sm:block group/logo">
+                    <EditableImage
+                        settingKey="watermark_logo"
+                        defaultSrc="__REMOVE__"
+                        alt="Company Logo"
+                        className="h-9 w-[120px] flex items-center justify-center"
+                    />
+                    <span
+                        className="absolute -bottom-1 -right-1 w-5 h-5 rounded-full bg-white/90 flex items-center justify-center text-[#007A3D] opacity-70 group-hover/logo:opacity-100 transition-opacity pointer-events-none"
+                        style={{ boxShadow: '0 1px 3px rgba(0,0,0,0.25)' }}
+                        title="Click the logo to change it"
+                    >
+                        <PiPencilSimple className="text-[11px]" />
+                    </span>
+                </div>
 
                 {/* Breadcrumbs */}
                 <div className="flex items-center gap-2 text-sm">
