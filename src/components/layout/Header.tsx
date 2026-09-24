@@ -176,12 +176,12 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     };
 
     return (
-        <div className="flex-shrink-0 sticky top-0 z-40" style={{ background: 'var(--page)' }}>
+        <div className="flex-shrink-0 sticky top-0 z-40" style={{ background: 'var(--sidebar)' }}>
         <header className="topbar px-4 md:px-8">
             {/* Left: Breadcrumbs & Search */}
             <div className="flex items-center gap-4 md:gap-6 flex-1">
                 {/* Mobile Menu Toggle */}
-                <button onClick={onMenuClick} className="lg:hidden p-2 -ml-2 text-2xl transition-colors hover:bg-[var(--glass-h)] rounded-lg text-[var(--t3)]">
+                <button onClick={onMenuClick} className="lg:hidden p-2 -ml-2 text-2xl transition-colors hover:bg-white/10 rounded-lg text-white/70">
                     <PiList />
                 </button>
 
@@ -189,8 +189,8 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 <div className="flex items-center gap-2 text-sm">
                     {breadcrumbs.map((crumb, index) => (
                         <div key={index} className="flex items-center gap-2">
-                            {index > 0 && <span className="text-[var(--t4)]">/</span>}
-                            <span className={crumb.isLast ? "font-semibold text-[var(--t1)]" : "text-[var(--t3)]"}>
+                            {index > 0 && <span className="text-white/40">/</span>}
+                            <span className={crumb.isLast ? "font-semibold text-white" : "text-white/70"}>
                                 {crumb.name}
                             </span>
                         </div>
@@ -201,24 +201,24 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
             {/* Right: Actions & Status */}
             <div className="flex items-center gap-3 ml-6">
                 {/* System Status */}
-                <div className="hidden xl:flex items-center gap-1 border rounded-full px-4 py-1.5 bg-emerald-500/10 border-emerald-500/20">
-                    <div className="w-2 h-2 rounded-full animate-pulse bg-emerald-500"></div>
-                    <span className="text-[10px] font-semibold  text-emerald-600">System Live</span>
+                <div className="hidden xl:flex items-center gap-1 border rounded-full px-4 py-1.5 bg-white/10 border-white/15">
+                    <div className="w-2 h-2 rounded-full animate-pulse bg-[#A3E635]"></div>
+                    <span className="text-[10px] font-semibold text-white">System Live</span>
                 </div>
 
                 {/* Help */}
                 <button
                     onClick={() => handleNotImplemented("Help Center")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-[var(--glass-h)] text-gray-500">
-                    <PiQuestion className="text-xl group-hover:text-[var(--p)] transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white/70">
+                    <PiQuestion className="text-xl group-hover:text-white transition-colors" />
                 </button>
 
                 {/* Notifications */}
                 <div className="relative" ref={notificationsRef}>
                     <button
                         onClick={() => setNotificationsOpen(!notificationsOpen)}
-                        className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-[var(--glass-h)] text-[var(--t3)]">
-                        <PiEnvelope className="text-[22px] group-hover:text-[var(--p)] transition-colors" />
+                        className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 group hover:bg-white/10 text-white/70">
+                        <PiEnvelope className="text-[22px] group-hover:text-white transition-colors" />
                         {unreadCount > 0 && (
                             <>
                                 <span className="absolute top-2 right-2.5 w-2 h-2 rounded-full animate-pulse" style={{ background: 'var(--p)', boxShadow: '0 0 8px var(--p-glow)' }}></span>
@@ -308,12 +308,12 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 {/* App Switcher */}
                 <button
                     onClick={() => handleNotImplemented("App Switcher")}
-                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-[var(--glass-h)] group text-gray-500">
-                    <PiSquaresFour className="text-xl group-hover:text-[var(--p)] transition-colors" />
+                    className="relative w-10 h-10 flex items-center justify-center rounded-full transition-all duration-300 hover:bg-white/10 group text-white/70">
+                    <PiSquaresFour className="text-xl group-hover:text-white transition-colors" />
                 </button>
 
                 {/* User avatar */}
-                <Link href="/dashboard/settings" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-[var(--p-line)] transition-all">
+                <Link href="/dashboard/settings" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-white/30 transition-all">
                     <Avatar
                         style={{ width: '34px', height: '34px', borderRadius: '50%' }}
                         {...genConfig(user?.name || "User")}
