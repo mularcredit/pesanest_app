@@ -53,6 +53,11 @@ const HEADER_ALIASES = {
     // "Reason" is what Paystack's own wallet/transaction CSV export calls its
     // description column (e.g. "Requisition: TEST AIRTIME PAYMENT").
     description: ['details', 'description', 'narration', 'particulars', 'transaction details', 'reason'],
+    // Some banks (e.g. ABSA) export a "Description" column that's actually a
+    // cryptic system reference code (e.g. "0068000320260702194202OM227431")
+    // and put the real human-readable text in a *separate* "User Narrative"
+    // column instead — preferred over "description" below when both exist.
+    narrative: ['user narrative', 'narrative'],
     // "Difference" is Paystack's wallet export's signed movement column
     // (positive = credit, negative = debit) — functionally identical to a
     // plain "Amount" column, just under a different name.
@@ -119,13 +124,14 @@ function parseStatementDate(raw: unknown): Date | null {
     return Number.isNaN(fallback.getTime()) ? null : fallback;
 }
 
-interface ColumnMapping { date: number; description: number; amount: number; credit: number; debit: number; type: number }
+interface ColumnMapping { date: number; description: number; narrative: number; amount: number; credit: number; debit: number; type: number }
 
 /** Resolves the aliased columns for a header row — shared by the initial auto-detect and the preview step's manual remap. */
 function resolveColumns(headerCells: string[]): ColumnMapping {
     return {
         date: findCol(headerCells, HEADER_ALIASES.date),
         description: findCol(headerCells, HEADER_ALIASES.description),
+        narrative: findCol(headerCells, HEADER_ALIASES.narrative),
         amount: findCol(headerCells, HEADER_ALIASES.amount),
         credit: findCol(headerCells, HEADER_ALIASES.credit),
         debit: findCol(headerCells, HEADER_ALIASES.debit),
@@ -145,10 +151,23 @@ function buildRowsFromMapping(rawRows: any[][], headerRowIdx: number, cols: Colu
         const date = parseStatementDate(row[cols.date]);
         if (!date) { skipped++; continue; }
 
-        const description = cols.description !== -1 ? String(row[cols.description] ?? '').trim() : '';
+        const rawDescription = cols.description !== -1 ? String(row[cols.description] ?? '').trim() : '';
         // Some banks (e.g. ABSA) prepend a synthetic "OPENING BALANCE" row carrying the
-        // opening balance as if it were a transaction — it isn't one, skip it.
-        if (description.toUpperCase() === 'OPENING BALANCE') { skipped++; continue; }
+        // opening balance as if it were a transaction — it isn't one, skip it. Checked
+        // against the raw "Description" column specifically, since that's where a bank
+        // puts this literal marker even when a separate narrative column exists too.
+        if (rawDescription.toUpperCase() === 'OPENING BALANCE') { skipped++; continue; }
+        const narrative = cols.narrative !== -1 ? String(row[cols.narrative] ?? '').trim() : '';
+        // A bank with a separate narrative column (e.g. ABSA) doesn't consistently
+        // put the more useful text in one column or the other — sometimes
+        // "Description" is a real narrative ("RTGS IN TULI EXECUTIVE ADVENTURES")
+        // and "User Narrative" is just a bare reference number, sometimes the
+        // reverse (a system reference code in "Description", the real payer name
+        // in "User Narrative"). Concatenating both (when they differ) means
+        // neither ever gets silently dropped, instead of gambling on one column.
+        const description = rawDescription && narrative && rawDescription !== narrative
+            ? `${rawDescription} — ${narrative}`
+            : (rawDescription || narrative);
         // Debit is taken at face value, not abs()'d — some banks (e.g. ABSA) record a
         // reversal of a debit as a *negative* number in the debit column itself, which
         // should add back to the balance rather than subtract again.
@@ -232,7 +251,7 @@ export function BankReconciliationClient({
     const [rawFileRows, setRawFileRows] = useState<any[][] | null>(null)
     const [headerRowIdx, setHeaderRowIdx] = useState<number>(-1)
     const [headerCells, setHeaderCells] = useState<string[]>([])
-    const [colMapping, setColMapping] = useState<ColumnMapping>({ date: -1, description: -1, amount: -1, credit: -1, debit: -1, type: -1 })
+    const [colMapping, setColMapping] = useState<ColumnMapping>({ date: -1, description: -1, narrative: -1, amount: -1, credit: -1, debit: -1, type: -1 })
     const [amountMode, setAmountMode] = useState<'single' | 'split'>('single')
     const [previewRows, setPreviewRows] = useState<{ id: string; date: string; description: string; amount: number; included: boolean }[]>([])
     const [previewSkipped, setPreviewSkipped] = useState(0)
@@ -831,7 +850,7 @@ export function BankReconciliationClient({
                                 <div>
                                     <label className="block text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em] mb-1.5">Description column</label>
                                     <select value={colMapping.description}
-                                        onChange={e => applyColumnMapping({ ...colMapping, description: Number(e.target.value) })}
+                                        onChange={e => applyColumnMapping({ ...colMapping, description: Number(e.target.value), narrative: -1 })}
                                         className="rounded-[6px] px-2.5 py-1.5 text-[12.5px] text-gray-900 bg-white outline-none focus:ring-1 focus:ring-[#6366F1]"
                                         style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
                                         <option value={-1}>—</option>
