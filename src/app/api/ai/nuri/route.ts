@@ -14,6 +14,7 @@
 import { auth } from "@/auth";
 import prisma from "@/lib/prisma";
 import { NextResponse } from "next/server";
+import { statementOwnerFilter } from "@/lib/accounting/reconcilable-accounts";
 
 const DEEPSEEK_URL = "https://api.deepseek.com/chat/completions";
 const MAX_TOOL_ITERATIONS = 5;
@@ -381,10 +382,16 @@ async function runTool(name: string, args: any): Promise<unknown> {
 
             const [unmatchedLines, glLines, matchedEntryIds] = await Promise.all([
                 prisma.bankStatementLine.findMany({
-                    where: { isMatched: false, statement: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] } },
+                    where: { isMatched: false, statement: statementOwnerFilter(account.id) },
                 }),
                 prisma.journalLine.findMany({ where: { accountId: account.glAccountId, entry: { status: 'POSTED' } } }),
-                prisma.reconciliationMatch.findMany({ select: { journalEntryId: true } }),
+                // Scoped to this account — a transfer entry's other leg (on a
+                // different reconcilable account) must not count as "matched"
+                // here just because it was matched on its own account.
+                prisma.reconciliationMatch.findMany({
+                    where: { statementLine: { statement: statementOwnerFilter(account.id) } },
+                    select: { journalEntryId: true },
+                }),
             ]);
             const matchedSet = new Set(matchedEntryIds.map(m => m.journalEntryId));
             const unmatchedGl = glLines.filter(l => !matchedSet.has(l.entryId));

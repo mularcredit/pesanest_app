@@ -84,9 +84,16 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
         orderBy: { entry: { date: 'asc' } }
     });
 
-    // Filter out GL lines whose entryId already has a ReconciliationMatch
+    // Filter out GL lines whose entryId already has a ReconciliationMatch —
+    // scoped to matches made AGAINST THIS ACCOUNT specifically (via the
+    // matched statement line's own owning account), not just "matched
+    // anywhere". A transfer entry (e.g. ABSA -> Paybill) has one line on
+    // each of two different reconcilable accounts; matching its ABSA leg
+    // must not also hide its Paybill leg from Paybill's own reconciliation —
+    // they're two separate real-world transactions to confirm, one per side.
     const matchedEntryIds = new Set(
         (await (prisma as any).reconciliationMatch.findMany({
+            where: { statementLine: { statement: statementOwnerFilter(params.id) } },
             select: { journalEntryId: true }
         })).map((m: any) => m.journalEntryId)
     );
@@ -253,8 +260,12 @@ async function handlePost(req: Request, props: { params: Promise<{ id: string }>
             include: { entry: { select: { id: true, date: true } } }
         });
 
+        // Scoped to this account, same reasoning as the GET handler above —
+        // a transfer entry's other leg (on a different reconcilable account)
+        // must stay available for auto-matching on its own account.
         const matchedEntryIds = new Set(
             (await (prisma as any).reconciliationMatch.findMany({
+                where: { statementLine: { statement: statementOwnerFilter(params.id) } },
                 select: { journalEntryId: true }
             })).map((m: any) => m.journalEntryId)
         );

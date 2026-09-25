@@ -78,7 +78,10 @@ export default async function BankReconciliationPage({
     const glBalance = (glBalanceAgg._sum.debit || 0) - (glBalanceAgg._sum.credit || 0);
 
     // Same "still open" definition the reconciliation API uses: a GL line whose
-    // entry has no ReconciliationMatch yet.
+    // entry has no ReconciliationMatch yet — scoped to matches made against
+    // THIS account. A transfer entry (e.g. ABSA -> Paybill) has one line on
+    // each of two different reconcilable accounts; matching its ABSA leg
+    // must not also hide its Paybill leg from Paybill's own reconciliation.
     const [glLines, matchedEntryIds, unmatchedStatementLines] = await Promise.all([
         prisma.journalLine.findMany({
             where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
@@ -86,7 +89,10 @@ export default async function BankReconciliationPage({
             orderBy: { entry: { date: 'desc' } },
             take: 300,
         }),
-        prisma.reconciliationMatch.findMany({ select: { journalEntryId: true } }),
+        prisma.reconciliationMatch.findMany({
+            where: { statementLine: { statement: statementOwnerFilter(account.id) } },
+            select: { journalEntryId: true },
+        }),
         prisma.bankStatementLine.findMany({
             where: { isMatched: false, statement: statementOwnerFilter(account.id) },
             orderBy: { transactionDate: 'asc' },
