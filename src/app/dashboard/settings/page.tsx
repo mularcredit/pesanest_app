@@ -23,7 +23,8 @@ export default async function SettingsPage() {
                 role: true,
                 department: true,
                 position: true,
-                phoneNumber: true
+                phoneNumber: true,
+                avatarSeed: true
             }
         }),
         (prisma as any).systemSetting.findMany()

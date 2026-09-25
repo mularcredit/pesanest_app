@@ -248,6 +248,8 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                         }
                     });
 
+                    (session.user as any).avatarSeed = dbUser?.avatarSeed || null;
+
                     if (dbUser?.customRole) {
                         (session.user as any).permissions = dbUser.customRole.permissions.map(
                             rp => `${rp.permission.resource}.${rp.permission.action}`

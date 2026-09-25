@@ -5,6 +5,7 @@ import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
 import bcrypt from "bcryptjs";
+import { AVATAR_PRESET_SEEDS } from "@/lib/avatar-presets";
 
 const SettingsSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -135,5 +136,34 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
     } catch (error: any) {
         console.error("❌ Failed to change password:", error);
         return { success: false, error: "Failed to change password. Please try again." };
+    }
+}
+
+/**
+ * Set the currently logged-in user's chosen avatar. Always scoped to
+ * session.user.id — never accepts a target user id. Seed must be one of the
+ * fixed presets, not an arbitrary string, so a user can't be tricked into
+ * setting some other seed via a direct call to this action.
+ */
+export async function updateAvatar(seed: string) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    if (!AVATAR_PRESET_SEEDS.includes(seed as any)) {
+        return { success: false, error: "Invalid avatar selection" };
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: session.user.id },
+            data: { avatarSeed: seed },
+        });
+        revalidatePath("/dashboard/settings");
+        return { success: true };
+    } catch (error: any) {
+        console.error("❌ Failed to update avatar:", error);
+        return { success: false, error: "Failed to update avatar. Please try again." };
     }
 }

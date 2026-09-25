@@ -17,16 +17,19 @@ import {
     PiToggleLeft,
     PiCircleNotch,
     PiArrowsClockwise,
-    PiLink
+    PiLink,
+    PiX
 } from "react-icons/pi";
 import { cn } from "@/lib/utils";
 import { useToast } from "@/components/ui/ToastProvider";
-import { updateSettings } from "./actions";
-import { signOut } from "next-auth/react";
+import { updateSettings, updateAvatar } from "./actions";
+import { signOut, useSession } from "next-auth/react";
 import { useSearchParams, useRouter, usePathname } from "next/navigation";
 import { PhoneInput } from "@/components/ui/PhoneInput";
 import QuickBooksMapping from "@/components/integrations/QuickBooksMapping";
 import { CustomSelect } from "@/components/ui/CustomSelect";
+import NiceAvatar, { genConfig } from "react-nice-avatar";
+import { AVATAR_PRESET_SEEDS } from "@/lib/avatar-presets";
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 const INPUT_CLS = "w-full rounded-[6px] px-3 py-[10px] text-[13px] text-gray-900 placeholder:text-gray-300 outline-none focus:ring-1 focus:ring-[#6366F1] transition-colors bg-white";
@@ -34,7 +37,7 @@ const INPUT_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' 
 const LABEL_CLS = "block text-[11.5px] font-[500] text-gray-400 mb-1.5";
 
 interface SettingsClientProps {
-    user: Pick<User, "id" | "name" | "email" | "role" | "department" | "position" | "phoneNumber">;
+    user: Pick<User, "id" | "name" | "email" | "role" | "department" | "position" | "phoneNumber" | "avatarSeed">;
     organizationSettings?: {
         companyName?: string;
         registrationNumber?: string;
@@ -43,11 +46,83 @@ interface SettingsClientProps {
     };
 }
 
+function AvatarPickerModal({
+    currentSeed,
+    onClose,
+    onSaved,
+}: {
+    currentSeed: string;
+    onClose: () => void;
+    onSaved: (seed: string) => void;
+}) {
+    const { showToast } = useToast();
+    const [selected, setSelected] = useState(currentSeed);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const result = await updateAvatar(selected);
+            if (result.success) {
+                onSaved(selected);
+                showToast("Avatar updated", "success");
+                onClose();
+            } else {
+                showToast(result.error || "Failed to update avatar", "error");
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
+            <div className="bg-white rounded-[10px] w-full max-w-md" style={CARD_STYLE} onClick={(e) => e.stopPropagation()}>
+                <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                    <div>
+                        <h2 className="text-[13px] font-[600] text-gray-900">Choose your avatar</h2>
+                        <p className="text-[11.5px] text-gray-400 mt-0.5">Pick a look that's just for you</p>
+                    </div>
+                    <button onClick={onClose} className="text-gray-400 hover:text-gray-600 transition-colors">
+                        <PiX className="text-[18px]" />
+                    </button>
+                </div>
+                <div className="p-5 grid grid-cols-4 gap-3">
+                    {AVATAR_PRESET_SEEDS.map((seed) => (
+                        <button
+                            key={seed}
+                            onClick={() => setSelected(seed)}
+                            className={cn(
+                                "rounded-[8px] p-1.5 transition-all",
+                                selected === seed ? "ring-2 ring-[#6366F1]" : "ring-1 ring-transparent hover:ring-gray-200"
+                            )}
+                        >
+                            <NiceAvatar style={{ width: '100%', aspectRatio: '1/1', borderRadius: '50%' }} {...genConfig(seed)} />
+                        </button>
+                    ))}
+                </div>
+                <div className="px-5 py-4 flex justify-end gap-2" style={{ borderTop: '1px solid rgba(0,0,0,0.07)' }}>
+                    <button onClick={onClose} className="px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-gray-600 bg-white hover:bg-gray-50 transition-colors" style={{ border: '1px solid rgba(0,0,0,0.09)' }}>
+                        Cancel
+                    </button>
+                    <button onClick={handleSave} disabled={isSaving}
+                        className="px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-[#6366F1] hover:bg-indigo-600 transition-colors disabled:opacity-50">
+                        {isSaving ? 'Saving…' : 'Save avatar'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function SettingsClient({ user, organizationSettings }: SettingsClientProps) {
     const { showToast } = useToast();
     const router = useRouter();
     const pathname = usePathname();
     const searchParams = useSearchParams();
+    const { update: updateSession } = useSession();
+    const [avatarSeed, setAvatarSeed] = useState(user.avatarSeed || "");
+    const [isAvatarPickerOpen, setIsAvatarPickerOpen] = useState(false);
 
     const isAdmin = ['SYSTEM_ADMIN', 'FINANCE_APPROVER', 'SUPER_ADMIN', 'ADMIN'].includes(user.role);
     const activeTab = searchParams.get('tab') || (isAdmin ? 'organization' : 'profile');
@@ -305,9 +380,22 @@ export function SettingsClient({ user, organizationSettings }: SettingsClientPro
 
                             <div className="p-6">
                                 <div className="flex items-center gap-4 mb-6">
-                                    <div className="w-12 h-12 rounded-[7px] bg-indigo-50 flex items-center justify-center text-[18px] font-[700] text-[#6366F1] shrink-0">
-                                        {initials}
-                                    </div>
+                                    <button
+                                        onClick={() => setIsAvatarPickerOpen(true)}
+                                        className="relative shrink-0 rounded-full group"
+                                        title="Change avatar"
+                                    >
+                                        {avatarSeed ? (
+                                            <NiceAvatar style={{ width: '48px', height: '48px', borderRadius: '50%' }} {...genConfig(avatarSeed)} />
+                                        ) : (
+                                            <div className="w-12 h-12 rounded-[7px] bg-indigo-50 flex items-center justify-center text-[18px] font-[700] text-[#6366F1]">
+                                                {initials}
+                                            </div>
+                                        )}
+                                        <span className="absolute inset-0 rounded-full bg-black/40 opacity-0 group-hover:opacity-100 transition-opacity flex items-center justify-center text-[9px] font-[500] text-white">
+                                            Change
+                                        </span>
+                                    </button>
                                     <div>
                                         <h3 className="text-[14px] font-[600] text-gray-900">{user.name}</h3>
                                         <p className="text-[12px] text-gray-400">{user.position} &bull; {user.department}</p>
@@ -549,6 +637,17 @@ export function SettingsClient({ user, organizationSettings }: SettingsClientPro
                     )}
                 </div>
             </div>
+
+            {isAvatarPickerOpen && (
+                <AvatarPickerModal
+                    currentSeed={avatarSeed || AVATAR_PRESET_SEEDS[0]}
+                    onClose={() => setIsAvatarPickerOpen(false)}
+                    onSaved={(seed) => {
+                        setAvatarSeed(seed);
+                        updateSession();
+                    }}
+                />
+            )}
         </div>
     );
 }

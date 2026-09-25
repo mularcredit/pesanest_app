@@ -351,7 +351,7 @@ export function Sidebar({ isOpen = false, onClose, isDesktopCollapsed, onToggleD
                         <div className="avatar">
                             <Avatar
                                 style={{ width: '32px', height: '32px', borderRadius: '50%' }}
-                                {...genConfig(user?.name || "User")}
+                                {...genConfig((user as any)?.avatarSeed || user?.name || "User")}
                             />
                         </div>
                         <div className="avatar-ring"></div>

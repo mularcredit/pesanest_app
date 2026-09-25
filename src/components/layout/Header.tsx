@@ -337,7 +337,7 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 <Link href="/dashboard/settings" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-[var(--p-line)] transition-all">
                     <Avatar
                         style={{ width: '34px', height: '34px', borderRadius: '50%' }}
-                        {...genConfig(user?.name || "User")}
+                        {...genConfig((user as any)?.avatarSeed || user?.name || "User")}
                     />
                 </Link>
             </div>
