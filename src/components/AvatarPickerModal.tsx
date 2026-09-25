@@ -41,7 +41,7 @@ export function AvatarPickerModal({
 
     return (
         <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.4)' }} onClick={onClose}>
-            <div className="bg-white rounded-[10px] w-full max-w-md" style={CARD_STYLE} onClick={(e) => e.stopPropagation()}>
+            <div className="bg-white rounded-[10px] w-full max-w-lg" style={CARD_STYLE} onClick={(e) => e.stopPropagation()}>
                 <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
                     <div>
                         <h2 className="text-[13px] font-[600] text-gray-900">Choose your avatar</h2>
@@ -51,7 +51,7 @@ export function AvatarPickerModal({
                         <PiX className="text-[18px]" />
                     </button>
                 </div>
-                <div className="p-5 grid grid-cols-4 gap-3">
+                <div className="p-5 grid grid-cols-4 sm:grid-cols-6 gap-3 max-h-[360px] overflow-y-auto">
                     {AVATAR_PRESET_SEEDS.map((seed) => (
                         <button
                             key={seed}
