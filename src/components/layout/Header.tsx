@@ -8,7 +8,9 @@ import {
     PiReceipt,
     PiCheckCircle,
     PiBell,
-    PiPencilSimple
+    PiPencilSimple,
+    PiUserCircle,
+    PiGearSix
 } from "react-icons/pi";
 import { useState, useEffect, useRef } from "react";
 import { usePathname, useRouter } from "next/navigation";
@@ -18,6 +20,7 @@ import { ConfirmationModal } from "@/components/ui/Modal";
 import { useSession } from "next-auth/react";
 import Avatar, { genConfig } from "react-nice-avatar";
 import { EditableImage } from "@/components/finance-studio/EditableImage";
+import { AvatarPickerModal } from "@/components/AvatarPickerModal";
 
 interface Notification {
     id: string;
@@ -37,26 +40,31 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
     const pathname = usePathname();
     const router = useRouter();
     const { showToast } = useToast();
-    const { data: session } = useSession();
+    const { data: session, update: updateSession } = useSession();
     const user = session?.user;
-    
-    
+    const [avatarMenuOpen, setAvatarMenuOpen] = useState(false);
+    const [avatarPickerOpen, setAvatarPickerOpen] = useState(false);
+
     const notificationsRef = useRef<HTMLDivElement>(null);
+    const avatarMenuRef = useRef<HTMLDivElement>(null);
 
     useEffect(() => {
         function handleClickOutside(event: MouseEvent) {
             if (notificationsRef.current && !notificationsRef.current.contains(event.target as Node)) {
                 setNotificationsOpen(false);
             }
+            if (avatarMenuRef.current && !avatarMenuRef.current.contains(event.target as Node)) {
+                setAvatarMenuOpen(false);
+            }
         }
 
-        if (notificationsOpen) {
+        if (notificationsOpen || avatarMenuOpen) {
             document.addEventListener("mousedown", handleClickOutside);
         }
         return () => {
             document.removeEventListener("mousedown", handleClickOutside);
         };
-    }, [notificationsOpen]);
+    }, [notificationsOpen, avatarMenuOpen]);
 
     const getBreadcrumbs = () => {
         const paths = pathname.split('/').filter(Boolean);
@@ -334,13 +342,46 @@ export function Header({ onMenuClick }: { onMenuClick?: () => void }) {
                 </button>
 
                 {/* User avatar */}
-                <Link href="/dashboard/settings" className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-[var(--p-line)] transition-all">
-                    <Avatar
-                        style={{ width: '34px', height: '34px', borderRadius: '50%' }}
-                        {...genConfig((user as any)?.avatarSeed || user?.name || "User")}
-                    />
-                </Link>
+                <div className="relative shrink-0" ref={avatarMenuRef}>
+                    <button
+                        onClick={() => setAvatarMenuOpen(!avatarMenuOpen)}
+                        className="shrink-0 rounded-full ring-2 ring-transparent hover:ring-[var(--p-line)] transition-all block"
+                    >
+                        <Avatar
+                            style={{ width: '34px', height: '34px', borderRadius: '50%' }}
+                            {...genConfig((user as any)?.avatarSeed || user?.name || "User")}
+                        />
+                    </button>
+
+                    {avatarMenuOpen && (
+                        <div className="card-premium absolute right-0 top-full mt-2 w-48 z-40 overflow-hidden animate-fade-in-up py-1">
+                            <button
+                                onClick={() => { setAvatarMenuOpen(false); setAvatarPickerOpen(true); }}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-[var(--glass)] transition-colors"
+                            >
+                                <PiUserCircle className="text-[16px] text-gray-400" />
+                                Change avatar
+                            </button>
+                            <Link
+                                href="/dashboard/settings"
+                                onClick={() => setAvatarMenuOpen(false)}
+                                className="w-full flex items-center gap-2.5 px-4 py-2.5 text-sm text-gray-700 hover:bg-[var(--glass)] transition-colors"
+                            >
+                                <PiGearSix className="text-[16px] text-gray-400" />
+                                Account Settings
+                            </Link>
+                        </div>
+                    )}
+                </div>
             </div>
+
+            {avatarPickerOpen && (
+                <AvatarPickerModal
+                    currentSeed={(user as any)?.avatarSeed || "avatar-aurora"}
+                    onClose={() => setAvatarPickerOpen(false)}
+                    onSaved={() => { updateSession(); }}
+                />
+            )}
 
         </header>
         </div>
