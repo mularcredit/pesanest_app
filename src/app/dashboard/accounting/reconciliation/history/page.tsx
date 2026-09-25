@@ -5,6 +5,7 @@ import prisma from '@/lib/prisma';
 import { BankAccountPicker } from '../BankAccountPicker';
 import { StatementHistoryCard, type HistoryStatement } from './StatementHistoryCard';
 import { PiArrowLeft } from 'react-icons/pi';
+import { statementOwnerFilter } from '@/lib/accounting/reconcilable-accounts';
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
 
@@ -18,7 +19,7 @@ export default async function ReconciliationHistoryPage({
 
     const { bankAccountId: requestedId } = await searchParams;
 
-    const [bankRows, paybillRows] = await Promise.all([
+    const [bankRows, paybillRows, walletRows, paystackRows] = await Promise.all([
         prisma.bankAccount.findMany({
             where: { isActive: true },
             select: { id: true, name: true, bankName: true, currency: true },
@@ -29,11 +30,21 @@ export default async function ReconciliationHistoryPage({
             select: { id: true, name: true, paybillNumber: true },
             orderBy: { name: 'asc' },
         }),
+        prisma.wallet.findMany({
+            where: { glAccountId: { not: null } },
+            select: { id: true, currency: true },
+        }),
+        prisma.paystackAccount.findMany({
+            where: { isActive: true },
+            select: { id: true, name: true, currency: true },
+        }),
     ]);
 
     const accounts = [
         ...bankRows.map(b => ({ id: b.id, kind: 'BANK' as const, label: `${b.name} — ${b.bankName}`, currency: b.currency })),
         ...paybillRows.map(p => ({ id: p.id, kind: 'PAYBILL' as const, label: `${p.name} — ${p.paybillNumber}`, currency: 'KES' })),
+        ...walletRows.map(w => ({ id: w.id, kind: 'WALLET' as const, label: 'Fahari Wallet', currency: w.currency })),
+        ...paystackRows.map(p => ({ id: p.id, kind: 'PAYSTACK' as const, label: p.name, currency: p.currency })),
     ];
 
     if (accounts.length === 0) {
@@ -50,7 +61,7 @@ export default async function ReconciliationHistoryPage({
     const account = accounts.find(a => a.id === requestedId) || accounts[0];
 
     const statements = await prisma.bankStatement.findMany({
-        where: { OR: [{ bankAccountId: account.id }, { paybillAccountId: account.id }] },
+        where: statementOwnerFilter(account.id),
         include: { lines: { include: { matches: true }, orderBy: { transactionDate: 'asc' } } },
         orderBy: { importedAt: 'desc' },
     });
