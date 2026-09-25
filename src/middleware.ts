@@ -1,5 +1,8 @@
 import NextAuth from "next-auth"
 import { authConfig } from "@/auth.config"
+import { normalizeAuthUrlEnv } from "@/lib/normalize-auth-url"
+
+normalizeAuthUrlEnv();
 
 const { auth } = NextAuth(authConfig)
 

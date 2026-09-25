@@ -3,6 +3,9 @@ import Credentials from "next-auth/providers/credentials"
 import prisma from "@/lib/prisma"
 import bcrypt from "bcryptjs"
 import { z } from "zod"
+import { normalizeAuthUrlEnv } from "@/lib/normalize-auth-url"
+
+normalizeAuthUrlEnv();
 
 const LOCKOUT_THRESHOLD = 5;  // failed attempts before lockout
 const LOCKOUT_MINUTES = 15;
