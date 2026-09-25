@@ -124,6 +124,21 @@ export async function GET(req: Request, props: { params: Promise<{ id: string }>
 }
 
 export async function POST(req: Request, props: { params: Promise<{ id: string }> }) {
+    try {
+        return await handlePost(req, props);
+    } catch (error: any) {
+        // Without this, any exception below (a transaction timeout is the
+        // likeliest one, since matching several items runs proportionally
+        // more writes inside one interactive transaction) propagates
+        // uncaught out of the route handler. Next.js then returns an empty
+        // body, and the client's `await res.json()` fails with "Unexpected
+        // end of JSON input" — masking the real error entirely.
+        console.error("Reconciliation POST failed:", error);
+        return NextResponse.json({ error: error?.message || "Reconciliation action failed" }, { status: 500 });
+    }
+}
+
+async function handlePost(req: Request, props: { params: Promise<{ id: string }> }) {
     const params = await props.params;
     const session = await auth();
     if (!session?.user) return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
@@ -183,27 +198,34 @@ export async function POST(req: Request, props: { params: Promise<{ id: string }
         // Every statement line is matched against every journal entry in the
         // group — with no per-pair concept in a many-to-many split, what's
         // actually verified is that the GROUP balances, not any one pairing.
-        const matches = await prisma.$transaction(async (tx) => {
-            const created = [];
-            for (const slId of statementLineIds) {
-                for (const jeId of journalEntryIds) {
-                    created.push(await (tx as any).reconciliationMatch.create({
-                        data: {
-                            statementLineId: slId,
-                            journalEntryId: jeId,
-                            matchedBy: session.user!.id,
-                            matchType,
-                            notes: notes || null
-                        }
-                    }));
-                }
+        // The pairs are created concurrently (not one sequential await per
+        // pair) so a several-item split doesn't multiply the transaction's
+        // wall-clock time — sequential round-trips here previously risked
+        // hitting Prisma's interactive-transaction timeout on larger splits.
+        const pairs: { slId: string; jeId: string }[] = [];
+        for (const slId of statementLineIds) {
+            for (const jeId of journalEntryIds) {
+                pairs.push({ slId, jeId });
             }
+        }
+        const matches = await prisma.$transaction(async (tx) => {
+            const created = await Promise.all(pairs.map(({ slId, jeId }) =>
+                (tx as any).reconciliationMatch.create({
+                    data: {
+                        statementLineId: slId,
+                        journalEntryId: jeId,
+                        matchedBy: session.user!.id,
+                        matchType,
+                        notes: notes || null
+                    }
+                })
+            ));
             await (tx as any).bankStatementLine.updateMany({
                 where: { id: { in: statementLineIds } },
                 data: { isMatched: true }
             });
             return created;
-        });
+        }, { timeout: 15000 });
 
         return NextResponse.json(matches, { status: 201 });
     }

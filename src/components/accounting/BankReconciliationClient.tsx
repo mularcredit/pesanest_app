@@ -504,7 +504,7 @@ export function BankReconciliationClient({
                     matchType: bankTxs.length > 1 || selectedBooks.length > 1 ? 'MANUAL_SPLIT' : 'MANUAL',
                 }),
             })
-            const data = await res.json()
+            const data = await res.json().catch(() => ({}))
             if (!res.ok) throw new Error(data.error || 'Could not match those')
             setBankTransactions(prev => prev.filter(t => !selectedBankTxIds.has(t.id)))
             setBookLines(prev => prev.filter(l => !selectedBookLineIds.has(l.id)))
