@@ -4,6 +4,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { revalidatePath } from "next/cache";
 import { z } from "zod";
+import bcrypt from "bcryptjs";
 
 const SettingsSchema = z.object({
     name: z.string().min(1, "Name is required"),
@@ -83,5 +84,56 @@ export async function updateSettings(formData: FormData) {
             : (error.message || "Failed to update settings");
             
         return { success: false, error: errorMessage };
+    }
+}
+
+/**
+ * Change the currently logged-in user's own password. Always scoped to
+ * session.user.id — never accepts a target user id — so this can never be
+ * used to touch anyone else's account, unlike the admin team-management
+ * password reset.
+ */
+export async function changeOwnPassword(currentPassword: string, newPassword: string) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    if (!currentPassword || !newPassword) {
+        return { success: false, error: "Both your current and new password are required" };
+    }
+    if (newPassword.length < 8) {
+        return { success: false, error: "New password must be at least 8 characters" };
+    }
+
+    try {
+        const user = await prisma.user.findUnique({
+            where: { id: session.user.id },
+            select: { password: true },
+        });
+        if (!user?.password) {
+            return { success: false, error: "Could not verify your account" };
+        }
+
+        const currentMatches = await bcrypt.compare(currentPassword, user.password);
+        if (!currentMatches) {
+            return { success: false, error: "Current password is incorrect" };
+        }
+
+        const sameAsOld = await bcrypt.compare(newPassword, user.password);
+        if (sameAsOld) {
+            return { success: false, error: "New password must be different from your current password" };
+        }
+
+        const hashed = await bcrypt.hash(newPassword, 10);
+        await prisma.user.update({
+            where: { id: session.user.id },
+            data: { password: hashed },
+        });
+
+        return { success: true };
+    } catch (error: any) {
+        console.error("❌ Failed to change password:", error);
+        return { success: false, error: "Failed to change password. Please try again." };
     }
 }

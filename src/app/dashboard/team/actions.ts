@@ -126,6 +126,18 @@ export async function updateUser(userId: string, formData: FormData) {
         return { success: false, error: "Unauthorized" };
     }
 
+    // Without this, any logged-in user could call this action directly
+    // (bypassing the admin-only UI that normally surfaces it) and set their
+    // own role to SYSTEM_ADMIN — this check was missing entirely before.
+    const currentUser = await prisma.user.findUnique({
+        where: { id: session.user.id },
+        select: { role: true, customRole: { select: { isSystem: true } } }
+    });
+    const isAdmin = currentUser?.role === 'SYSTEM_ADMIN' || currentUser?.customRole?.isSystem;
+    if (!isAdmin) {
+        return { success: false, error: "Forbidden: Only System Admins can manage users" };
+    }
+
     const name = formData.get("name") as string;
     const email = formData.get("email") as string;
     let role = formData.get("role") as string;

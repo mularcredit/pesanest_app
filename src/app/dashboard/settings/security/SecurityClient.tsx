@@ -1,8 +1,84 @@
 'use client';
 
-import { PiShieldCheck, PiShieldWarning, PiCheckCircle, PiWarning, PiLock } from 'react-icons/pi';
+import { useState } from 'react';
+import { PiShieldCheck, PiShieldWarning, PiCheckCircle, PiWarning, PiLock, PiKey } from 'react-icons/pi';
+import { changeOwnPassword } from '../actions';
+import { useToast } from '@/components/ui/ToastProvider';
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+const INPUT_CLASS = "w-full rounded-[6px] px-3 py-[9px] text-[13px] text-gray-900 outline-none focus:ring-1 focus:ring-[#6366F1] transition-colors bg-white";
+const INPUT_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
+
+function ChangePasswordCard() {
+    const { showToast } = useToast();
+    const [currentPassword, setCurrentPassword] = useState('');
+    const [newPassword, setNewPassword] = useState('');
+    const [confirmPassword, setConfirmPassword] = useState('');
+    const [isSubmitting, setIsSubmitting] = useState(false);
+
+    const handleSubmit = async (e: React.FormEvent) => {
+        e.preventDefault();
+        if (newPassword !== confirmPassword) {
+            showToast("New password and confirmation don't match", 'error');
+            return;
+        }
+        setIsSubmitting(true);
+        try {
+            const result = await changeOwnPassword(currentPassword, newPassword);
+            if (result.success) {
+                showToast('Password updated', 'success');
+                setCurrentPassword('');
+                setNewPassword('');
+                setConfirmPassword('');
+            } else {
+                showToast(result.error || 'Failed to change password', 'error');
+            }
+        } finally {
+            setIsSubmitting(false);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-[8px]" style={CARD_STYLE}>
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                <PiKey className="text-[22px] text-gray-400 shrink-0" />
+                <div>
+                    <h2 className="text-[13px] font-[600] text-gray-900">Change password</h2>
+                    <p className="text-[12px] text-gray-400 mt-0.5">Update the password you use to sign in</p>
+                </div>
+            </div>
+            <form onSubmit={handleSubmit} className="px-5 py-4 space-y-3">
+                <div>
+                    <label className="block text-[11.5px] font-[500] text-gray-500 mb-1.5">Current password</label>
+                    <input type="password" required autoComplete="current-password" value={currentPassword}
+                        onChange={e => setCurrentPassword(e.target.value)}
+                        className={INPUT_CLASS} style={INPUT_STYLE} />
+                </div>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                    <div>
+                        <label className="block text-[11.5px] font-[500] text-gray-500 mb-1.5">New password</label>
+                        <input type="password" required minLength={8} autoComplete="new-password" value={newPassword}
+                            onChange={e => setNewPassword(e.target.value)}
+                            className={INPUT_CLASS} style={INPUT_STYLE} />
+                    </div>
+                    <div>
+                        <label className="block text-[11.5px] font-[500] text-gray-500 mb-1.5">Confirm new password</label>
+                        <input type="password" required minLength={8} autoComplete="new-password" value={confirmPassword}
+                            onChange={e => setConfirmPassword(e.target.value)}
+                            className={INPUT_CLASS} style={INPUT_STYLE} />
+                    </div>
+                </div>
+                <p className="text-[11px] text-gray-400">At least 8 characters.</p>
+                <div className="flex justify-end pt-1">
+                    <button type="submit" disabled={isSubmitting}
+                        className="px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-[#6366F1] hover:bg-[#6366F1]/90 transition-colors disabled:opacity-50">
+                        {isSubmitting ? 'Updating…' : 'Update password'}
+                    </button>
+                </div>
+            </form>
+        </div>
+    );
+}
 
 export function SecurityClient({
     otpExempt,
@@ -15,6 +91,8 @@ export function SecurityClient({
 }) {
     return (
         <div className="space-y-4">
+            <ChangePasswordCard />
+
             {/* SMS OTP status card */}
             <div className="bg-white rounded-[8px]" style={CARD_STYLE}>
                 <div className="px-5 py-4 flex items-start justify-between"
