@@ -7,6 +7,7 @@ import {
 } from 'react-icons/pi';
 import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
+import { isCashEquivalentAccount } from '@/lib/accounting/cash-accounts';
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
@@ -56,11 +57,7 @@ export default async function CashFlowPage() {
         };
     });
 
-    const isCash = (a: typeof accountBalances[0]) => {
-        if (a.type !== 'ASSET') return false;
-        const n = a.name.toLowerCase();
-        return n.includes('bank') || n.includes('cash') || n.includes('wallet') || n.includes('pesa') || n.includes('stripe');
-    };
+    const isCash = isCashEquivalentAccount;
 
     const cashAccounts = accountBalances.filter(isCash);
     const totalCash = cashAccounts.reduce((s, a) => s + a.balance, 0);

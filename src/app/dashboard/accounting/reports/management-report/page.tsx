@@ -9,6 +9,7 @@ import { EditableImage } from '@/components/finance-studio/EditableImage';
 import { EditableCompanyName } from '@/components/finance-studio/EditableCompanyName';
 import Link from 'next/link';
 import { Inter } from 'next/font/google';
+import { isCashEquivalentAccount } from '@/lib/accounting/cash-accounts';
 
 // Scoped to this page only — the rest of the app reads in Lexend/Outfit,
 // but a report meant to be printed and shared reads better set in Inter,
@@ -18,11 +19,6 @@ const inter = Inter({ subsets: ['latin'], display: 'swap' });
 const HAIRLINE = '1px solid rgba(0,0,0,0.08)';
 const SEV_COLOR: Record<string, string> = { high: '#dc2626', medium: '#d97706', low: '#059669' };
 const STATUS_COLOR: Record<string, string> = { Flagged: '#dc2626', Resolved: '#059669', Monitor: '#6b7280', Open: '#d97706' };
-
-// Same "cash-like" subtypes used across bank reconciliation / transfers —
-// a live snapshot of what the business actually has on hand right now,
-// not a full cash-flow statement (see cash-flow/page.tsx for that).
-const CASH_SUBTYPES = ['CURRENT_ASSET', 'CASH', 'CURRENT', 'PAYBILL', 'BANK'];
 
 function fmt(n: number) {
     return new Intl.NumberFormat('en-KE', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
@@ -324,8 +320,12 @@ function ActionRow({ action, owner, dueDate, status }: { action: string; owner?:
 }
 
 async function getCashPosition(asOf: Date) {
+    // type: 'ASSET' pre-filters the query; isCashEquivalentAccount below does
+    // the real narrowing — a subtype-only filter here previously used the
+    // generic 'CURRENT_ASSET' bucket, which also covers Accounts Receivable,
+    // Inventory and Prepaid Expenses (none of which are cash).
     const accounts = await prisma.account.findMany({
-        where: { type: 'ASSET', subtype: { in: CASH_SUBTYPES } },
+        where: { type: 'ASSET' },
         include: {
             journalLines: {
                 where: { entry: { date: { lte: asOf }, status: { in: ['POSTED', 'VOID'] } } },
@@ -334,6 +334,7 @@ async function getCashPosition(asOf: Date) {
     });
     let total = 0;
     for (const acc of accounts) {
+        if (!isCashEquivalentAccount(acc)) continue;
         const debit = acc.journalLines.reduce((s, l) => s + l.debit, 0);
         const credit = acc.journalLines.reduce((s, l) => s + l.credit, 0);
         total += debit - credit;
