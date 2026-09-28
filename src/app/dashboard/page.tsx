@@ -112,13 +112,13 @@ export default async function DashboardPage() {
     const pendingReqs          = allRequisitions.filter((r: any) => r.status === 'PENDING');
     const pendingTotal         = pendingReqs.reduce((s: number, r: any) => s + r.amount, 0);
     const pendingCount         = pendingReqs.length;
-    const disbursedThisMonth   = thisMonthReqs.filter((r: any) => ['APPROVED', 'PAID'].includes(r.status));
-    const disbursedTotal       = disbursedThisMonth.reduce((s: number, r: any) => s + r.amount, 0);
-    // "Approved" means it ever cleared the approval gate — APPROVED, PAID, CLOSED, FULFILLED,
+    // "Disbursed" means it ever cleared the approval gate — APPROVED, PAID, CLOSED, FULFILLED,
     // PARTIALLY_PAID all qualify, since a requisition can't reach those without having been
     // approved first. Checking only for a *current* status of APPROVED/PAID undercounts badly,
     // since most approved requisitions move on to PAID → CLOSED/FULFILLED and no longer match.
     const undecidedOrRejectedStatuses = ['DRAFT', 'PENDING', 'REJECTED', 'NEEDS_INFO', 'ADJUSTMENT_REQUIRED'];
+    const disbursedThisMonth   = thisMonthReqs.filter((r: any) => !undecidedOrRejectedStatuses.includes(r.status));
+    const disbursedTotal       = disbursedThisMonth.reduce((s: number, r: any) => s + r.amount, 0);
     const approvedAllTime      = allRequisitions.filter((r: any) => !undecidedOrRejectedStatuses.includes(r.status)).length;
     const submittedAllTime     = allRequisitions.filter((r: any) => r.status !== 'DRAFT').length;
     const approvalRate         = submittedAllTime > 0 ? (approvedAllTime / submittedAllTime) * 100 : 0;
@@ -183,7 +183,7 @@ export default async function DashboardPage() {
         const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
         const e = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
         return allRequisitions
-            .filter((x: any) => { const xd = new Date(x.createdAt); return xd >= s && xd < e && ['APPROVED','PAID'].includes(x.status); })
+            .filter((x: any) => { const xd = new Date(x.createdAt); return xd >= s && xd < e && !undecidedOrRejectedStatuses.includes(x.status); })
             .reduce((sum: number, x: any) => sum + x.amount, 0);
     });
     const sparkPending = Array.from({ length: 7 }, (_, i) => {
