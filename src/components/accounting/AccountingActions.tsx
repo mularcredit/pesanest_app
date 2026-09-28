@@ -240,6 +240,14 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
 
     // VOID FORM STATE
     const [voidReason, setVoidReason] = useState("");
+    // Defaults to today, matching prior behavior — override it to match the
+    // original entry's own date when correcting a prior period's mistake,
+    // so the correction lands in the same period instead of splitting the
+    // P&L impact across two months.
+    const [voidDate, setVoidDate] = useState(() => {
+        const d = new Date();
+        return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    });
 
     const addLine = () => {
         const newId = Math.max(...journalData.lines.map(l => l.id), 0) + 1;
@@ -400,7 +408,7 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
             const res = await fetch("/api/accounting/journal", {
                 method: "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ action: "VOID", entryId, reason: voidReason })
+                body: JSON.stringify({ action: "VOID", entryId, reason: voidReason, date: voidDate })
             });
             const data = await res.json().catch(() => ({}));
             if (!res.ok) throw new Error(data.error || "Failed to void entry");
@@ -706,6 +714,20 @@ export function AccountingActions({ type, entryId, entryNumber, entryStatus, ini
                                             className="w-full rounded-xl px-4 py-2.5 bg-white text-sm outline-none focus:ring-2 focus:ring-[#6366F1]/20 resize-none"
                                             style={{ border: '1px solid rgba(0,0,0,0.12)' }}
                                         />
+                                    </div>
+                                    <div>
+                                        <label className="block text-xs font-semibold text-gray-700 uppercase mb-1.5">Reversal date</label>
+                                        <input
+                                            type="date"
+                                            value={voidDate}
+                                            onChange={e => setVoidDate(e.target.value)}
+                                            className="w-full rounded-xl px-4 py-2.5 bg-white text-sm outline-none focus:ring-2 focus:ring-[#6366F1]/20"
+                                            style={{ border: '1px solid rgba(0,0,0,0.12)' }}
+                                        />
+                                        <p className="text-[11px] text-gray-400 mt-1">
+                                            Defaults to today. Set it to the original entry's own date when correcting
+                                            a prior period's mistake, so the correction lands in that same period.
+                                        </p>
                                     </div>
                                 </div>
                             )}

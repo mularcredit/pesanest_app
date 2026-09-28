@@ -154,11 +154,19 @@ export class AccountingEngine {
     /**
      * Creates a contra-entry that reverses an existing posted journal entry.
      * The original entry is left untouched (append-only ledger).
+     *
+     * `reversalDate` defaults to today, but can be set to match the original
+     * entry's own date (or any date in between) — correcting a prior period's
+     * mistake with a reversal dated "today" splits the correction across two
+     * periods: the original period stays overstated (its entry is never
+     * offset there) and whichever period the reversal lands in absorbs a
+     * credit/debit that has nothing to do with its own activity.
      */
     static async createReversal(
         entryId: string,
         userId: string,
-        reason: string
+        reason: string,
+        reversalDate: Date = new Date()
     ) {
         const original = await (prisma as any).journalEntry.findUnique({
             where: { id: entryId },
@@ -175,8 +183,7 @@ export class AccountingEngine {
             throw new Error(`Entry ${entryId} has already been reversed (${alreadyReversed.entryNumber})`);
         }
 
-        // Period guard on reversal date (today)
-        const reversalDate = new Date();
+        // Period guard on the reversal's own date (open period required)
         await assertPostingAllowed(reversalDate);
 
         const reversalLines = original.lines.map((line: any) => ({
@@ -202,12 +209,12 @@ export class AccountingEngine {
      * clearly shows it was cancelled rather than leaving it looking like an
      * active, uncorrected POSTED entry.
      */
-    static async voidJournalEntry(entryId: string, userId: string, reason: string) {
+    static async voidJournalEntry(entryId: string, userId: string, reason: string, reversalDate?: Date) {
         const original = await (prisma as any).journalEntry.findUnique({ where: { id: entryId } });
         if (!original) throw new Error(`Journal entry ${entryId} not found`);
         if (original.status === 'VOID') throw new Error('This entry has already been voided');
 
-        const reversal = await this.createReversal(entryId, userId, reason);
+        const reversal = await this.createReversal(entryId, userId, reason, reversalDate);
 
         await (prisma as any).journalEntry.update({
             where: { id: entryId },

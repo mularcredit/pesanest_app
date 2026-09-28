@@ -10,11 +10,19 @@ export async function POST(req: Request) {
 
     const body = await req.json();
 
-    // Manual journal reversal: POST with { action: 'REVERSE', entryId, reason }
+    // Manual journal reversal: POST with { action: 'REVERSE', entryId, reason, date? }
+    // `date` (YYYY-MM-DD) lets the reversal be backdated to match the original
+    // entry's period instead of always landing on today — correcting a prior
+    // period's mistake with a reversal dated "today" otherwise splits the
+    // correction across two periods' P&L.
     if (body.action === 'REVERSE') {
-        const { entryId, reason } = body;
+        const { entryId, reason, date } = body;
         if (!entryId || !reason?.trim()) {
             return NextResponse.json({ error: "entryId and reason are required" }, { status: 400 });
+        }
+        const reversalDate = date ? new Date(date + 'T12:00:00.000Z') : undefined;
+        if (date && Number.isNaN(reversalDate!.getTime())) {
+            return NextResponse.json({ error: "Invalid reversal date" }, { status: 400 });
         }
 
         // Only admins may reverse posted entries
@@ -28,18 +36,24 @@ export async function POST(req: Request) {
         }
 
         try {
-            const reversal = await AccountingEngine.createReversal(entryId, session.user.id!, reason);
+            const reversal = reversalDate
+                ? await AccountingEngine.createReversal(entryId, session.user.id!, reason, reversalDate)
+                : await AccountingEngine.createReversal(entryId, session.user.id!, reason);
             return NextResponse.json(reversal);
         } catch (error: any) {
             return NextResponse.json({ error: error.message }, { status: 400 });
         }
     }
 
-    // Void a posted entry: POST with { action: 'VOID', entryId, reason }
+    // Void a posted entry: POST with { action: 'VOID', entryId, reason, date? }
     if (body.action === 'VOID') {
-        const { entryId, reason } = body;
+        const { entryId, reason, date } = body;
         if (!entryId || !reason?.trim()) {
             return NextResponse.json({ error: "entryId and reason are required" }, { status: 400 });
+        }
+        const reversalDate = date ? new Date(date + 'T12:00:00.000Z') : undefined;
+        if (date && Number.isNaN(reversalDate!.getTime())) {
+            return NextResponse.json({ error: "Invalid reversal date" }, { status: 400 });
         }
 
         // Only admins may void posted entries
@@ -53,7 +67,7 @@ export async function POST(req: Request) {
         }
 
         try {
-            const reversal = await AccountingEngine.voidJournalEntry(entryId, session.user.id!, reason);
+            const reversal = await AccountingEngine.voidJournalEntry(entryId, session.user.id!, reason, reversalDate);
             return NextResponse.json(reversal);
         } catch (error: any) {
             return NextResponse.json({ error: error.message }, { status: 400 });
