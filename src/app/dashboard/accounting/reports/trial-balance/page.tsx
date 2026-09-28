@@ -1,5 +1,6 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
+import { Suspense } from 'react';
 import prisma from '@/lib/prisma';
 import {
     PiScales,
@@ -7,6 +8,7 @@ import {
 } from 'react-icons/pi';
 import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
+import { AsOfDateBar } from '@/components/accounting/AsOfDateBar';
 
 const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
@@ -24,9 +26,20 @@ function fmt(n: number) {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(n);
 }
 
-export default async function TrialBalancePage() {
+export default async function TrialBalancePage({
+    searchParams,
+}: {
+    searchParams: Promise<{ asOf?: string }>;
+}) {
     const session = await auth();
     if (!session?.user) return redirect('/login');
+
+    const { asOf: asOfParam } = await searchParams;
+    // A trial balance is a cumulative snapshot as at one date — every posted
+    // entry up to and including that date, from account inception. There's
+    // no "from" boundary the way an Income Statement period has one; asset/
+    // liability/equity balances are running totals, not period activity.
+    const asOfDate = asOfParam ? new Date(asOfParam + 'T23:59:59.999Z') : null;
 
     // Deliberately not filtered by isActive/isArchived: an account can be archived
     // after it has posted history, and a trial balance must still include that
@@ -39,7 +52,12 @@ export default async function TrialBalancePage() {
     const accounts = await prisma.account.findMany({
         include: {
             journalLines: {
-                where: { entry: { status: { in: ['POSTED', 'VOID'] } } },
+                where: {
+                    entry: {
+                        status: { in: ['POSTED', 'VOID'] },
+                        ...(asOfDate ? { date: { lte: asOfDate } } : {}),
+                    },
+                },
             },
         },
         orderBy: { code: 'asc' },
@@ -71,7 +89,13 @@ export default async function TrialBalancePage() {
         return acc;
     }, {});
 
-    const asOf = new Date().toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
+    // Parsed with no trailing "Z" (local time, not UTC) so this formats back
+    // to the same calendar day it was picked as — asOfDate above is a UTC
+    // end-of-day instant used only for the query boundary, and reformatting
+    // that through toLocaleDateString would silently shift a day forward on
+    // a server running east of UTC (e.g. Africa/Nairobi, UTC+3).
+    const asOf = (asOfParam ? new Date(asOfParam + 'T00:00:00') : new Date())
+        .toLocaleDateString('en-GB', { day: 'numeric', month: 'long', year: 'numeric' });
 
     const exportData: ReportExportData = {
         title: 'Trial Balance',
@@ -113,6 +137,10 @@ export default async function TrialBalancePage() {
 
                 <ReportExportButton data={exportData} />
             </div>
+
+            <Suspense>
+                <AsOfDateBar />
+            </Suspense>
 
             {/* ── KPI strip ── */}
             <div className="grid grid-cols-3 gap-3">

@@ -5,7 +5,7 @@ import prisma from '@/lib/prisma';
 import { PiChartBar, PiInfo } from 'react-icons/pi';
 import { ReportExportButton } from '@/components/accounting/ReportExportButton';
 import type { ReportExportData } from '@/components/accounting/ReportExportButton';
-import { DateRangeBar } from './DateRangeBar';
+import { DateRangeBar } from '@/components/accounting/DateRangeBar';
 
 // ── helpers ──────────────────────────────────────────────────────────────────
 
