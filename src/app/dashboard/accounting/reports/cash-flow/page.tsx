@@ -15,6 +15,12 @@ function fmt(n: number) {
     return new Intl.NumberFormat('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 }).format(Math.abs(n));
 }
 
+function acctSubtitle(acc: { code: string; bankName?: string | null; paybillNumber?: string | null }) {
+    if (acc.bankName) return `${acc.code} · ${acc.bankName}`;
+    if (acc.paybillNumber) return `${acc.code} · ${acc.paybillNumber}`;
+    return acc.code;
+}
+
 function SignedAmount({ value, size = 'md' }: { value: number; size?: 'sm' | 'md' | 'lg' }) {
     const positive = value >= 0;
     const sizeClass = size === 'lg' ? 'text-[18px]' : size === 'sm' ? 'text-[11.5px]' : 'text-[12.5px]';
@@ -46,6 +52,17 @@ export default async function CashFlowPage() {
         orderBy: { code: 'asc' },
     });
 
+    // The GL account's own name is just its internal label (e.g. "Bank —
+    // FIGBLOOM DIGITAL GROUP") — it never carried which actual bank that
+    // account is held at (e.g. ABSA). Look that up from the BankAccount it's
+    // linked to (via glAccountId) so the report can show it.
+    const [bankAccountsForNames, paybillAccountsForNames] = await Promise.all([
+        prisma.bankAccount.findMany({ select: { glAccountId: true, bankName: true } }),
+        prisma.paybillAccount.findMany({ select: { glAccountId: true, paybillNumber: true } }),
+    ]);
+    const bankNameByGlAccountId = new Map(bankAccountsForNames.map(b => [b.glAccountId, b.bankName]));
+    const paybillNumberByGlAccountId = new Map(paybillAccountsForNames.map(p => [p.glAccountId, p.paybillNumber]));
+
     const accountBalances = accounts.map(acc => {
         const dr = acc.journalLines.reduce((s, l) => s + l.debit, 0);
         const cr = acc.journalLines.reduce((s, l) => s + l.credit, 0);
@@ -54,6 +71,8 @@ export default async function CashFlowPage() {
             id: acc.id, code: acc.code, name: acc.name,
             type: acc.type, subtype: acc.subtype,
             balance: isDebitNormal ? dr - cr : cr - dr,
+            bankName: bankNameByGlAccountId.get(acc.id) ?? null,
+            paybillNumber: paybillNumberByGlAccountId.get(acc.id) ?? null,
         };
     });
 
@@ -363,7 +382,7 @@ export default async function CashFlowPage() {
                                 style={i > 0 ? { borderTop: HAIRLINE } : {}}>
                                 <div>
                                     <p className="text-[12.5px] font-[500] text-gray-900">{acc.name}</p>
-                                    <p className="text-[10.5px] text-gray-400 font-mono">{acc.code}</p>
+                                    <p className="text-[10.5px] text-gray-400 font-mono">{acctSubtitle(acc)}</p>
                                 </div>
                                 <SignedAmount value={acc.balance} size="sm" />
                             </div>
@@ -396,7 +415,7 @@ export default async function CashFlowPage() {
                                 style={i > 0 ? { borderTop: HAIRLINE } : {}}>
                                 <div>
                                     <p className="text-[12.5px] font-[500] text-gray-900">{acc.name}</p>
-                                    <p className="text-[10.5px] text-gray-400 font-mono">{acc.code}</p>
+                                    <p className="text-[10.5px] text-gray-400 font-mono">{acctSubtitle(acc)}</p>
                                 </div>
                                 <SignedAmount value={acc.balance} size="sm" />
                             </div>
