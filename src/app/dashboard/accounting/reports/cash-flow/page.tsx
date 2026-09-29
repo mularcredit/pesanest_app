@@ -76,14 +76,29 @@ export default async function CashFlowPage() {
         (a.subtype?.toUpperCase() === 'RECEIVABLE' || a.name.toLowerCase().includes('receivable')));
     const changeReceivables = receivables.reduce((s, a) => s + a.balance, 0);
 
+    // Other current assets — Inventory, Prepaid Expenses, and non-cash clearing/
+    // settlement balances like Paystack Settlement Clearing. These carry a
+    // current-asset-style subtype (not a genuine long-term fixed asset), so
+    // they behave like receivables for cash-flow purposes: an increase ties up
+    // cash that hasn't hit the books as a real, spendable balance yet. Without
+    // this, they fell into "fixed assets" below and were bundled into
+    // Investing Activities as if the business had bought equipment — which is
+    // also why Paystack disappeared entirely from "Cash Balance on Books"
+    // (correctly excluded there, since it isn't cash-in-hand) without
+    // reappearing anywhere else in the statement.
+    const otherCurrentAssets       = accountBalances.filter(a => a.type === 'ASSET' && !isCash(a) && !receivables.includes(a) &&
+        ['CURRENT_ASSET', 'CURRENT'].includes((a.subtype ?? '').toUpperCase()));
+    const changeOtherCurrentAssets = otherCurrentAssets.reduce((s, a) => s + a.balance, 0);
+
     const payables       = accountBalances.filter(a => a.type === 'LIABILITY' &&
         (a.subtype?.toUpperCase() === 'PAYABLE' || a.name.toLowerCase().includes('payable')));
     const changePayables = payables.reduce((s, a) => s + a.balance, 0);
 
-    const operatingCashFlow = netIncome + depreciationAddBack + changePayables - changeReceivables;
+    const operatingCashFlow = netIncome + depreciationAddBack + changePayables - changeReceivables - changeOtherCurrentAssets;
 
-    // ── Investing ──
-    const fixedAssets       = accountBalances.filter(a => a.type === 'ASSET' && !isCash(a) && !receivables.includes(a));
+    // ── Investing ── genuinely long-term assets only (property, equipment,
+    // furniture, vehicles) — current assets are carved out above.
+    const fixedAssets       = accountBalances.filter(a => a.type === 'ASSET' && !isCash(a) && !receivables.includes(a) && !otherCurrentAssets.includes(a));
     const investingCashFlow = -1 * fixedAssets.reduce((s, a) => s + a.balance, 0);
 
     // ── Financing ──
@@ -109,6 +124,7 @@ export default async function CashFlowPage() {
                     { name: 'Net Income / (Loss)', current: netIncome },
                     ...(depreciationAddBack !== 0 ? [{ name: 'Add back: Depreciation', current: depreciationAddBack, indent: true as const }] : []),
                     ...(changeReceivables !== 0 ? [{ name: 'Change in Accounts Receivable', current: -changeReceivables, indent: true as const }] : []),
+                    ...(changeOtherCurrentAssets !== 0 ? [{ name: 'Change in Other Current Assets', current: -changeOtherCurrentAssets, indent: true as const }] : []),
                     ...(changePayables !== 0 ? [{ name: 'Change in Accounts Payable', current: changePayables, indent: true as const }] : []),
                     { name: 'Net Cash from Operating Activities', current: operatingCashFlow, isBold: true, isSubtotal: true },
                 ],
@@ -151,6 +167,7 @@ export default async function CashFlowPage() {
                 { label: 'Net Income / (Loss)', value: netIncome, indent: false },
                 ...(depreciationAddBack !== 0 ? [{ label: 'Add back: Depreciation', value: depreciationAddBack, indent: true }] : []),
                 ...(changeReceivables !== 0 ? [{ label: 'Change in Accounts Receivable', value: -changeReceivables, indent: true }] : []),
+                ...(changeOtherCurrentAssets !== 0 ? [{ label: 'Change in Other Current Assets', value: -changeOtherCurrentAssets, indent: true }] : []),
                 ...(changePayables !== 0 ? [{ label: 'Change in Accounts Payable', value: changePayables, indent: true }] : []),
             ],
         },
