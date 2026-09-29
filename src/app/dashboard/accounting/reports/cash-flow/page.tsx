@@ -347,6 +347,38 @@ export default async function CashFlowPage() {
                 </div>
             </div>
 
+            {/* ── Other current assets breakdown — makes clear exactly which
+                 accounts (e.g. Paystack Settlement Clearing) are behind the
+                 "Change in Other Current Assets" line above, since that line
+                 is otherwise just one aggregate number with no accounts named. ── */}
+            {otherCurrentAssets.length > 0 && (
+                <div className="bg-white rounded-[8px] overflow-hidden" style={{ border: HAIRLINE }}>
+                    <div className="px-5 py-3" style={{ borderBottom: HAIRLINE, background: 'rgba(0,0,0,0.015)' }}>
+                        <p className="text-[10px] font-[600] uppercase tracking-[0.09em] text-gray-400">Other Current Assets</p>
+                    </div>
+                    <div>
+                        {otherCurrentAssets.map((acc, i) => (
+                            <div key={acc.id}
+                                className="flex items-center justify-between px-5 py-3 hover:bg-gray-50/40 transition-colors"
+                                style={i > 0 ? { borderTop: HAIRLINE } : {}}>
+                                <div>
+                                    <p className="text-[12.5px] font-[500] text-gray-900">{acc.name}</p>
+                                    <p className="text-[10.5px] text-gray-400 font-mono">{acc.code}</p>
+                                </div>
+                                <SignedAmount value={acc.balance} size="sm" />
+                            </div>
+                        ))}
+                        <div className="flex items-center justify-between px-5 py-3"
+                            style={{ background: 'rgba(0,0,0,0.018)', borderTop: HAIRLINE }}>
+                            <p className="text-[11px] font-[700] uppercase tracking-[0.07em] text-gray-500">Total Other Current Assets</p>
+                            <span className={`text-[13px] font-[700] font-mono tabular-nums ${changeOtherCurrentAssets >= 0 ? 'text-emerald-600' : 'text-rose-600'}`}>
+                                {changeOtherCurrentAssets >= 0 ? '' : '('}{fmt(changeOtherCurrentAssets)}{changeOtherCurrentAssets < 0 ? ')' : ''}
+                            </span>
+                        </div>
+                    </div>
+                </div>
+            )}
+
             {/* ── Cash position reconciliation ── */}
             <div className="bg-white rounded-[8px] overflow-hidden" style={{ border: HAIRLINE }}>
                 <div className="px-5 py-3" style={{ borderBottom: HAIRLINE, background: 'rgba(0,0,0,0.015)' }}>
