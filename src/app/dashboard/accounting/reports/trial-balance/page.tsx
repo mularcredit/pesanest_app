@@ -1,6 +1,7 @@
 import { auth } from '@/auth';
 import { redirect } from 'next/navigation';
 import { Suspense } from 'react';
+import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import {
     PiScales,
@@ -247,19 +248,27 @@ export default async function TrialBalancePage({
                                             </td>
                                         </tr>
 
-                                        {/* Account rows */}
+                                        {/* Account rows — each links to the General Ledger pre-filtered
+                                            to that account, for an immediate transaction/journal drill-down. */}
                                         {group.map((row, i) => (
                                             <tr key={row.code}
-                                                className="hover:bg-gray-50/40 transition-colors"
+                                                className="hover:bg-gray-50/40 transition-colors group/row"
                                                 style={{ borderBottom: i < group.length - 1 ? '1px solid rgba(0,0,0,0.04)' : HAIRLINE }}>
-                                                <td className="px-5 py-3 font-mono text-[11px] text-gray-400">{row.code}</td>
-                                                <td className="px-5 py-3">
-                                                    <span className="text-[12.5px] font-[500] text-gray-900">{row.name}</span>
-                                                    {row.subtype && (
-                                                        <span className="ml-2 text-[10px] font-[500] text-gray-400 uppercase tracking-[0.06em]">
-                                                            {row.subtype.replace(/_/g, ' ')}
-                                                        </span>
-                                                    )}
+                                                <td className="p-0">
+                                                    <Link href={`/dashboard/accounting/ledger?code=${row.code}`}
+                                                        className="block px-5 py-3 font-mono text-[11px] text-gray-400 group-hover/row:text-indigo-500">
+                                                        {row.code}
+                                                    </Link>
+                                                </td>
+                                                <td className="p-0">
+                                                    <Link href={`/dashboard/accounting/ledger?code=${row.code}`} className="block px-5 py-3">
+                                                        <span className="text-[12.5px] font-[500] text-gray-900 group-hover/row:text-indigo-600 group-hover/row:underline">{row.name}</span>
+                                                        {row.subtype && (
+                                                            <span className="ml-2 text-[10px] font-[500] text-gray-400 uppercase tracking-[0.06em]">
+                                                                {row.subtype.replace(/_/g, ' ')}
+                                                            </span>
+                                                        )}
+                                                    </Link>
                                                 </td>
                                                 <td className="px-5 py-3 text-right tabular-nums">
                                                     {row.debit > 0

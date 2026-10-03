@@ -19,9 +19,10 @@ function pct(n: number, base: number) {
 }
 
 // Map account subtype → P&L section
-function classifyExpense(subtype: string | null): 'cogs' | 'operating' | 'finance' | 'tax' {
+function classifyExpense(subtype: string | null): 'cogs' | 'staff' | 'operating' | 'finance' | 'tax' {
     const s = (subtype ?? '').toUpperCase();
     if (['COST_OF_SALES', 'COGS', 'COST_OF_GOODS_SOLD', 'COST_OF_REVENUE', 'DIRECT_COST', 'DIRECT_EXPENSE'].includes(s)) return 'cogs';
+    if (['STAFF_COSTS', 'STAFF_COST'].includes(s)) return 'staff';
     if (['FINANCE_COST', 'INTEREST', 'INTEREST_EXPENSE', 'BORROWING_COST', 'FINANCE_EXPENSE'].includes(s)) return 'finance';
     if (['INCOME_TAX', 'TAX_EXPENSE', 'CORPORATION_TAX', 'DEFERRED_TAX'].includes(s)) return 'tax';
     return 'operating';
@@ -95,6 +96,7 @@ async function fetchPL(from?: string, to?: string) {
         return acc && (acc.type === 'EXPENSE' || acc.type === 'OTHER_EXPENSE');
     });
     const cogs      = expLines.filter(l => classifyExpense(l.subtype) === 'cogs');
+    const staff     = expLines.filter(l => classifyExpense(l.subtype) === 'staff');
     const operating = expLines.filter(l => classifyExpense(l.subtype) === 'operating');
     const finance   = expLines.filter(l => classifyExpense(l.subtype) === 'finance');
     const tax       = expLines.filter(l => classifyExpense(l.subtype) === 'tax');
@@ -105,8 +107,9 @@ async function fetchPL(from?: string, to?: string) {
     const totalCogs       = cogs.reduce((s, l) => s + l.balance, 0);
     const grossProfit     = netRevenue - totalCogs;
     const totalOtherInc   = otherIncome.reduce((s, l) => s + l.balance, 0);
+    const totalStaff      = staff.reduce((s, l) => s + l.balance, 0);
     const totalOperating  = operating.reduce((s, l) => s + l.balance, 0);
-    const ebit            = grossProfit + totalOtherInc - totalOperating;
+    const ebit            = grossProfit + totalOtherInc - totalStaff - totalOperating;
     const totalFinance    = finance.reduce((s, l) => s + l.balance, 0);
     const pbt             = ebit - totalFinance;
     const totalTax        = tax.reduce((s, l) => s + l.balance, 0);
@@ -114,10 +117,10 @@ async function fetchPL(from?: string, to?: string) {
 
     return {
         revenue, contraRev, otherIncome,
-        cogs, operating, finance, tax,
+        cogs, staff, operating, finance, tax,
         totalRevenue, totalContra, netRevenue,
         totalCogs, grossProfit,
-        totalOtherInc, totalOperating, ebit,
+        totalOtherInc, totalStaff, totalOperating, ebit,
         totalFinance, pbt, totalTax, netProfit,
     };
 }
@@ -227,6 +230,7 @@ export default async function IncomeStatementPage({
         : from ? `From ${from}` : `To ${to}`;
 
     const hasCogs       = pl.cogs.length > 0;
+    const hasStaff      = pl.staff.length > 0;
     const hasFinance    = pl.finance.length > 0;
     const hasTax        = pl.tax.length > 0;
     const hasOtherInc   = pl.otherIncome.length > 0;
@@ -267,6 +271,10 @@ export default async function IncomeStatementPage({
                 ],
             },
             ...(pl.otherIncome.length > 0 ? [{ title: 'Other Income', lines: pl.otherIncome.map(l => ({ code: l.code, name: l.name, current: l.balance, prior: showCompare ? (prior?.otherIncome.find(x => x.code === l.code)?.balance ?? 0) : undefined })) }] : []),
+            ...(pl.staff.length > 0 ? [{
+                title: 'Staff Costs',
+                lines: pl.staff.map(l => ({ code: l.code, name: l.name, current: l.balance, isNegative: true as const, indent: true as const, prior: showCompare ? (prior?.staff.find(x => x.code === l.code)?.balance ?? 0) : undefined })),
+            }] : []),
             {
                 title: 'Operating Expenses',
                 lines: [
@@ -393,7 +401,18 @@ export default async function IncomeStatementPage({
                     }
                 </>}
 
-                {/* ── 4. OPERATING EXPENSES ── */}
+                {/* ── 4. STAFF COSTS — broken out from Operating Expenses, same
+                     treatment as Cost of Sales, so each statutory/salary cost
+                     line is identifiable on its own instead of buried in a
+                     generic Operating Expenses bucket. ── */}
+                {hasStaff && <>
+                    <SectionHeader title="Staff Costs" count={pl.staff.length} color="#be185d" />
+                    {pl.staff.map(l => <AccountRow key={l.code} {...l} negative
+                        prior={showCompare ? (prior?.staff.find(x => x.code === l.code)?.balance ?? 0) : undefined} />)
+                    }
+                </>}
+
+                {/* ── 5. OPERATING EXPENSES ── */}
                 <SectionHeader title="Operating Expenses" count={pl.operating.length} color={COLORS.operating} />
                 {pl.operating.length === 0
                     ? <EmptySection msg="No operating expense accounts with posted entries" />
@@ -404,7 +423,7 @@ export default async function IncomeStatementPage({
                     netRevenue={pl.netRevenue}
                     prior={showCompare && prior ? prior.ebit : undefined} />
 
-                {/* ── 5. FINANCE COSTS ── */}
+                {/* ── 6. FINANCE COSTS ── */}
                 {(hasFinance || true) && <>
                     <SectionHeader title="Finance Costs" count={pl.finance.length} color={COLORS.finance} />
                     {pl.finance.length === 0
@@ -417,7 +436,7 @@ export default async function IncomeStatementPage({
                     netRevenue={pl.netRevenue}
                     prior={showCompare && prior ? prior.pbt : undefined} />
 
-                {/* ── 6. INCOME TAX ── */}
+                {/* ── 7. INCOME TAX ── */}
                 <SectionHeader title="Income Tax" count={pl.tax.length} color={COLORS.tax} />
                 {pl.tax.length === 0
                     ? <EmptySection msg="No income tax accounts — set subtype = INCOME_TAX on corporation tax accounts" />

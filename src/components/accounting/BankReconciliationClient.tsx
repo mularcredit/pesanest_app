@@ -1176,10 +1176,16 @@ export function BankReconciliationClient({
                                             <p className="text-[10.5px] text-gray-400">{selectedBookLineIds.size} books</p>
                                             <p className="text-[12px] font-[600] font-mono text-gray-900">{fmt(selectedBookSum)}</p>
                                         </div>
-                                        <p className={cn('text-[10.5px] font-[500] mt-1.5 pt-1.5', sumMatches ? 'text-emerald-600' : 'text-amber-600')}
+                                        <div className="flex items-center justify-between gap-1.5 mt-1.5 pt-1.5"
                                             style={{ borderTop: '1px solid rgba(0,0,0,0.06)' }}>
-                                            {sumMatches ? '✓ Both sides match' : `Diff ${fmt(Math.abs(selectedBankSum - selectedBookSum))}`}
-                                        </p>
+                                            <p className={cn('text-[10.5px] font-[500]', sumMatches ? 'text-emerald-600' : 'text-rose-600')}>
+                                                {sumMatches ? 'Both sides match' : `Diff ${fmt(Math.abs(selectedBankSum - selectedBookSum))}`}
+                                            </p>
+                                            {sumMatches
+                                                ? <span className="w-2 h-2 rounded-full bg-emerald-500 shrink-0" title="Totals match" />
+                                                : <span className="text-rose-600 font-[800] text-[14px] leading-none shrink-0" title="Totals differ — selected amounts don't match">*</span>
+                                            }
+                                        </div>
                                     </div>
                                 )}
 
