@@ -74,13 +74,15 @@ async function fetchPL(from?: string, to?: string) {
 
     type Line = { code: string; name: string; balance: number; subtype: string | null };
 
-    const lines: Line[] = accounts.map(acc => {
+    const allLines = accounts.map(acc => {
         const dr = acc.journalLines.reduce((s, l) => s + l.debit, 0);
         const cr = acc.journalLines.reduce((s, l) => s + l.credit, 0);
         const isDebitNormal = acc.type === 'EXPENSE' || acc.type === 'OTHER_EXPENSE';
         const balance = isDebitNormal ? dr - cr : cr - dr;
-        return { code: acc.code, name: acc.name, balance, subtype: acc.subtype ?? null };
-    }).filter(l => l.balance !== 0);
+        return { code: acc.code, name: acc.name, balance, subtype: acc.subtype ?? null, type: acc.type, parentId: acc.parentId };
+    });
+
+    const lines: Line[] = allLines.filter(l => l.balance !== 0);
 
     // Revenue
     const revenue      = lines.filter(l => l.balance !== 0 && accounts.find(a => a.code === l.code)?.type === 'REVENUE' && classifyRevenue(l.subtype) === 'revenue');
@@ -96,7 +98,13 @@ async function fetchPL(from?: string, to?: string) {
         return acc && (acc.type === 'EXPENSE' || acc.type === 'OTHER_EXPENSE');
     });
     const cogs      = expLines.filter(l => classifyExpense(l.subtype) === 'cogs');
-    const staff     = expLines.filter(l => classifyExpense(l.subtype) === 'staff');
+    // Staff cost accounts are listed even with a zero balance for the period —
+    // sourced from allLines (not the zero-filtered lines/expLines) — since the
+    // whole point of splitting Salaries/AHL/NITA/NSSF/SHA out is to make each
+    // one identifiable in the report, not just whichever ones had activity.
+    // parentId !== null excludes the "Staff Costs" category header itself,
+    // which nothing ever posts to directly.
+    const staff     = allLines.filter(l => l.parentId !== null && (l.type === 'EXPENSE' || l.type === 'OTHER_EXPENSE') && classifyExpense(l.subtype) === 'staff');
     const operating = expLines.filter(l => classifyExpense(l.subtype) === 'operating');
     const finance   = expLines.filter(l => classifyExpense(l.subtype) === 'finance');
     const tax       = expLines.filter(l => classifyExpense(l.subtype) === 'tax');
