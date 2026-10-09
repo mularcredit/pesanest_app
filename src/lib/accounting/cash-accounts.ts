@@ -7,19 +7,18 @@
  * generic 'CURRENT_ASSET' bucket — which also covers Accounts Receivable,
  * Inventory and Prepaid Expenses, none of which are cash). They disagreed
  * with each other and with reality; this is the one place that decides it now.
+ *
+ * Paystack Settlement Clearing counts as cash by explicit business decision —
+ * Paystack genuinely holds and disburses real cash the business spends
+ * directly (it funds the Wallet), even though its GL balance and the live
+ * Paystack account balance don't currently reconcile (a separate, real data
+ * problem — see the Paystack reconciliation investigation — not a reason to
+ * exclude it from this category).
  */
 export function isCashEquivalentAccount(account: { type: string; subtype?: string | null; name: string }): boolean {
     if (account.type !== 'ASSET') return false;
 
     const n = account.name.toLowerCase();
-
-    // A settlement/clearing balance (e.g. "Paystack Settlement Clearing") is
-    // real money, but not yet cleared to an actual bank account — standard
-    // accounting excludes funds in transit from "cash and cash equivalents",
-    // even though the very same account is still reconciled normally
-    // elsewhere in the app (being reconcilable isn't the same as being
-    // immediately spendable cash on hand today).
-    if (n.includes('clearing')) return false;
 
     if (
         n.includes('bank') || n.includes('cash') || n.includes('wallet') ||
