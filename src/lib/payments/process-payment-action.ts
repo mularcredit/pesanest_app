@@ -385,7 +385,12 @@ export async function processPaymentAction(params: {
             }
 
             const cashAccount = walletCashAccount ?? await prisma.account.findFirst({ where: { code: '1000' } });
-            if (cashAccount) await (AccountingEngine as any).postRequisitionPayment(req.id, cashAccount.id);
+            // Only the WALLET path's txId is a real Paystack reference (the
+            // CASH/BRANCH_WALLET paths' txId here is just an internal
+            // placeholder) — recording that one lets this entry be matched
+            // exactly against Paystack's own records later, instead of only
+            // by amount/date (ambiguous whenever amounts repeat).
+            if (cashAccount) await (AccountingEngine as any).postRequisitionPayment(req.id, cashAccount.id, paymentMethod === 'WALLET' ? txId : undefined);
 
             if (req.user?.phoneNumber) smsQueue.push({ phone: req.user.phoneNumber, name: req.user.name ?? 'User', amount: req.amount, ref: txId });
             results.success++;
@@ -444,7 +449,7 @@ export async function processPaymentAction(params: {
             }
 
             const cashAccount = walletCashAccount ?? await prisma.account.findFirst({ where: { code: '1000' } });
-            if (cashAccount) await (AccountingEngine as any).postExpensePayment(exp.id, cashAccount.id);
+            if (cashAccount) await (AccountingEngine as any).postExpensePayment(exp.id, cashAccount.id, paymentMethod === 'WALLET' ? txId : undefined);
 
             if (exp.user?.phoneNumber) smsQueue.push({ phone: exp.user.phoneNumber, name: exp.user.name ?? 'User', amount: exp.amount, ref: txId });
             results.success++;

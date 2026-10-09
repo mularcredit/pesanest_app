@@ -392,8 +392,15 @@ export class AccountingEngine {
 
     /**
      * AUTOMATION: Post an Expense to the Ledger
+     *
+     * `externalReference` is the real Paystack transfer reference when this
+     * payment actually went out through Paystack — without it, there's no
+     * shared key between a journal entry and the real Paystack transaction it
+     * represents, so reconciling the books against Paystack's own balance
+     * later can only ever guess by amount/date, which is ambiguous whenever
+     * amounts repeat (round KES figures very often do).
      */
-    static async postExpensePayment(expenseId: string, paidFromAccountId: string) {
+    static async postExpensePayment(expenseId: string, paidFromAccountId: string, externalReference?: string) {
         const expense = await (prisma as any).expense.findUnique({
             where: { id: expenseId }
         });
@@ -419,7 +426,7 @@ export class AccountingEngine {
         await this.postJournalEntry({
             date: new Date(),
             description: `Payment for Expense: ${expense.title}`,
-            reference: `EXP-${expenseId.substring(0, 8)}`,
+            reference: externalReference ? `EXP-${expenseId.substring(0, 8)}-${externalReference}` : `EXP-${expenseId.substring(0, 8)}`,
             source: { expenseId: expense.id },
             lines: [
                 { accountId: expenseAccount.id, debit: expense.amount, credit: 0 },
@@ -430,8 +437,12 @@ export class AccountingEngine {
 
     /**
      * AUTOMATION: Post a Requisition Payment to the Ledger
+     *
+     * See postExpensePayment's doc comment — `externalReference` is the real
+     * Paystack transfer reference, when this requisition was actually paid
+     * out through Paystack.
      */
-    static async postRequisitionPayment(requisitionId: string, paidFromAccountId: string) {
+    static async postRequisitionPayment(requisitionId: string, paidFromAccountId: string, externalReference?: string) {
         const requisition = await prisma.requisition.findUnique({
             where: { id: requisitionId }
         });
@@ -465,7 +476,7 @@ export class AccountingEngine {
         await this.postJournalEntry({
             date: new Date(),
             description: `Payment for Requisition: ${requisition.title}`,
-            reference: `REQ-${requisitionId.substring(0, 8)}`,
+            reference: externalReference ? `REQ-${requisitionId.substring(0, 8)}-${externalReference}` : `REQ-${requisitionId.substring(0, 8)}`,
             source: { requisitionId: requisition.id },
             lines: [
                 { accountId: expenseAccount.id, debit: requisition.amount, credit: 0 },
