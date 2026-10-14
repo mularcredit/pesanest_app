@@ -36,6 +36,18 @@ interface Props {
 
 const CARD_STYLE: React.CSSProperties = { boxShadow: 'var(--card-rim), var(--card-elevation)' };
 
+// Every requisition/expense-sourced journal entry's description starts with
+// this boilerplate ("Payment for Requisition: Director COO travel to
+// Eldoret- Voucher 169"). In this two-column layout the description cell is
+// narrow and truncates with an ellipsis — the boilerplate alone can eat the
+// entire visible width, leaving every row reading "Payment for Requ…" with
+// no way to tell them apart. Stripping it for display only (the real
+// description, used for search/export, is untouched) means the truncated
+// text leads with the part that's actually distinct per row.
+function bookLineLabel(description: string): string {
+    return description.replace(/^Payment for (Requisition|Expense):\s*/, '');
+}
+
 function readAsBinaryString(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
         const reader = new FileReader();
@@ -1260,7 +1272,7 @@ export function BankReconciliationClient({
                                                 : <span className="w-[15px] h-[15px] rounded-full mt-[1px] shrink-0" style={{ border: '1.5px solid rgba(0,0,0,0.15)' }} />}
                                             <div className="flex justify-between items-start gap-2 flex-1 min-w-0">
                                                 <div className="min-w-0">
-                                                    <p className="text-[12.5px] font-[500] text-gray-900 truncate">{line.description}</p>
+                                                    <p className="text-[12.5px] font-[500] text-gray-900 truncate" title={line.description}>{bookLineLabel(line.description)}</p>
                                                     <p className="text-[11px] text-gray-400 mt-0.5">
                                                         {new Date(line.date).toLocaleDateString()}
                                                         {line.reference ? ` · ${line.reference}` : ''}
@@ -1300,8 +1312,8 @@ export function BankReconciliationClient({
                                                 : m.bankTxs[0].description}
                                             {' '}<span className="text-gray-400">↔</span>{' '}
                                             {m.bookLines.length > 1
-                                                ? `${m.bookLines.length} entries (${m.bookLines.map(l => l.description).join(', ')})`
-                                                : m.bookLines[0].description}
+                                                ? `${m.bookLines.length} entries (${m.bookLines.map(l => bookLineLabel(l.description)).join(', ')})`
+                                                : bookLineLabel(m.bookLines[0].description)}
                                         </p>
                                         <div className="flex items-center gap-3 shrink-0">
                                             <span className="text-[11.5px] font-mono text-gray-600">
