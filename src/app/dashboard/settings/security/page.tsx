@@ -9,11 +9,11 @@ export default async function SecurityPage() {
     const session = await auth();
     if (!session?.user) return redirect("/login");
 
-    const userRows = await prisma.$queryRaw<{ otpExempt: boolean; phoneNumber: string | null }[]>`
-        SELECT "otpExempt", "phoneNumber"
+    const userRows = await prisma.$queryRaw<{ otpExempt: boolean; phoneNumber: string | null; idleTimeoutMinutes: number }[]>`
+        SELECT "otpExempt", "phoneNumber", "idleTimeoutMinutes"
         FROM "User" WHERE id = ${session.user.id} LIMIT 1
-    `.catch(() => [{ otpExempt: false, phoneNumber: null }]);
-    const user = userRows[0] ?? { otpExempt: false, phoneNumber: null };
+    `.catch(() => [{ otpExempt: false, phoneNumber: null, idleTimeoutMinutes: 15 }]);
+    const user = userRows[0] ?? { otpExempt: false, phoneNumber: null, idleTimeoutMinutes: 15 };
 
     const loginEvents = await prisma.$queryRaw<any[]>`
         SELECT * FROM "LoginEvent"
@@ -30,6 +30,7 @@ export default async function SecurityPage() {
             <SecurityClient
                 otpExempt={user?.otpExempt || false}
                 phoneNumber={user?.phoneNumber || null}
+                idleTimeoutMinutes={user?.idleTimeoutMinutes ?? 15}
                 loginEvents={loginEvents}
             />
         </div>

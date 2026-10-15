@@ -41,6 +41,7 @@ model User {
   otpExempt             Boolean             @default(false)
   loginOtpCode          String?
   loginOtpExpiry        DateTime?
+  idleTimeoutMinutes    Int                 @default(15)
   approvals             Approval[]
   assets                Asset[]
   leadBranch            Branch?

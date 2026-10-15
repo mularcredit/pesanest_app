@@ -3,6 +3,7 @@
 import { Sidebar } from "@/components/layout/Sidebar";
 import { Header } from "@/components/layout/Header";
 import { BillingAssistant } from "@/components/assistant/BillingAssistant";
+import { IdleTimeoutManager } from "@/components/layout/IdleTimeoutManager";
 import { useState } from "react";
 
 export default function DashboardLayout({
@@ -49,6 +50,7 @@ export default function DashboardLayout({
             </div>
 
             <BillingAssistant />
+            <IdleTimeoutManager />
         </div>
     );
 }

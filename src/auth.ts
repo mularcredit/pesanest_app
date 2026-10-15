@@ -249,6 +249,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                     });
 
                     (session.user as any).avatarSeed = dbUser?.avatarSeed || null;
+                    (session.user as any).idleTimeoutMinutes = dbUser?.idleTimeoutMinutes ?? 15;
 
                     if (dbUser?.customRole) {
                         (session.user as any).permissions = dbUser.customRole.permissions.map(
@@ -261,6 +262,7 @@ export const { handlers, signIn, signOut, auth } = NextAuth({
                 } catch {
                     // Fallback to token permissions if DB is unavailable
                     (session.user as any).permissions = token.permissions || [];
+                    (session.user as any).idleTimeoutMinutes = 15;
                 }
             }
             return session;

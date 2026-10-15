@@ -1,8 +1,8 @@
 'use client';
 
 import { useState } from 'react';
-import { PiShieldCheck, PiShieldWarning, PiCheckCircle, PiWarning, PiLock, PiKey } from 'react-icons/pi';
-import { changeOwnPassword } from '../actions';
+import { PiShieldCheck, PiShieldWarning, PiCheckCircle, PiWarning, PiLock, PiKey, PiTimer } from 'react-icons/pi';
+import { changeOwnPassword, updateIdleTimeout } from '../actions';
 import { useToast } from '@/components/ui/ToastProvider';
 
 const CARD_STYLE: React.CSSProperties = { border: '1px solid rgba(0,0,0,0.09)' };
@@ -80,18 +80,80 @@ function ChangePasswordCard() {
     );
 }
 
+const TIMEOUT_PRESETS = [5, 15, 30, 60, 120];
+
+function IdleTimeoutCard({ idleTimeoutMinutes }: { idleTimeoutMinutes: number }) {
+    const { showToast } = useToast();
+    const [minutes, setMinutes] = useState(idleTimeoutMinutes);
+    const [isSaving, setIsSaving] = useState(false);
+
+    const handleSave = async () => {
+        setIsSaving(true);
+        try {
+            const result = await updateIdleTimeout(minutes);
+            if (result.success) {
+                showToast('Automatic logout time updated', 'success');
+            } else {
+                showToast(result.error || 'Failed to update', 'error');
+            }
+        } finally {
+            setIsSaving(false);
+        }
+    };
+
+    return (
+        <div className="bg-white rounded-[8px]" style={CARD_STYLE}>
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
+                <PiTimer className="text-[22px] text-gray-400 shrink-0" />
+                <div>
+                    <h2 className="text-[13px] font-[600] text-gray-900">Automatic logout</h2>
+                    <p className="text-[12px] text-gray-400 mt-0.5">
+                        You'll be signed out automatically after this much time without activity.
+                    </p>
+                </div>
+            </div>
+            <div className="px-5 py-4 space-y-3">
+                <div className="flex flex-wrap gap-2">
+                    {TIMEOUT_PRESETS.map(p => (
+                        <button key={p} type="button" onClick={() => setMinutes(p)}
+                            className={`px-3 py-1.5 rounded-[6px] text-[12px] font-[500] transition-colors ${minutes === p ? 'bg-indigo-50 text-[#6366F1]' : 'text-gray-500 hover:bg-gray-50'}`}
+                            style={{ border: minutes === p ? '1px solid rgba(99,102,241,0.3)' : '1px solid rgba(0,0,0,0.09)' }}>
+                            {p < 60 ? `${p} min` : `${p / 60} hr`}
+                        </button>
+                    ))}
+                </div>
+                <div className="flex items-center gap-2">
+                    <label className="text-[11.5px] font-[500] text-gray-500 shrink-0">Custom (minutes)</label>
+                    <input type="number" min={1} max={480} value={minutes}
+                        onChange={e => setMinutes(Number(e.target.value))}
+                        className={`${INPUT_CLASS} max-w-[100px]`} style={INPUT_STYLE} />
+                </div>
+                <div className="flex justify-end pt-1">
+                    <button type="button" onClick={handleSave} disabled={isSaving || minutes === idleTimeoutMinutes}
+                        className="px-4 py-2 rounded-[6px] text-[12.5px] font-[500] text-white bg-[#6366F1] hover:bg-[#6366F1]/90 transition-colors disabled:opacity-50">
+                        {isSaving ? 'Saving…' : 'Save'}
+                    </button>
+                </div>
+            </div>
+        </div>
+    );
+}
+
 export function SecurityClient({
     otpExempt,
     phoneNumber,
+    idleTimeoutMinutes,
     loginEvents,
 }: {
     otpExempt: boolean;
     phoneNumber: string | null;
+    idleTimeoutMinutes: number;
     loginEvents: any[];
 }) {
     return (
         <div className="space-y-4">
             <ChangePasswordCard />
+            <IdleTimeoutCard idleTimeoutMinutes={idleTimeoutMinutes} />
 
             {/* SMS OTP status card */}
             <div className="bg-white rounded-[8px]" style={CARD_STYLE}>

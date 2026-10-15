@@ -140,6 +140,36 @@ export async function changeOwnPassword(currentPassword: string, newPassword: st
 }
 
 /**
+ * Set how many minutes of inactivity before the currently logged-in user is
+ * automatically signed out. Always scoped to session.user.id. Clamped to a
+ * sane range so the client-side idle timer (IdleTimeoutManager) can't be set
+ * to something unusable (0 = fires instantly, or absurdly large = pointless).
+ */
+export async function updateIdleTimeout(minutes: number) {
+    const session = await auth();
+    if (!session?.user?.id) {
+        return { success: false, error: "Unauthorized" };
+    }
+
+    const parsed = Math.round(Number(minutes));
+    if (!Number.isFinite(parsed) || parsed < 1 || parsed > 480) {
+        return { success: false, error: "Enter a number of minutes between 1 and 480" };
+    }
+
+    try {
+        await prisma.user.update({
+            where: { id: session.user.id },
+            data: { idleTimeoutMinutes: parsed },
+        });
+        revalidatePath("/dashboard/settings/security");
+        return { success: true };
+    } catch (error: any) {
+        console.error("❌ Failed to update idle timeout:", error);
+        return { success: false, error: "Failed to update. Please try again." };
+    }
+}
+
+/**
  * Set the currently logged-in user's chosen avatar. Always scoped to
  * session.user.id — never accepts a target user id. Seed must be one of the
  * fixed presets, not an arbitrary string, so a user can't be tricked into
