@@ -84,10 +84,15 @@ export default async function BankReconciliationPage({
     // must not also hide its Paybill leg from Paybill's own reconciliation.
     const [glLines, matchedEntryIds, unmatchedStatementLines] = await Promise.all([
         prisma.journalLine.findMany({
+            // No take/limit here — this must match the unbounded query the
+            // /reconciliation API route runs on refresh. A cap here previously
+            // silently hid older unmatched entries past the Nth most recent
+            // once an account passed that many unmatched lines (a real cause
+            // of "it's in the General Ledger but not in the books column"
+            // reports), without any indication to the user that more existed.
             where: { accountId: account.glAccountId, entry: { status: 'POSTED' } },
             include: { entry: { select: { id: true, entryNumber: true, date: true, description: true, reference: true } } },
             orderBy: { entry: { date: 'desc' } },
-            take: 300,
         }),
         prisma.reconciliationMatch.findMany({
             where: { statementLine: { statement: statementOwnerFilter(account.id) } },
