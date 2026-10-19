@@ -3,7 +3,8 @@ import { redirect } from 'next/navigation';
 import Link from 'next/link';
 import prisma from '@/lib/prisma';
 import { BankAccountPicker } from '../BankAccountPicker';
-import { StatementHistoryCard, type HistoryStatement } from './StatementHistoryCard';
+import { type HistoryStatement } from './StatementHistoryCard';
+import { HistorySearch } from './HistorySearch';
 import { PiArrowLeft } from 'react-icons/pi';
 import { statementOwnerFilter } from '@/lib/accounting/reconcilable-accounts';
 
@@ -155,17 +156,7 @@ export default async function ReconciliationHistoryPage({
                 </div>
             </div>
 
-            {historyStatements.length === 0 ? (
-                <div className="bg-white rounded-[8px] py-16 flex flex-col items-center text-center gap-2" style={CARD_STYLE}>
-                    <p className="text-[13px] font-[500] text-gray-900">No statements imported yet for this account</p>
-                </div>
-            ) : (
-                <div className="space-y-3">
-                    {historyStatements.map((s, i) => (
-                        <StatementHistoryCard key={s.id} statement={s} currency={account.currency} accountId={account.id} defaultOpen={i === 0} />
-                    ))}
-                </div>
-            )}
+            <HistorySearch statements={historyStatements} currency={account.currency} accountId={account.id} />
         </div>
     );
 }
