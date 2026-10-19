@@ -413,8 +413,14 @@ export class AccountingEngine {
         });
         if (existing) return existing;
 
+        // isActive: true — an archived account can share its name with a still-
+        // selectable expense category (e.g. "Accommodation", archived 2026-07-28
+        // but still postable here since this lookup never checked status), which
+        // silently kept routing new payments into a GL account nobody could see
+        // or select in the Chart of Accounts. Treat an archived match the same
+        // as no match at all, and fall back to the default account instead.
         let expenseAccount = await prisma.account.findFirst({
-            where: { name: expense.category, type: 'EXPENSE' }
+            where: { name: expense.category, type: 'EXPENSE', isActive: true }
         });
 
         if (!expenseAccount) {
@@ -462,8 +468,10 @@ export class AccountingEngine {
         }
 
         if (!expenseAccount) {
+            // isActive: true — see postExpensePayment above for why an archived
+            // account must not be matched here.
             expenseAccount = await prisma.account.findFirst({
-                where: { name: requisition.category, type: 'EXPENSE' }
+                where: { name: requisition.category, type: 'EXPENSE', isActive: true }
             });
 
             if (!expenseAccount) {
@@ -639,8 +647,10 @@ export class AccountingEngine {
         });
         if (existingEntry) return existingEntry;
 
+        // isActive: true — see postExpensePayment's note on why an archived
+        // account must not be matched by category name alone.
         let assetAccount = await prisma.account.findFirst({
-            where: { name: asset.category, type: 'ASSET' }
+            where: { name: asset.category, type: 'ASSET', isActive: true }
         });
         if (!assetAccount) {
             assetAccount = await prisma.account.upsert({
