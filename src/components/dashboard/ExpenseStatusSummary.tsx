@@ -4,7 +4,9 @@ import {
     PiCheckCircle,
     PiCoins,
     PiXCircle,
+    PiListChecks,
 } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 interface StatusGroup { count: number; amount: number; }
 
@@ -16,8 +18,6 @@ interface ExpenseStatusSummaryProps {
     paid:      StatusGroup;
     rejected:  StatusGroup;
 }
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 const ROWS = [
     { key: 'draft',     label: 'Draft',     Icon: PiNotePencil,  color: '#6b7280', light: 'rgba(107,114,128,0.1)'  },
@@ -34,18 +34,16 @@ export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
     const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
 
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            {/* Header */}
-            <div className="flex items-start justify-between mb-5">
-                <div>
-                    <h2 className="text-[13.5px] font-[600] text-gray-900">Expense Status</h2>
-                    <p className="text-[11.5px] text-gray-400 mt-0.5">All-time breakdown by review stage</p>
-                </div>
-                <span className="text-[10.5px] font-[600] text-gray-500 px-2 py-0.5 rounded-[4px] mt-0.5"
-                    style={{ background: 'rgba(0,0,0,0.05)' }}>
-                    {totalCount} total
-                </span>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiListChecks} color="#6366F1" bg="rgba(99,102,241,0.1)"
+                title="Expense Status" subtitle="All-time breakdown by review stage"
+                right={
+                    <span className="text-[10.5px] font-[600] text-gray-500 px-2 py-0.5 rounded-[4px] mt-0.5"
+                        style={{ background: 'rgba(0,0,0,0.05)' }}>
+                        {totalCount} total
+                    </span>
+                }
+            />
 
             {/* Rows */}
             <div className="space-y-3">

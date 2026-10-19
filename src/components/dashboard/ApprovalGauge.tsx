@@ -1,7 +1,7 @@
 "use client";
 import { PieChart, Pie, Cell, ResponsiveContainer } from "recharts";
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+import { PiGaugeFill } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 interface ApprovalGaugeProps {
     approved: number;
@@ -22,11 +22,9 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
         : [{ name: 'Empty', value: 1, color: 'rgba(0,0,0,0.06)' }];
 
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            <div className="mb-1">
-                <h2 className="text-[13.5px] font-[600] text-gray-900">Approval Rate</h2>
-                <p className="text-[11.5px] text-gray-400 mt-0.5">All-time expense outcomes</p>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiGaugeFill} color="#059669" bg="rgba(5,150,105,0.1)"
+                title="Approval Rate" subtitle="All-time expense outcomes" />
 
             {/* Ring + center label */}
             <div className="relative h-[150px]">

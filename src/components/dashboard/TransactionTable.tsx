@@ -1,7 +1,6 @@
 import { cn } from "@/lib/utils";
 import { PiListDashes, PiArrowsLeftRight } from "react-icons/pi";
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+import { CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 const STATUS_META: Record<string, { cls: string; border: string }> = {
     APPROVED:         { cls: 'text-emerald-600 bg-emerald-50', border: 'rgba(5,150,105,0.2)' },
@@ -17,9 +16,9 @@ const STATUS_META: Record<string, { cls: string; border: string }> = {
 export function TransactionTable({ expenses }: { expenses: any[] }) {
     if (!expenses || expenses.length === 0) {
         return (
-            <div className="bg-white rounded-[10px] p-16 flex flex-col items-center justify-center" style={{ border: HAIRLINE }}>
-                <div className="w-12 h-12 rounded-[7px] bg-gray-50 flex items-center justify-center mb-3"
-                    style={{ border: HAIRLINE }}>
+            <div className="bg-white rounded-[16px] p-16 flex flex-col items-center justify-center" style={CARD_STYLE}>
+                <div className="w-12 h-12 rounded-[10px] flex items-center justify-center mb-3"
+                    style={{ background: 'rgba(0,0,0,0.04)' }}>
                     <PiListDashes className="text-2xl text-gray-300" />
                 </div>
                 <p className="text-[13px] font-[500] text-gray-500">No recent transactions</p>
@@ -29,8 +28,11 @@ export function TransactionTable({ expenses }: { expenses: any[] }) {
     }
 
     return (
-        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: HAIRLINE }}>
+        <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: HAIRLINE }}>
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0" style={{ background: 'rgba(99,102,241,0.1)' }}>
+                    <PiArrowsLeftRight style={{ color: '#6366F1' }} className="text-[16px]" />
+                </div>
                 <div>
                     <h2 className="text-[13px] font-[600] text-gray-900">Recent Activity</h2>
                     <p className="text-[11.5px] text-gray-400 mt-0.5">Latest processed transactions</p>

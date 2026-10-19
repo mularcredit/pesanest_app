@@ -1,3 +1,6 @@
+import { PiChartPieSlice } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE } from "./SectionHeader";
+
 interface CategoryBreakdownProps {
     data: { category: string; amount: number; count: number }[];
     totalAmount: number;
@@ -17,19 +20,14 @@ const BAR_COLORS = [
     '#e34948', // red
 ];
 
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
-
 export function CategoryBreakdown({ data, totalAmount }: CategoryBreakdownProps) {
     const maxAmount = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 1;
     const hasData = data.length > 0;
 
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            {/* Header */}
-            <div className="mb-5">
-                <h2 className="text-[13.5px] font-[600] text-gray-900">Spending by Category</h2>
-                <p className="text-[11.5px] text-gray-400 mt-0.5">Top spending categories this year</p>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiChartPieSlice} color="#4a3aa7" bg="rgba(74,58,167,0.1)"
+                title="Spending by Category" subtitle="Top spending categories this year" />
 
             {hasData ? (
                 <div className="space-y-3">

@@ -9,12 +9,12 @@ import {
     ResponsiveContainer,
     Cell,
 } from "recharts";
+import { PiCalendarBlank } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 interface WeeklyExpenseChartProps {
     data: { week: string; amount: number; isCurrentWeek: boolean }[];
 }
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
@@ -33,11 +33,9 @@ function CustomTooltip({ active, payload, label }: any) {
 
 export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            <div className="mb-4">
-                <h2 className="text-[13.5px] font-[600] text-gray-900">This Month by Week</h2>
-                <p className="text-[11.5px] text-gray-400 mt-0.5">Current month expense breakdown</p>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiCalendarBlank} color="#059669" bg="rgba(5,150,105,0.1)"
+                title="This Month by Week" subtitle="Current month expense breakdown" />
             <ResponsiveContainer width="100%" height={200}>
                 <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />

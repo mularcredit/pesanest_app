@@ -1,4 +1,5 @@
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
+import { PiFunnel } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE } from "./SectionHeader";
 
 export interface FunnelStage {
     name:  string;
@@ -22,19 +23,17 @@ export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
     const maxCount = Math.max(...stages.map(s => s.count), 1);
 
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
 
-            {/* Header */}
-            <div className="flex items-center justify-between mb-6">
-                <div>
-                    <h2 className="text-[13.5px] font-[600] text-gray-900">Expense Pipeline</h2>
-                    <p className="text-[11.5px] text-gray-400 mt-0.5">Expense lifecycle status</p>
-                </div>
-                <span className="text-[10.5px] font-[600] text-gray-500 px-2.5 py-1 rounded-[5px]"
-                    style={{ background: 'rgba(0,0,0,0.04)' }}>
-                    {total} total
-                </span>
-            </div>
+            <SectionHeader icon={PiFunnel} color="#D97706" bg="rgba(217,119,6,0.1)"
+                title="Expense Pipeline" subtitle="Expense lifecycle status"
+                right={
+                    <span className="text-[10.5px] font-[600] text-gray-500 px-2.5 py-1 rounded-[5px]"
+                        style={{ background: 'rgba(0,0,0,0.04)' }}>
+                        {total} total
+                    </span>
+                }
+            />
 
             {/* Pipeline nodes */}
             <div className="flex items-start gap-0 mb-5 overflow-x-auto pb-1">

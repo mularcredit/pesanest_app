@@ -3,6 +3,8 @@ import {
     BarChart, Bar, XAxis, YAxis, CartesianGrid,
     Tooltip, Legend, ResponsiveContainer,
 } from "recharts";
+import { PiChartBarHorizontal } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 export interface ComparisonItem {
     category: string;
@@ -15,8 +17,6 @@ interface MonthComparisonChartProps {
     thisMonthLabel: string;
     lastMonthLabel: string;
 }
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 function Tip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
@@ -41,11 +41,9 @@ function Tip({ active, payload, label }: any) {
 
 export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: MonthComparisonChartProps) {
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            <div className="mb-5">
-                <h2 className="text-[13.5px] font-[600] text-gray-900">Month-over-Month</h2>
-                <p className="text-[11.5px] text-gray-400 mt-0.5">Category spending comparison</p>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiChartBarHorizontal} color="#7C3AED" bg="rgba(124,58,237,0.1)"
+                title="Month-over-Month" subtitle="Category spending comparison" />
             <ResponsiveContainer width="100%" height={220}>
                 <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
                     <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />

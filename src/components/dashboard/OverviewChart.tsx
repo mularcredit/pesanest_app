@@ -5,9 +5,10 @@ import {
     AreaChart, Area, XAxis, YAxis,
     CartesianGrid, Tooltip, ResponsiveContainer,
 } from "recharts";
+import { PiTrendUp } from "react-icons/pi";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 const LINE_COLOR = '#059669';
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 function CustomTooltip({ active, payload, label }: any) {
     if (!active || !payload?.length) return null;
@@ -29,17 +30,20 @@ export function OverviewChart({ data }: { data: any[] }) {
     })), [data]);
 
     return (
-        <div className="bg-white rounded-[10px] p-5" style={{ border: HAIRLINE }}>
-            <div className="flex items-start justify-between mb-5">
-                <div>
-                    <h2 className="text-[13.5px] font-[600] text-gray-900">Activity Trends</h2>
-                    <p className="text-[11.5px] text-gray-400 mt-0.5">12-month spending overview</p>
-                </div>
-                <div className="flex items-center gap-1.5">
-                    <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: LINE_COLOR }} />
-                    <span className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em]">Monthly Spending</span>
-                </div>
-            </div>
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader
+                icon={PiTrendUp}
+                color={LINE_COLOR}
+                bg="rgba(5,150,105,0.1)"
+                title="Activity Trends"
+                subtitle="12-month spending overview"
+                right={
+                    <div className="flex items-center gap-1.5">
+                        <span className="w-2.5 h-2.5 rounded-[3px]" style={{ background: LINE_COLOR }} />
+                        <span className="text-[10.5px] font-[500] text-gray-400 uppercase tracking-[0.06em]">Monthly</span>
+                    </div>
+                }
+            />
 
             <ResponsiveContainer width="100%" height={260}>
                 <AreaChart data={chartData} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>

@@ -2,7 +2,8 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { paystackService } from "@/lib/payments/paystack";
 import { redirect } from "next/navigation";
-import { StatsCard } from "@/components/dashboard/StatsCard";
+import { HeroStatTile } from "@/components/dashboard/HeroStatTile";
+import { SectionHeader, CARD_STYLE, HAIRLINE } from "@/components/dashboard/SectionHeader";
 import { OverviewChart } from "@/components/dashboard/OverviewChart";
 import { TransactionTable } from "@/components/dashboard/TransactionTable";
 import { BudgetUtilization } from "@/components/dashboard/BudgetUtilization";
@@ -20,6 +21,7 @@ import {
     PiDownloadSimple,
     PiChartBar,
     PiWarning,
+    PiSparkle,
 } from "react-icons/pi";
 import { WalletCard } from "@/components/dashboard/WalletCard";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
@@ -268,64 +270,91 @@ export default async function DashboardPage() {
         monthlyData.push({ month: from.toLocaleDateString('en-US', { month: 'short' }), amount });
     }
 
+    const hour = now.getHours();
+    const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
+    const firstName = (currentUser.name || '').trim().split(/\s+/)[0] || '';
+
     return (
-        <div className="space-y-4 pb-6 relative">
+        <div className="space-y-5 pb-6 relative">
             {/* ── HEADER ── */}
-            <div className="flex items-end justify-between">
-                <div>
-                    <h1 className="text-[26px] font-semibold tracking-tight text-gray-900">
+            <div className="relative overflow-hidden rounded-[18px] px-6 py-5 flex items-end justify-between flex-wrap gap-4"
+                style={{
+                    background: 'linear-gradient(120deg, #054F27 0%, #007A3D 48%, #0E8F46 100%)',
+                    boxShadow: '0 1px 2px rgba(0,58,25,0.1), 0 16px 32px -12px rgba(0,58,25,0.35)',
+                }}>
+                {/* Decorative texture, echoes the wallet card's wave overlay */}
+                <div className="absolute inset-0 pointer-events-none" style={{
+                    backgroundImage: 'url(/card-waves.jpeg)', backgroundSize: 'cover', backgroundPosition: 'center',
+                    opacity: 0.08, mixBlendMode: 'screen',
+                }} />
+                <div className="absolute inset-0 pointer-events-none" style={{
+                    background: 'radial-gradient(120% 140% at 85% 0%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 55%)',
+                }} />
+
+                <div className="relative z-10">
+                    <div className="flex items-center gap-2 mb-1.5">
+                        <PiSparkle className="text-[13px]" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                        <span className="text-[11px] font-[600] uppercase tracking-[0.1em]" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                            {greeting}{firstName ? `, ${firstName}` : ''}
+                        </span>
+                    </div>
+                    <h1 className="text-[26px] font-[700] tracking-tight text-white">
                         Expense Dashboard
                     </h1>
-                    <p className="text-[13px] text-gray-400 mt-1">
+                    <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
                         {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · 30-day view
                     </p>
                 </div>
                 <Link href="/dashboard/reports"
-                    className="bg-white rounded-[10px] flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[500] text-gray-600 hover:text-[#059669] transition-colors"
-                    style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                    className="relative z-10 rounded-[10px] flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[600] transition-all hover:brightness-110 active:scale-[0.98] shrink-0"
+                    style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
                     <PiDownloadSimple className="text-[14px]" /> Export
                 </Link>
             </div>
 
-            {/* ── STAT CARDS with sparklines ── */}
+            {/* ── STAT CARDS with real sparklines ── */}
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <StatsCard
+                <HeroStatTile
                     title="Submitted This Month"
                     value={`KES ${submittedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                     trend={monthOverMonthChange > 0 ? `+${monthOverMonthChange.toFixed(1)}%` : `${monthOverMonthChange.toFixed(1)}%`}
                     trendUp={monthOverMonthChange <= 0}
                     icon={PiReceipt}
-                    color="indigo"
+                    accent="#6366F1"
+                    accentSoft="rgba(99,102,241,0.1)"
                     lastMonthLabel={`${submittedCount} report${submittedCount !== 1 ? 's' : ''} submitted`}
                     sparkline={sparkSubmitted}
                 />
-                <StatsCard
+                <HeroStatTile
                     title="Pending Approval"
                     value={`KES ${pendingTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                     trend={pendingCount === 0 ? "All clear" : `${pendingCount} item${pendingCount !== 1 ? 's' : ''}`}
                     trendUp={pendingCount === 0}
                     icon={PiClock}
-                    color="amber"
+                    accent="#D97706"
+                    accentSoft="rgba(217,119,6,0.1)"
                     lastMonthLabel="Awaiting review"
                     sparkline={sparkPending}
                 />
-                <StatsCard
+                <HeroStatTile
                     title="Disbursed This Month"
                     value={`KES ${disbursedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
                     trend={disbursedThisMonth.length === 0 ? "None yet" : `${disbursedThisMonth.length} paid`}
                     trendUp={disbursedThisMonth.length > 0}
                     icon={PiCoins}
-                    color="emerald"
+                    accent="#059669"
+                    accentSoft="rgba(5,150,105,0.1)"
                     lastMonthLabel="Paid & reimbursed"
                     sparkline={sparkDisbursed}
                 />
-                <StatsCard
+                <HeroStatTile
                     title="Approval Rate"
                     value={`${approvalRate.toFixed(1)}%`}
                     trend={rejectedCount > 0 ? `${rejectedCount} rejected` : "No rejections"}
                     trendUp={rejectedCount === 0}
                     icon={PiChartBar}
-                    color="purple"
+                    accent="#7C3AED"
+                    accentSoft="rgba(124,58,237,0.1)"
                     lastMonthLabel={`${approvedAllTime} of ${submittedAllTime} approved`}
                     sparkline={sparkRate}
                 />
@@ -362,33 +391,39 @@ export default async function DashboardPage() {
 
                     {/* Spending alerts */}
                     {recentLargeExpenses.length > 0 && (
-                        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                        <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
                             {/* Header */}
-                            <div className="flex items-center justify-between px-5 py-3.5"
-                                style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-                                <div className="flex items-center gap-2.5">
-                                    <span className="relative flex h-2 w-2 shrink-0">
-                                        <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-60" />
-                                        <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
-                                    </span>
-                                    <span className="text-[13px] font-[600] text-gray-900">Spending Alerts</span>
+                            <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: HAIRLINE }}>
+                                <div className="flex items-center gap-3">
+                                    <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 relative"
+                                        style={{ background: 'rgba(220,38,38,0.1)' }}>
+                                        <span className="absolute -top-0.5 -right-0.5 flex h-2 w-2">
+                                            <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-rose-400 opacity-70" />
+                                            <span className="relative inline-flex rounded-full h-2 w-2 bg-rose-500" />
+                                        </span>
+                                        <PiWarning className="text-rose-500 text-[16px]" />
+                                    </div>
+                                    <div>
+                                        <span className="text-[13.5px] font-[600] text-gray-900">Spending Alerts</span>
+                                        <p className="text-[11.5px] text-gray-400 mt-0.5">Unusually large requests this period</p>
+                                    </div>
                                 </div>
-                                <span className="text-[10.5px] font-[600] tabular-nums px-2 py-0.5 rounded-[4px]"
-                                    style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.15)' }}>
+                                <span className="text-[10.5px] font-[600] tabular-nums px-2.5 py-1 rounded-[6px]"
+                                    style={{ background: 'rgba(220,38,38,0.08)', color: '#dc2626' }}>
                                     {recentLargeExpenses.length} {recentLargeExpenses.length === 1 ? 'anomaly' : 'anomalies'}
                                 </span>
                             </div>
 
                             {/* Rows */}
-                            <div className="divide-y" style={{ '--tw-divide-opacity': 1 } as any}>
+                            <div>
                                 {recentLargeExpenses.map((exp: any, i: number) => {
                                     const multiple = (exp.amount / avgDailySpend).toFixed(1);
                                     return (
                                         <div key={exp.id} className="flex items-center gap-4 px-5 py-3.5"
                                             style={{ borderBottom: i < recentLargeExpenses.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
                                             {/* Icon */}
-                                            <div className="w-8 h-8 rounded-[7px] shrink-0 flex items-center justify-center"
-                                                style={{ background: 'rgba(220,38,38,0.07)', border: '1px solid rgba(220,38,38,0.15)' }}>
+                                            <div className="w-8 h-8 rounded-[8px] shrink-0 flex items-center justify-center"
+                                                style={{ background: 'rgba(220,38,38,0.07)' }}>
                                                 <PiWarning className="text-rose-500 text-[14px]" />
                                             </div>
 
@@ -401,8 +436,8 @@ export default async function DashboardPage() {
                                             </div>
 
                                             {/* Multiple badge */}
-                                            <span className="text-[10px] font-[700] font-mono tabular-nums shrink-0 px-1.5 py-0.5 rounded-[4px]"
-                                                style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626', border: '1px solid rgba(220,38,38,0.12)' }}>
+                                            <span className="text-[10px] font-[700] font-mono tabular-nums shrink-0 px-1.5 py-0.5 rounded-[5px]"
+                                                style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626' }}>
                                                 {multiple}× avg
                                             </span>
 
@@ -447,15 +482,17 @@ export default async function DashboardPage() {
 
                     {/* Active requisitions */}
                     {requisitions.length > 0 && (
-                        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
-                            <div className="px-5 py-3.5 text-[10.5px] font-[500] uppercase tracking-[0.08em] text-gray-400"
-                                style={{ borderBottom: '1px solid rgba(0,0,0,0.07)' }}>
-                                Active Expenses
+                        <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
+                            <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: HAIRLINE }}>
+                                <span className="text-[10.5px] font-[600] uppercase tracking-[0.08em] text-gray-400">Active Expenses</span>
+                                <span className="text-[10.5px] font-[600] tabular-nums px-2 py-0.5 rounded-[5px] text-gray-500" style={{ background: 'rgba(0,0,0,0.04)' }}>
+                                    {requisitions.length}
+                                </span>
                             </div>
-                            <div className="p-4 space-y-2">
+                            <div className="p-3.5 space-y-2">
                                 {requisitions.slice(0, 3).map((req: any) => (
-                                    <div key={req.id} className="p-3.5 rounded-[8px]"
-                                        style={{ border: '1px solid rgba(0,0,0,0.07)' }}>
+                                    <div key={req.id} className="p-3.5 rounded-[11px] hover:bg-gray-50/60 transition-colors"
+                                        style={{ border: '1px solid rgba(15,23,42,0.06)' }}>
                                         <div className="flex justify-between items-start">
                                             <div className="flex-1 min-w-0 pr-3">
                                                 <p className="text-[12.5px] font-[500] text-gray-900 truncate">{req.title}</p>

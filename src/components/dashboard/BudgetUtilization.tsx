@@ -1,4 +1,5 @@
-import { cn } from "@/lib/utils";
+import { PiWallet } from "react-icons/pi";
+import { CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 interface BudgetRow {
     category: string;
@@ -10,8 +11,6 @@ function pct(spent: number, allocated: number) {
     if (allocated <= 0) return 0;
     return Math.min((spent / allocated) * 100, 100);
 }
-
-const HAIRLINE = '1px solid rgba(0,0,0,0.07)';
 
 function barColor(p: number) {
     if (p >= 90) return '#dc2626';
@@ -29,10 +28,15 @@ export function BudgetUtilization({ budgets }: { budgets: BudgetRow[] }) {
     if (!budgets.length) return null;
 
     return (
-        <div className="bg-white rounded-[10px] overflow-hidden" style={{ border: HAIRLINE }}>
-            <div className="px-5 py-4" style={{ borderBottom: HAIRLINE }}>
-                <h2 className="text-[13px] font-[600] text-gray-900">Budget Utilization</h2>
-                <p className="text-[11.5px] text-gray-400 mt-0.5">This month · Allocated vs spent</p>
+        <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
+            <div className="px-5 py-4 flex items-center gap-3" style={{ borderBottom: HAIRLINE }}>
+                <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0" style={{ background: 'rgba(5,150,105,0.1)' }}>
+                    <PiWallet style={{ color: '#059669' }} className="text-[16px]" />
+                </div>
+                <div>
+                    <h2 className="text-[13px] font-[600] text-gray-900">Budget Utilization</h2>
+                    <p className="text-[11.5px] text-gray-400 mt-0.5">This month · Allocated vs spent</p>
+                </div>
             </div>
             <div className="p-5 space-y-4">
                 {budgets.map((b, i) => {
