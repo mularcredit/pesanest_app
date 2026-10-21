@@ -14,6 +14,7 @@ import { SectionHeader, CARD_STYLE, HAIRLINE } from "./SectionHeader";
 
 interface WeeklyExpenseChartProps {
     data: { week: string; amount: number; isCurrentWeek: boolean }[];
+    compact?: boolean;
 }
 
 function CustomTooltip({ active, payload, label }: any) {
@@ -31,12 +32,12 @@ function CustomTooltip({ active, payload, label }: any) {
     );
 }
 
-export function WeeklyExpenseChart({ data }: WeeklyExpenseChartProps) {
+export function WeeklyExpenseChart({ data, compact }: WeeklyExpenseChartProps) {
     return (
-        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+        <div className={compact ? "bg-white rounded-[16px] p-4 h-full" : "bg-white rounded-[16px] p-5"} style={CARD_STYLE}>
             <SectionHeader icon={PiCalendarBlank} color="#059669" bg="rgba(5,150,105,0.1)"
-                title="This Month by Week" subtitle="Current month expense breakdown" />
-            <ResponsiveContainer width="100%" height={200}>
+                title="This Month by Week" subtitle={compact ? undefined : "Current month expense breakdown"} />
+            <ResponsiveContainer width="100%" height={compact ? 160 : 200}>
                 <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                     <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
                     <XAxis

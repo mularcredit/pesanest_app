@@ -16,25 +16,14 @@ function fmtAmt(n: number) {
     return n.toFixed(0);
 }
 
-export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
+export function ExpenseFunnel({ stages, bare }: { stages: FunnelStage[]; bare?: boolean }) {
     if (stages.every(s => s.count === 0)) return null;
 
     const total    = stages.reduce((s, r) => s + r.count, 0);
     const maxCount = Math.max(...stages.map(s => s.count), 1);
 
-    return (
-        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
-
-            <SectionHeader icon={PiFunnel} color="#D97706" bg="rgba(217,119,6,0.1)"
-                title="Expense Pipeline" subtitle="Expense lifecycle status"
-                right={
-                    <span className="text-[10.5px] font-[600] text-gray-500 px-2.5 py-1 rounded-[5px]"
-                        style={{ background: 'rgba(0,0,0,0.04)' }}>
-                        {total} total
-                    </span>
-                }
-            />
-
+    const content = (
+        <>
             {/* Pipeline nodes */}
             <div className="flex items-start gap-0 mb-5 overflow-x-auto pb-1">
                 {stages.map((stage, i) => {
@@ -115,6 +104,23 @@ export function ExpenseFunnel({ stages }: { stages: FunnelStage[] }) {
                     );
                 })}
             </div>
+        </>
+    );
+
+    if (bare) return content;
+
+    return (
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiFunnel} color="#D97706" bg="rgba(217,119,6,0.1)"
+                title="Expense Pipeline" subtitle="Expense lifecycle status"
+                right={
+                    <span className="text-[10.5px] font-[600] text-gray-500 px-2.5 py-1 rounded-[5px]"
+                        style={{ background: 'rgba(0,0,0,0.04)' }}>
+                        {total} total
+                    </span>
+                }
+            />
+            {content}
         </div>
     );
 }

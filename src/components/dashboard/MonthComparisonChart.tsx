@@ -16,6 +16,7 @@ interface MonthComparisonChartProps {
     data: ComparisonItem[];
     thisMonthLabel: string;
     lastMonthLabel: string;
+    compact?: boolean;
 }
 
 function Tip({ active, payload, label }: any) {
@@ -39,13 +40,21 @@ function Tip({ active, payload, label }: any) {
     );
 }
 
-export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: MonthComparisonChartProps) {
+export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel, compact }: MonthComparisonChartProps) {
+    const chartData = compact ? data.slice(0, 3) : data;
     return (
-        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+        <div className={compact ? "bg-white rounded-[16px] p-4 h-full" : "bg-white rounded-[16px] p-5"} style={CARD_STYLE}>
             <SectionHeader icon={PiChartBarHorizontal} color="#7C3AED" bg="rgba(124,58,237,0.1)"
-                title="Month-over-Month" subtitle="Category spending comparison" />
-            <ResponsiveContainer width="100%" height={220}>
-                <BarChart data={data} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
+                title="Month-over-Month" subtitle={compact ? undefined : "Category spending comparison"}
+                right={compact ? (
+                    <div className="flex items-center gap-2.5 text-[9.5px] text-gray-400">
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-[2px]" style={{ background: '#059669' }} />{thisMonthLabel}</span>
+                        <span className="flex items-center gap-1"><span className="w-2 h-2 rounded-[2px]" style={{ background: 'rgba(156,163,175,0.45)' }} />{lastMonthLabel}</span>
+                    </div>
+                ) : undefined}
+            />
+            <ResponsiveContainer width="100%" height={compact ? 160 : 220}>
+                <BarChart data={chartData} margin={{ top: 4, right: 4, left: 0, bottom: 0 }} barGap={4} barCategoryGap="30%">
                     <CartesianGrid vertical={false} stroke="rgba(0,0,0,0.04)" />
                     <XAxis
                         dataKey="category"
@@ -62,15 +71,17 @@ export function MonthComparisonChart({ data, thisMonthLabel, lastMonthLabel }: M
                         width={44}
                     />
                     <Tooltip content={<Tip />} cursor={{ fill: 'rgba(0,0,0,0.025)' }} />
-                    <Legend
-                        verticalAlign="top"
-                        align="right"
-                        iconType="square"
-                        iconSize={8}
-                        wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingBottom: 12 }}
-                    />
-                    <Bar dataKey="thisMonth" name={thisMonthLabel} fill="#059669"            radius={[3, 3, 0, 0]} maxBarSize={24} />
-                    <Bar dataKey="lastMonth" name={lastMonthLabel} fill="rgba(156,163,175,0.45)" radius={[3, 3, 0, 0]} maxBarSize={24} />
+                    {!compact && (
+                        <Legend
+                            verticalAlign="top"
+                            align="right"
+                            iconType="square"
+                            iconSize={8}
+                            wrapperStyle={{ fontSize: 11, color: '#6b7280', paddingBottom: 12 }}
+                        />
+                    )}
+                    <Bar dataKey="thisMonth" name={thisMonthLabel} fill="#059669"            radius={[3, 3, 0, 0]} maxBarSize={compact ? 16 : 24} />
+                    <Bar dataKey="lastMonth" name={lastMonthLabel} fill="rgba(156,163,175,0.45)" radius={[3, 3, 0, 0]} maxBarSize={compact ? 16 : 24} />
                 </BarChart>
             </ResponsiveContainer>
         </div>

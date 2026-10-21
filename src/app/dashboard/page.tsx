@@ -2,8 +2,7 @@ import prisma from "@/lib/prisma";
 import { auth } from "@/auth";
 import { paystackService } from "@/lib/payments/paystack";
 import { redirect } from "next/navigation";
-import { HeroStatTile } from "@/components/dashboard/HeroStatTile";
-import { SectionHeader, CARD_STYLE, HAIRLINE } from "@/components/dashboard/SectionHeader";
+import { CARD_STYLE, HAIRLINE } from "@/components/dashboard/SectionHeader";
 import { OverviewChart } from "@/components/dashboard/OverviewChart";
 import { TransactionTable } from "@/components/dashboard/TransactionTable";
 import { BudgetUtilization } from "@/components/dashboard/BudgetUtilization";
@@ -22,6 +21,11 @@ import {
     PiChartBar,
     PiWarning,
     PiSparkle,
+    PiArrowUp,
+    PiArrowDown,
+    PiFunnel,
+    PiGaugeFill,
+    PiListChecks,
 } from "react-icons/pi";
 import { WalletCard } from "@/components/dashboard/WalletCard";
 import { DashboardQuickActions } from "@/components/dashboard/DashboardQuickActions";
@@ -171,36 +175,6 @@ export default async function DashboardPage() {
         rejected:  byStatus('REJECTED'),
     };
 
-    // ── Sparklines (last 7 days) ──
-    const sparkSubmitted = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(now); d.setDate(d.getDate() - (6 - i));
-        const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const e = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-        return allRequisitions
-            .filter((x: any) => { const xd = new Date(x.createdAt); return xd >= s && xd < e && x.status !== 'DRAFT'; })
-            .reduce((sum: number, x: any) => sum + x.amount, 0);
-    });
-    const sparkDisbursed = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(now); d.setDate(d.getDate() - (6 - i));
-        const s = new Date(d.getFullYear(), d.getMonth(), d.getDate());
-        const e = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-        return allRequisitions
-            .filter((x: any) => { const xd = new Date(x.createdAt); return xd >= s && xd < e && !undecidedOrRejectedStatuses.includes(x.status); })
-            .reduce((sum: number, x: any) => sum + x.amount, 0);
-    });
-    const sparkPending = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(now); d.setDate(d.getDate() - (6 - i));
-        const cutoff = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-        return allRequisitions.filter((x: any) => new Date(x.createdAt) < cutoff && x.status === 'PENDING').length;
-    });
-    const sparkRate = Array.from({ length: 7 }, (_, i) => {
-        const d = new Date(now); d.setDate(d.getDate() - (6 - i));
-        const cutoff = new Date(d.getFullYear(), d.getMonth(), d.getDate() + 1);
-        const subset = allRequisitions.filter((x: any) => new Date(x.createdAt) < cutoff && x.status !== 'DRAFT');
-        const app    = subset.filter((x: any) => ['APPROVED','PAID'].includes(x.status));
-        return subset.length > 0 ? (app.length / subset.length) * 100 : 0;
-    });
-
     // ── Month-over-month comparison ──
     const thisMonthCatSpend = thisMonthReqs.reduce((acc: any, r: any) => {
         if (!r.category) return acc;
@@ -274,15 +248,47 @@ export default async function DashboardPage() {
     const greeting = hour < 12 ? 'Good morning' : hour < 17 ? 'Good afternoon' : 'Good evening';
     const firstName = (currentUser.name || '').trim().split(/\s+/)[0] || '';
 
+    const hasBudget = budgetRows.length > 0;
+    const hasAlerts = recentLargeExpenses.length > 0;
+
+    // Ghost stats folded into the hero band itself, replacing a separate row
+    // of four white KPI cards — the real trend visualization now lives in
+    // the hero chart below, so these stay lean: label, number, one signal.
+    const heroStats = [
+        {
+            label: 'Submitted', icon: PiReceipt,
+            value: `KES ${submittedTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            trend: monthOverMonthChange > 0 ? `+${monthOverMonthChange.toFixed(0)}%` : `${monthOverMonthChange.toFixed(0)}%`,
+            trendUp: monthOverMonthChange <= 0,
+        },
+        {
+            label: 'Pending Approval', icon: PiClock,
+            value: `KES ${pendingTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            trend: pendingCount === 0 ? 'All clear' : `${pendingCount} item${pendingCount !== 1 ? 's' : ''}`,
+            trendUp: pendingCount === 0,
+        },
+        {
+            label: 'Disbursed', icon: PiCoins,
+            value: `KES ${disbursedTotal.toLocaleString(undefined, { maximumFractionDigits: 0 })}`,
+            trend: disbursedThisMonth.length === 0 ? 'None yet' : `${disbursedThisMonth.length} paid`,
+            trendUp: disbursedThisMonth.length > 0,
+        },
+        {
+            label: 'Approval Rate', icon: PiChartBar,
+            value: `${approvalRate.toFixed(0)}%`,
+            trend: rejectedCount > 0 ? `${rejectedCount} rejected` : 'No rejections',
+            trendUp: rejectedCount === 0,
+        },
+    ];
+
     return (
-        <div className="space-y-5 pb-6 relative">
-            {/* ── HEADER ── */}
-            <div className="relative overflow-hidden rounded-[18px] px-6 py-5 flex items-end justify-between flex-wrap gap-4"
+        <div className="space-y-4 pb-6 relative">
+            {/* ── HERO BAND — greeting, export, and the month's vitals folded into one object ── */}
+            <div className="relative overflow-hidden rounded-[20px] px-6 pt-5 pb-6"
                 style={{
                     background: 'linear-gradient(120deg, #054F27 0%, #007A3D 48%, #0E8F46 100%)',
                     boxShadow: '0 1px 2px rgba(0,58,25,0.1), 0 16px 32px -12px rgba(0,58,25,0.35)',
                 }}>
-                {/* Decorative texture, echoes the wallet card's wave overlay */}
                 <div className="absolute inset-0 pointer-events-none" style={{
                     backgroundImage: 'url(/card-waves.jpeg)', backgroundSize: 'cover', backgroundPosition: 'center',
                     opacity: 0.08, mixBlendMode: 'screen',
@@ -291,108 +297,118 @@ export default async function DashboardPage() {
                     background: 'radial-gradient(120% 140% at 85% 0%, rgba(255,255,255,0.14) 0%, rgba(255,255,255,0) 55%)',
                 }} />
 
-                <div className="relative z-10">
-                    <div className="flex items-center gap-2 mb-1.5">
-                        <PiSparkle className="text-[13px]" style={{ color: 'rgba(255,255,255,0.65)' }} />
-                        <span className="text-[11px] font-[600] uppercase tracking-[0.1em]" style={{ color: 'rgba(255,255,255,0.65)' }}>
-                            {greeting}{firstName ? `, ${firstName}` : ''}
-                        </span>
+                <div className="relative z-10 flex items-end justify-between flex-wrap gap-4">
+                    <div>
+                        <div className="flex items-center gap-2 mb-1.5">
+                            <PiSparkle className="text-[13px]" style={{ color: 'rgba(255,255,255,0.65)' }} />
+                            <span className="text-[11px] font-[600] uppercase tracking-[0.1em]" style={{ color: 'rgba(255,255,255,0.65)' }}>
+                                {greeting}{firstName ? `, ${firstName}` : ''}
+                            </span>
+                        </div>
+                        <h1 className="text-[26px] font-[700] tracking-tight text-white">
+                            Expense Dashboard
+                        </h1>
+                        <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
+                            {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · 30-day view
+                        </p>
                     </div>
-                    <h1 className="text-[26px] font-[700] tracking-tight text-white">
-                        Expense Dashboard
-                    </h1>
-                    <p className="text-[13px] mt-1" style={{ color: 'rgba(255,255,255,0.7)' }}>
-                        {now.toLocaleDateString('en-US', { month: 'long', year: 'numeric' })} · 30-day view
-                    </p>
+                    <Link href="/dashboard/reports"
+                        className="rounded-[10px] flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[600] transition-all hover:brightness-110 active:scale-[0.98] shrink-0"
+                        style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
+                        <PiDownloadSimple className="text-[14px]" /> Export
+                    </Link>
                 </div>
-                <Link href="/dashboard/reports"
-                    className="relative z-10 rounded-[10px] flex items-center gap-1.5 px-4 py-2.5 text-[12.5px] font-[600] transition-all hover:brightness-110 active:scale-[0.98] shrink-0"
-                    style={{ background: 'rgba(255,255,255,0.14)', color: '#fff', border: '1px solid rgba(255,255,255,0.18)' }}>
-                    <PiDownloadSimple className="text-[14px]" /> Export
-                </Link>
+
+                <div className="relative z-10 h-px my-5" style={{ background: 'rgba(255,255,255,0.14)' }} />
+
+                <div className="relative z-10 grid grid-cols-2 md:grid-cols-4 gap-y-4 gap-x-6">
+                    {heroStats.map(s => (
+                        <div key={s.label}>
+                            <div className="flex items-center gap-1.5 mb-1.5">
+                                <s.icon className="text-[12px]" style={{ color: 'rgba(255,255,255,0.55)' }} />
+                                <span className="text-[10px] font-[600] uppercase tracking-[0.08em]" style={{ color: 'rgba(255,255,255,0.55)' }}>
+                                    {s.label}
+                                </span>
+                            </div>
+                            <p className="text-[19px] font-[700] text-white tabular-nums leading-none mb-1.5 truncate">{s.value}</p>
+                            <span className="inline-flex items-center gap-0.5 text-[10.5px] font-[600]"
+                                style={{ color: s.trendUp ? '#6EE7B7' : '#FCA5A5' }}>
+                                {s.trendUp ? <PiArrowUp className="text-[9px]" /> : <PiArrowDown className="text-[9px]" />}
+                                {s.trend}
+                            </span>
+                        </div>
+                    ))}
+                </div>
             </div>
 
-            {/* ── STAT CARDS with real sparklines ── */}
-            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
-                <HeroStatTile
-                    title="Submitted This Month"
-                    value={`KES ${submittedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                    trend={monthOverMonthChange > 0 ? `+${monthOverMonthChange.toFixed(1)}%` : `${monthOverMonthChange.toFixed(1)}%`}
-                    trendUp={monthOverMonthChange <= 0}
-                    icon={PiReceipt}
-                    accent="#6366F1"
-                    accentSoft="rgba(99,102,241,0.1)"
-                    lastMonthLabel={`${submittedCount} report${submittedCount !== 1 ? 's' : ''} submitted`}
-                    sparkline={sparkSubmitted}
-                />
-                <HeroStatTile
-                    title="Pending Approval"
-                    value={`KES ${pendingTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                    trend={pendingCount === 0 ? "All clear" : `${pendingCount} item${pendingCount !== 1 ? 's' : ''}`}
-                    trendUp={pendingCount === 0}
-                    icon={PiClock}
-                    accent="#D97706"
-                    accentSoft="rgba(217,119,6,0.1)"
-                    lastMonthLabel="Awaiting review"
-                    sparkline={sparkPending}
-                />
-                <HeroStatTile
-                    title="Disbursed This Month"
-                    value={`KES ${disbursedTotal.toLocaleString(undefined, { minimumFractionDigits: 2 })}`}
-                    trend={disbursedThisMonth.length === 0 ? "None yet" : `${disbursedThisMonth.length} paid`}
-                    trendUp={disbursedThisMonth.length > 0}
-                    icon={PiCoins}
-                    accent="#059669"
-                    accentSoft="rgba(5,150,105,0.1)"
-                    lastMonthLabel="Paid & reimbursed"
-                    sparkline={sparkDisbursed}
-                />
-                <HeroStatTile
-                    title="Approval Rate"
-                    value={`${approvalRate.toFixed(1)}%`}
-                    trend={rejectedCount > 0 ? `${rejectedCount} rejected` : "No rejections"}
-                    trendUp={rejectedCount === 0}
-                    icon={PiChartBar}
-                    accent="#7C3AED"
-                    accentSoft="rgba(124,58,237,0.1)"
-                    lastMonthLabel={`${approvedAllTime} of ${submittedAllTime} approved`}
-                    sparkline={sparkRate}
-                />
-            </div>
-
-            {/* ── MAIN GRID ── */}
-            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
-
-                {/* LEFT — charts + funnel + table */}
-                <div className="lg:col-span-2 space-y-4">
-
-                    {/* 12-month trend area chart */}
+            {/* ── ZONE 2 — the hero chart paired directly with the wallet, not stacked below it ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 items-stretch">
+                <div className="lg:col-span-2">
                     <OverviewChart data={monthlyData} />
+                </div>
+                <WalletCard
+                    balance={liveBalance}
+                    currency={wallet?.currency === 'USD' ? 'KES' : (wallet?.currency ?? 'KES')}
+                    branches={branchesData.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))}
+                    isPaystack={paystackConnected}
+                    holderName={currentUserWithPaystack?.name || "Fahari Wallet"}
+                />
+            </div>
 
-                    {/* This month by week — bar chart */}
-                    {weeklyData.some(w => w.amount > 0) && (
-                        <WeeklyExpenseChart data={weeklyData} />
-                    )}
+            {/* ── ZONE 3 — analysis trio, equal weight, read left-to-right ── */}
+            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
+                {weeklyData.some(w => w.amount > 0) && (
+                    <WeeklyExpenseChart data={weeklyData} compact />
+                )}
+                {top5Comparison.length > 0 && (
+                    <MonthComparisonChart
+                        data={top5Comparison}
+                        thisMonthLabel={thisMonthLabel}
+                        lastMonthLabel={lastMonthLabel}
+                        compact
+                    />
+                )}
+                <CategoryBreakdown data={categoryData} totalAmount={totalCategoryAmount} compact />
+            </div>
 
-                    {/* Month-over-month grouped bar chart */}
-                    {top5Comparison.length > 0 && (
-                        <MonthComparisonChart
-                            data={top5Comparison}
-                            thisMonthLabel={thisMonthLabel}
-                            lastMonthLabel={lastMonthLabel}
-                        />
-                    )}
+            {/* ── ZONE 4 — "Where Things Stand": pipeline, approval outcomes and status
+                 merged into one object instead of three disconnected cards ── */}
+            <div className="bg-white rounded-[20px] overflow-hidden" style={CARD_STYLE}>
+                <div className="px-5 py-4" style={{ borderBottom: HAIRLINE }}>
+                    <h2 className="text-[13.5px] font-[600] text-gray-900">Where Things Stand</h2>
+                    <p className="text-[11.5px] text-gray-400 mt-0.5">Pipeline, outcomes and review stage, at a glance</p>
+                </div>
+                <div className="grid grid-cols-1 lg:grid-cols-3">
+                    <div className="p-5" style={{ borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <PiFunnel className="text-[13px]" style={{ color: '#D97706' }} />
+                            <span className="text-[11px] font-[600] uppercase tracking-[0.07em] text-gray-400">Expense Pipeline</span>
+                        </div>
+                        <ExpenseFunnel stages={funnelStages} bare />
+                    </div>
+                    <div className="p-5 lg:border-x" style={{ borderColor: 'rgba(0,0,0,0.06)', borderBottom: '1px solid rgba(0,0,0,0.06)' }}>
+                        <div className="flex items-center gap-2 mb-4">
+                            <PiGaugeFill className="text-[13px]" style={{ color: '#059669' }} />
+                            <span className="text-[11px] font-[600] uppercase tracking-[0.07em] text-gray-400">Approval Rate</span>
+                        </div>
+                        <ApprovalGauge approved={gaugeApproved} pending={gaugePending} rejected={gaugeRejected} bare />
+                    </div>
+                    <div className="p-5">
+                        <div className="flex items-center gap-2 mb-4">
+                            <PiListChecks className="text-[13px]" style={{ color: '#6366F1' }} />
+                            <span className="text-[11px] font-[600] uppercase tracking-[0.07em] text-gray-400">By Status</span>
+                        </div>
+                        <ExpenseStatusSummary {...statusSummary} bare />
+                    </div>
+                </div>
+            </div>
 
-                    {/* Category spending breakdown */}
-                    <CategoryBreakdown data={categoryData} totalAmount={totalCategoryAmount} />
-
-                    {/* Expense funnel */}
-                    <ExpenseFunnel stages={funnelStages} />
-
-                    {/* Spending alerts */}
-                    {recentLargeExpenses.length > 0 && (
+            {/* ── ZONE 5 — budget discipline and anomalies, side by side ── */}
+            {(hasBudget || hasAlerts) && (
+                <div className={hasBudget && hasAlerts ? "grid grid-cols-1 lg:grid-cols-2 gap-4" : ""}>
+                    {hasBudget && <BudgetUtilization budgets={budgetRows} />}
+                    {hasAlerts && (
                         <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
-                            {/* Header */}
                             <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: HAIRLINE }}>
                                 <div className="flex items-center gap-3">
                                     <div className="w-9 h-9 rounded-[10px] flex items-center justify-center shrink-0 relative"
@@ -413,35 +429,26 @@ export default async function DashboardPage() {
                                     {recentLargeExpenses.length} {recentLargeExpenses.length === 1 ? 'anomaly' : 'anomalies'}
                                 </span>
                             </div>
-
-                            {/* Rows */}
                             <div>
                                 {recentLargeExpenses.map((exp: any, i: number) => {
                                     const multiple = (exp.amount / avgDailySpend).toFixed(1);
                                     return (
                                         <div key={exp.id} className="flex items-center gap-4 px-5 py-3.5"
                                             style={{ borderBottom: i < recentLargeExpenses.length - 1 ? '1px solid rgba(0,0,0,0.06)' : 'none' }}>
-                                            {/* Icon */}
                                             <div className="w-8 h-8 rounded-[8px] shrink-0 flex items-center justify-center"
                                                 style={{ background: 'rgba(220,38,38,0.07)' }}>
                                                 <PiWarning className="text-rose-500 text-[14px]" />
                                             </div>
-
-                                            {/* Info */}
                                             <div className="flex-1 min-w-0">
                                                 <p className="text-[12.5px] font-[500] text-gray-900 truncate">{exp.title}</p>
                                                 {exp.category && (
                                                     <p className="text-[11px] text-gray-400 truncate mt-0.5">{exp.category}</p>
                                                 )}
                                             </div>
-
-                                            {/* Multiple badge */}
                                             <span className="text-[10px] font-[700] font-mono tabular-nums shrink-0 px-1.5 py-0.5 rounded-[5px]"
                                                 style={{ background: 'rgba(220,38,38,0.07)', color: '#dc2626' }}>
                                                 {multiple}× avg
                                             </span>
-
-                                            {/* Amount */}
                                             <span className="text-[12.5px] font-[600] font-mono tabular-nums shrink-0 text-gray-900">
                                                 KES {Number(exp.amount).toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                             </span>
@@ -451,36 +458,16 @@ export default async function DashboardPage() {
                             </div>
                         </div>
                     )}
+                </div>
+            )}
 
-                    {/* Recent transactions */}
+            {/* ── ZONE 6 — activity feed, with quick access and active items as a footer rail ── */}
+            <div className="grid grid-cols-1 lg:grid-cols-3 gap-4">
+                <div className="lg:col-span-2">
                     <TransactionTable expenses={thisMonthReqs.slice(0, 10)} />
                 </div>
-
-                {/* RIGHT — wallet + gauge + status + budget */}
                 <div className="space-y-4">
-                    <WalletCard
-                        balance={liveBalance}
-                        currency={wallet?.currency === 'USD' ? 'KES' : (wallet?.currency ?? 'KES')}
-                        branches={branchesData.map((b: { id: string; name: string }) => ({ id: b.id, name: b.name }))}
-                        isPaystack={paystackConnected}
-                        holderName={currentUserWithPaystack?.name || "Fahari Wallet"}
-                    />
-
-                    {/* Approval ring chart */}
-                    <ApprovalGauge
-                        approved={gaugeApproved}
-                        pending={gaugePending}
-                        rejected={gaugeRejected}
-                    />
-
-                    <ExpenseStatusSummary {...statusSummary} />
-
                     <DashboardQuickActions />
-
-                    {/* Budget utilization */}
-                    {budgetRows.length > 0 && <BudgetUtilization budgets={budgetRows} />}
-
-                    {/* Active requisitions */}
                     {requisitions.length > 0 && (
                         <div className="bg-white rounded-[16px] overflow-hidden" style={CARD_STYLE}>
                             <div className="px-5 py-4 flex items-center justify-between" style={{ borderBottom: HAIRLINE }}>

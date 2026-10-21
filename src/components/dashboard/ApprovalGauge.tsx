@@ -7,9 +7,12 @@ interface ApprovalGaugeProps {
     approved: number;
     pending: number;
     rejected: number;
+    /** Renders just the ring + legend, no card chrome or header — for
+        composing inside a shared parent card (e.g. the Outcomes band). */
+    bare?: boolean;
 }
 
-export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProps) {
+export function ApprovalGauge({ approved, pending, rejected, bare }: ApprovalGaugeProps) {
     const total = approved + pending + rejected;
     const rate  = total > 0 ? (approved / total) * 100 : 0;
 
@@ -21,11 +24,8 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
           ]
         : [{ name: 'Empty', value: 1, color: 'rgba(0,0,0,0.06)' }];
 
-    return (
-        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
-            <SectionHeader icon={PiGaugeFill} color="#059669" bg="rgba(5,150,105,0.1)"
-                title="Approval Rate" subtitle="All-time expense outcomes" />
-
+    const content = (
+        <>
             {/* Ring + center label */}
             <div className="relative h-[150px]">
                 <ResponsiveContainer width="100%" height="100%">
@@ -74,6 +74,16 @@ export function ApprovalGauge({ approved, pending, rejected }: ApprovalGaugeProp
                     </div>
                 ))}
             </div>
+        </>
+    );
+
+    if (bare) return content;
+
+    return (
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiGaugeFill} color="#059669" bg="rgba(5,150,105,0.1)"
+                title="Approval Rate" subtitle="All-time expense outcomes" />
+            {content}
         </div>
     );
 }

@@ -17,6 +17,9 @@ interface ExpenseStatusSummaryProps {
     approved:  StatusGroup;
     paid:      StatusGroup;
     rejected:  StatusGroup;
+    /** Renders just the rows + footer, no card chrome or header — for
+        composing inside a shared parent card (e.g. the Outcomes band). */
+    bare?: boolean;
 }
 
 const ROWS = [
@@ -27,24 +30,14 @@ const ROWS = [
     { key: 'rejected',  label: 'Rejected',  Icon: PiXCircle,     color: '#dc2626', light: 'rgba(220,38,38,0.1)'    },
 ] as const;
 
-export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
+export function ExpenseStatusSummary({ bare, ...props }: ExpenseStatusSummaryProps) {
     const rows = ROWS.map(r => ({ ...r, ...props[r.key] }));
     const maxAmount = Math.max(...rows.map(r => r.amount), 1);
     const totalCount  = rows.reduce((s, r) => s + r.count,  0);
     const totalAmount = rows.reduce((s, r) => s + r.amount, 0);
 
-    return (
-        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
-            <SectionHeader icon={PiListChecks} color="#6366F1" bg="rgba(99,102,241,0.1)"
-                title="Expense Status" subtitle="All-time breakdown by review stage"
-                right={
-                    <span className="text-[10.5px] font-[600] text-gray-500 px-2 py-0.5 rounded-[4px] mt-0.5"
-                        style={{ background: 'rgba(0,0,0,0.05)' }}>
-                        {totalCount} total
-                    </span>
-                }
-            />
-
+    const content = (
+        <>
             {/* Rows */}
             <div className="space-y-3">
                 {rows.map(({ key, label, Icon, color, light, count, amount }) => {
@@ -100,6 +93,23 @@ export function ExpenseStatusSummary(props: ExpenseStatusSummaryProps) {
                     KES {totalAmount.toLocaleString(undefined, { maximumFractionDigits: 0 })}
                 </span>
             </div>
+        </>
+    );
+
+    if (bare) return content;
+
+    return (
+        <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
+            <SectionHeader icon={PiListChecks} color="#6366F1" bg="rgba(99,102,241,0.1)"
+                title="Expense Status" subtitle="All-time breakdown by review stage"
+                right={
+                    <span className="text-[10.5px] font-[600] text-gray-500 px-2 py-0.5 rounded-[4px] mt-0.5"
+                        style={{ background: 'rgba(0,0,0,0.05)' }}>
+                        {totalCount} total
+                    </span>
+                }
+            />
+            {content}
         </div>
     );
 }

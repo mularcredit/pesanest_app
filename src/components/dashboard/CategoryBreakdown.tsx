@@ -4,6 +4,7 @@ import { SectionHeader, CARD_STYLE } from "./SectionHeader";
 interface CategoryBreakdownProps {
     data: { category: string; amount: number; count: number }[];
     totalAmount: number;
+    compact?: boolean;
 }
 
 // Validated categorical order (see dataviz skill) — passes CVD-separation and
@@ -20,9 +21,41 @@ const BAR_COLORS = [
     '#e34948', // red
 ];
 
-export function CategoryBreakdown({ data, totalAmount }: CategoryBreakdownProps) {
-    const maxAmount = data.length > 0 ? Math.max(...data.map((d) => d.amount)) : 1;
-    const hasData = data.length > 0;
+export function CategoryBreakdown({ data, totalAmount, compact }: CategoryBreakdownProps) {
+    const rows = compact ? data.slice(0, 5) : data;
+    const maxAmount = rows.length > 0 ? Math.max(...rows.map((d) => d.amount)) : 1;
+    const hasData = rows.length > 0;
+
+    if (compact) {
+        return (
+            <div className="bg-white rounded-[16px] p-4 h-full" style={CARD_STYLE}>
+                <SectionHeader icon={PiChartPieSlice} color="#4a3aa7" bg="rgba(74,58,167,0.1)" title="Spending by Category" />
+                <div className="space-y-2.5">
+                    {rows.map((item, index) => {
+                        const color = BAR_COLORS[index % BAR_COLORS.length];
+                        const barWidth = maxAmount > 0 ? (item.amount / maxAmount) * 100 : 0;
+                        return (
+                            <div key={item.category}>
+                                <div className="flex items-center justify-between gap-2 mb-1">
+                                    <span className="flex items-center gap-1.5 min-w-0">
+                                        <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ backgroundColor: color }} />
+                                        <span className="text-[11px] font-[500] text-gray-700 truncate">{item.category}</span>
+                                    </span>
+                                    <span className="text-[10.5px] font-[600] text-gray-500 font-mono shrink-0">
+                                        {(item.amount / 1000).toFixed(0)}k
+                                    </span>
+                                </div>
+                                <div className="h-[4px] rounded-full bg-gray-100 overflow-hidden">
+                                    <div className="h-full rounded-full" style={{ width: `${barWidth}%`, backgroundColor: color }} />
+                                </div>
+                            </div>
+                        );
+                    })}
+                    {!hasData && <p className="text-[11px] text-gray-400">No expense data yet</p>}
+                </div>
+            </div>
+        );
+    }
 
     return (
         <div className="bg-white rounded-[16px] p-5" style={CARD_STYLE}>
