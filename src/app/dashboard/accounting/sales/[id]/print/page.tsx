@@ -9,11 +9,20 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
     if (!session?.user) return redirect("/login");
 
     const { id } = await params;
-    const sale = await prisma.sale.findUnique({ where: { id }, include: { items: true, customer: true } });
+    const [sale, orgSettings] = await Promise.all([
+        prisma.sale.findUnique({ where: { id }, include: { items: true, customer: true } }),
+        (prisma as any).systemSetting.findMany({
+            where: { key: { in: ['company_name', 'headquarters_address', 'registration_number'] } },
+        }),
+    ]);
     if (!sale) return notFound();
 
+    const settingsMap = (orgSettings as any[]).reduce((acc: any, s: any) => { acc[s.key] = s.value; return acc; }, {});
+
     const etimsPin = process.env.ETIMS_PIN || "";
-    const appName = process.env.NEXT_PUBLIC_APP_NAME || "PesaNest";
+    const appName = settingsMap.company_name || process.env.NEXT_PUBLIC_APP_NAME || "PesaNest";
+    const companyAddress = settingsMap.headquarters_address || "Nairobi, Kenya";
+    const registrationNumber = settingsMap.registration_number as string | undefined;
     const accepted = sale.etimsStatus === "ACCEPTED" && !!sale.etimsInvoiceNumber && !sale.etimsInvoiceNumber.startsWith("ETIMS-STUB-");
 
     let qr: string | null = null;
@@ -54,8 +63,9 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             <div style={{ display: "flex", justifyContent: "space-between", alignItems: "flex-start", borderBottom: "2px solid #111", paddingBottom: 16 }}>
                 <div>
                     <div style={{ fontSize: 22, fontWeight: 700, letterSpacing: "-0.02em" }}>{appName}</div>
-                    <div style={{ color: "#6b7280", marginTop: 2 }}>Nairobi, Kenya</div>
+                    <div style={{ color: "#6b7280", marginTop: 2 }}>{companyAddress}</div>
                     <div style={{ color: "#6b7280" }}>PIN: {etimsPin} · Branch 00</div>
+                    {registrationNumber && <div style={{ color: "#6b7280" }}>Reg No: {registrationNumber}</div>}
                 </div>
                 <div style={{ textAlign: "right" }}>
                     <div style={{ fontSize: 20, fontWeight: 700, color: "#4f46e5" }}>TAX INVOICE</div>
