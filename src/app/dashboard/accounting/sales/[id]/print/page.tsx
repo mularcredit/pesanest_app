@@ -56,7 +56,33 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
             `}</style>
 
             <div className="no-print" style={{ maxWidth: 800, margin: "0 auto 12px", display: "flex", justifyContent: "flex-end", gap: 8 }}>
-                <PrintControls />
+                <PrintControls data={{
+                    invoiceNumber: sale.invoiceNumber,
+                    issueDate: fmtDate(sale.issueDate),
+                    dueDate: fmtDate(sale.dueDate),
+                    currency: sale.currency || 'KES',
+                    companyName: appName,
+                    companyAddress,
+                    etimsPin,
+                    registrationNumber,
+                    customerName: sale.customer?.name || '',
+                    customerTaxId: sale.customer?.taxId || undefined,
+                    customerAddress: sale.customer?.address || undefined,
+                    items: sale.items.map((it: any) => ({
+                        description: it.description,
+                        quantity: Number(it.quantity),
+                        unitPrice: Number(it.unitPrice),
+                        total: Number(it.total),
+                    })),
+                    subtotal: Number(sale.subtotal),
+                    taxAmount: Number(sale.taxAmount),
+                    totalAmount: Number(sale.totalAmount),
+                    etims: accepted ? {
+                        receiptNumber: sale.etimsInvoiceNumber || '',
+                        controlUnit: sale.etimsControlUnit || '',
+                        qrDataUri: qr,
+                    } : undefined,
+                }} />
             </div>
 
             {/* Header */}
