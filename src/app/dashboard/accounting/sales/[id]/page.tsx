@@ -52,7 +52,7 @@ export default async function EditSalePage({ params }: { params: Promise<{ id: s
                                 <div className="flex justify-between gap-4"><dt className="text-gray-500">Invoice No.</dt><dd className="font-mono text-gray-900">{sale.invoiceNumber}</dd></div>
                                 <div className="flex justify-between gap-4"><dt className="text-gray-500">eTIMS Receipt No.</dt><dd className="font-mono text-gray-900">{sale.etimsInvoiceNumber}</dd></div>
                                 <div className="flex justify-between gap-4 sm:col-span-2"><dt className="text-gray-500">Receipt Signature (SCU)</dt><dd className="font-mono text-gray-900 break-all">{sale.etimsControlUnit}</dd></div>
-                                <div className="flex justify-between gap-4"><dt className="text-gray-500">Total (incl. VAT 16%)</dt><dd className="font-mono text-gray-900">KES {Number(sale.totalAmount).toLocaleString()}</dd></div>
+                                <div className="flex justify-between gap-4"><dt className="text-gray-500">Total (incl. VAT 16%)</dt><dd className="font-mono text-gray-900">{sale.currency || 'KES'} {Number(sale.totalAmount).toLocaleString()}</dd></div>
                                 <div className="flex justify-between gap-4"><dt className="text-gray-500">Status</dt><dd className="text-emerald-700 font-[600]">ACCEPTED</dd></div>
                             </dl>
                         </div>

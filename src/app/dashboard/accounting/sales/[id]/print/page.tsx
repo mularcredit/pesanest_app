@@ -22,7 +22,7 @@ export default async function InvoicePrintPage({ params }: { params: Promise<{ i
         qr = await QRCode.toDataURL(verifyUrl, { margin: 1, width: 150 });
     }
 
-    const money = (n: number) => `KES ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
+    const money = (n: number) => `${sale.currency || 'KES'} ${Number(n).toLocaleString(undefined, { minimumFractionDigits: 2, maximumFractionDigits: 2 })}`;
     const fmtDate = (d: Date | string) => new Date(d).toLocaleDateString("en-GB", { day: "2-digit", month: "short", year: "numeric" });
 
     return (

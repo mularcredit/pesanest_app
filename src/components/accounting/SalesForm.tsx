@@ -126,7 +126,7 @@ export function SalesForm({ customers, initialData }: SalesFormProps) {
             const res = await fetch(url, {
                 method: initialData?.id ? "PATCH" : "POST",
                 headers: { "Content-Type": "application/json" },
-                body: JSON.stringify({ ...formData, status })
+                body: JSON.stringify({ ...formData, status, currency })
             });
             if (!res.ok) { const d = await res.json(); throw new Error(d.error || "Failed to save sale"); }
             showToast(

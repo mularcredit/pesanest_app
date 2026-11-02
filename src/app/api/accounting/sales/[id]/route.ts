@@ -10,7 +10,7 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
 
     const { id } = await params;
     const body = await req.json();
-    const { customerId, invoiceNumber, issueDate, dueDate, status, notes, items } = body;
+    const { customerId, invoiceNumber, issueDate, dueDate, status, notes, items, currency } = body;
 
     if (!customerId || !items || items.length === 0) {
         return NextResponse.json({ error: "Missing required fields" }, { status: 400 });
@@ -30,7 +30,8 @@ export async function PATCH(req: Request, { params }: { params: Promise<{ id: st
                     dueDate: new Date(dueDate),
                     status,
                     notes,
-                    totalAmount
+                    totalAmount,
+                    ...(currency !== undefined && { currency })
                 }
             });
 

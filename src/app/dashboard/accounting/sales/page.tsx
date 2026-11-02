@@ -182,7 +182,7 @@ export default async function SalesPage({
                                             {sale.customer.name}
                                         </td>
                                         <td className="px-5 py-3.5 text-right font-mono text-[13px] font-[600] text-gray-900 tabular-nums">
-                                            KES {sale.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
+                                            {sale.currency || 'KES'} {sale.totalAmount.toLocaleString(undefined, { minimumFractionDigits: 2 })}
                                         </td>
                                         <td className="px-5 py-3.5">
                                             <EtimsStatusCell
